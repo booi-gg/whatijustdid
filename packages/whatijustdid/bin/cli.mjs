@@ -6,6 +6,7 @@ import { generate, planGeneration } from "../src/generate.mjs";
 import { build } from "../src/build.mjs";
 import { installHooks, uninstallHooks } from "../src/hooks.mjs";
 import { initializeProject } from "../src/init.mjs";
+import { validateAgentConfig } from "../src/agents/index.mjs";
 import { dirname } from "node:path";
 import { execSync } from "node:child_process";
 import { repoRoot } from "../src/git.mjs";
@@ -125,6 +126,11 @@ async function main() {
     case "init":
     case "install": {
       const config = loadConfig();
+      const validation = validateAgentConfig(config.agent);
+      if (!validation.valid) {
+        log(`${Perr} ${validation.error}`);
+        if (!rest.includes("--no-preview")) process.exitCode = 1;
+      }
       const initialized = initializeProject(config);
       const migration = importLegacyRows(config);
       const installed = installHooks(config.root);
