@@ -11,12 +11,12 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import test from "node:test";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-test("packed package installs and initializes a working consumer repository", { timeout: 30_000 }, () => {
+test("packed package installs and initializes a working consumer repository", { timeout: 30_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "changetrail-package-"));
   try {
     const packDirectory = join(root, "pack");
@@ -63,15 +63,43 @@ test("packed package installs and initializes a working consumer repository", { 
     assert.match(initOutput, /initialized/);
     assert.match(initOutput, /installed\/updated hooks/);
     assert.match(readFileSync(join(consumer, ".git", "hooks", "pre-commit"), "utf8"), /# >>> changetrail >>>/);
-    const viewer = readFileSync(join(consumer, "changetrail", "changetrail.html"), "utf8");
+    assert.equal(existsSync(join(consumer, "changetrail", "changetrail.html")), false);
+    const viewer = readFileSync(
+      join(consumer, "node_modules", "changetrail", "assets", "changetrail.html"),
+      "utf8",
+    );
     assert.match(viewer, /Repository ledger/);
     assert.match(viewer, /<script src="\.\/data\.js"><\/script>/);
+    assert.match(
+      readFileSync(join(consumer, ".gitignore"), "utf8"),
+      /\/changetrail\/changetrail\.html/,
+    );
     assert.equal(existsSync(join(consumer, "changetrail.json")), true);
     assert.equal(existsSync(join(consumer, "changetrail", "config.json")), false);
     assert.equal(existsSync(join(consumer, "ctrail", "config.json")), false);
     assert.equal(existsSync(join(consumer, "changelog", "changetrail.json")), false);
     assert.equal(existsSync(join(consumer, "changelog", "ctrail.json")), false);
     assert.equal(existsSync(join(consumer, "changelog", "changelog.json")), false);
+
+    const previewModule = pathToFileURL(
+      join(consumer, "node_modules", "changetrail", "src", "preview.mjs"),
+    ).href;
+    const { startPreview } = await import(previewModule);
+    const preview = await startPreview(
+      {
+        root: consumer,
+        dir: "changetrail",
+        dataFile: join(consumer, "changetrail", "data.js"),
+      },
+      { open: false, port: 0 },
+    );
+    try {
+      const response = await fetch(`${preview.url}/changetrail.html`);
+      assert.equal(response.status, 200);
+      assert.match(await response.text(), /Repository ledger/);
+    } finally {
+      await preview.close();
+    }
 
     run("git", ["add", "."], consumer);
     run("git", ["commit", "--quiet", "-m", "chore: initialize changelog"], consumer);

@@ -41,8 +41,8 @@ async function main() {
         port: optionValue(rest, "--port") ?? process.env.CONDUCTOR_PORT,
         open: !rest.includes("--no-open"),
       });
-      log(`changetrail: previewing ${config.dir}/changetrail.html at ${url}`);
-      log("changetrail: watching changetrail.html and data.js (Ctrl+C to stop)");
+      log(`changetrail: previewing the bundled viewer at ${url}`);
+      log(`changetrail: watching ${config.dir}/data.js (Ctrl+C to stop)`);
       break;
     }
     case "edit": {
@@ -77,7 +77,7 @@ async function main() {
     case "init":
     case "install": {
       const config = loadConfig();
-      const initialized = initializeProject(config, { force: rest.includes("--force") });
+      const initialized = initializeProject(config);
       const installed = installHooks(config.root);
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
@@ -92,7 +92,7 @@ async function main() {
       console.log(`changetrail — Change View and Logs
 
 Usage:
-  changetrail init       Create project files, install hooks, and build the viewer
+  changetrail init       Create project files, install hooks, and build viewer data
   changetrail install    Refresh hooks and missing project files (alias: init)
   changetrail record     Create + stage a DB row for currently staged source changes
   changetrail backfill   Create DB rows for recent history (alias: generate)

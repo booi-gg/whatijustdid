@@ -2,8 +2,10 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const DEFAULT_PORT = 4173;
+const VIEWER_FILE = fileURLToPath(new URL("../assets/changetrail.html", import.meta.url));
 const LIVE_RELOAD_PATH = "/__changetrail_live";
 const LIVE_RELOAD_CLIENT = `<script>
   (() => {
@@ -12,12 +14,12 @@ const LIVE_RELOAD_CLIENT = `<script>
   })();
 </script>`;
 
-/** Serve the generated viewer and reload connected browsers when it changes. */
+/** Serve the package-owned viewer and reload connected browsers when it changes. */
 export async function startPreview(config, options = {}) {
-  const viewerFile = join(config.root, config.dir, "changetrail.html");
+  const viewerFile = VIEWER_FILE;
   const dataFile = config.dataFile ?? join(config.root, config.dir, "data.js");
   if (!existsSync(viewerFile)) {
-    throw new Error(`Viewer not found at ${viewerFile}; run changetrail init first`);
+    throw new Error(`Bundled viewer not found at ${viewerFile}; reinstall changetrail`);
   }
 
   const host = options.host ?? "127.0.0.1";
@@ -36,16 +38,16 @@ export async function startPreview(config, options = {}) {
   const address = server.address();
   const url = `http://${host}:${address.port}`;
   let reloadTimer;
-  const watchedNames = new Set([basename(viewerFile), basename(dataFile)]);
-  const watcher = watch(dirname(viewerFile), (_event, filename) => {
-    if (filename && !watchedNames.has(String(filename))) return;
-    clearTimeout(reloadTimer);
-    reloadTimer = setTimeout(() => notifyReload(clients), 50);
-  });
+  const watchers = [viewerFile, dataFile].map((file) =>
+    watch(dirname(file), (_event, filename) => {
+      if (filename && String(filename) !== basename(file)) return;
+      clearTimeout(reloadTimer);
+      reloadTimer = setTimeout(() => notifyReload(clients), 50);
+    }));
 
   const close = async () => {
     clearTimeout(reloadTimer);
-    watcher.close();
+    for (const watcher of watchers) watcher.close();
     for (const client of clients) client.end();
     clients.clear();
     await closeServer(server);

@@ -5,13 +5,11 @@ import { join } from "node:path";
 import test from "node:test";
 import { startPreview } from "../src/preview.mjs";
 
-test("serves the generated viewer with live reload", async () => {
+test("serves the bundled viewer with live reload", async () => {
   const root = mkdtempSync(join(tmpdir(), "changetrail-preview-"));
   const directory = join(root, "changetrail");
-  const viewerFile = join(directory, "changetrail.html");
   const dataFile = join(directory, "data.js");
   mkdirSync(directory);
-  writeFileSync(viewerFile, "<!doctype html><body>Viewer</body>\n");
   writeFileSync(dataFile, "window.__CHANGELOG__ = [];\n");
 
   const preview = await startPreview(
@@ -25,7 +23,9 @@ test("serves the generated viewer with live reload", async () => {
 
     const html = await fetch(`${preview.url}/changetrail.html`);
     assert.equal(html.status, 200);
-    assert.match(await html.text(), /new EventSource\("\/__changetrail_live"\)/);
+    const htmlBody = await html.text();
+    assert.match(htmlBody, /<title>Changetrail · Changelog<\/title>/);
+    assert.match(htmlBody, /new EventSource\("\/__changetrail_live"\)/);
 
     const data = await fetch(`${preview.url}/data.js`);
     assert.equal(data.status, 200);
