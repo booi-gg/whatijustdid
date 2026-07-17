@@ -1,85 +1,56 @@
 import { randomUUID } from "node:crypto";
-import {
-  mkdtempSync,
-  lstatSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join, relative } from "node:path";
+import { join } from "node:path";
 import { spawnSync } from "node:child_process";
-import {
-  commitForAddedPath,
-  commitMeta,
-  fileAtRevision,
-  gitAuthor,
-  stageFile,
-  toGitPath,
-} from "./git.mjs";
-import { assertEntryOwner } from "./ownership.mjs";
-import { CHANGE_TYPES } from "./providers/shared.mjs";
-import { findEntryPath } from "./store.mjs";
+import { CHANGE_TYPES } from "./agents/shared.mjs";
+import { openSummaryStore } from "./store.mjs";
 
 const EDITABLE_KEYS = ["type", "projects", "changes"];
 
+/** Edit one local canonical summary. No repository file is touched or staged. */
 export function editEntry(config, id, dependencies = {}) {
-  if (!id) throw new Error("edit requires an entry id or unique id prefix");
-  const path = findEntryPath(config.dbDir, id);
-  if (!lstatSync(path).isFile()) throw new Error(`Changelog row must be a regular file: ${path}`);
-  const text = readFileSync(path, "utf8");
-  const entry = parseJson(text, path);
-  const gitPath = toGitPath(relative(config.root, path));
+  if (!id) throw new Error("edit requires a commit SHA or unique SHA prefix");
+  const store = dependencies.store ?? openSummaryStore(config);
+  const ownsStore = !dependencies.store;
+  try {
+    const entry = store.findByPrefix(id);
+    if (entry.status !== "ready") throw new Error(`Summary for ${id} is not ready`);
+    const draft = Object.fromEntries(EDITABLE_KEYS.map((key) => [key, entry[key]]));
+    const edited = dependencies.edit
+      ? dependencies.edit(structuredClone(draft))
+      : editWithConfiguredEditor(draft);
+    const next = applyEntryEdit(entry, edited);
 
-  const readRevision = dependencies.fileAtRevision ?? fileAtRevision;
-  const readCommit = dependencies.commitMeta ?? commitMeta;
-  const currentAuthor = dependencies.gitAuthor ?? gitAuthor;
-  const stage = dependencies.stageFile ?? stageFile;
-  const actor = dependencies.actor ?? currentAuthor(config.root);
-  const canonicalText = readRevision(config.root, "HEAD", gitPath);
-  const canonical = canonicalText === null ? entry : parseJson(canonicalText, gitPath);
-  const sourceCommit = canonical.commit?.sha
-    ? readCommit(canonical.commit.sha, config.root)
-    : addedCommitForPath(config, gitPath, dependencies);
-  assertEntryOwner(canonical, sourceCommit, actor.email, gitPath);
-
-  const draft = Object.fromEntries(EDITABLE_KEYS.map((key) => [key, entry[key]]));
-  const edited = dependencies.edit
-    ? dependencies.edit(structuredClone(draft))
-    : editWithConfiguredEditor(draft);
-  const next = applyEntryEdit(canonical, edited, actor, dependencies.now?.() ?? new Date());
-
-  if (JSON.stringify(next) === JSON.stringify(entry)) {
-    return { changed: false, entry, path };
+    if (next === entry) {
+      return { changed: false, entry, path: config.dbFile };
+    }
+    const saved = store.updateSummary(entry.commitSha, next, dependencies.now?.() ?? new Date());
+    return { changed: true, entry: saved, path: config.dbFile };
+  } finally {
+    if (ownsStore) store.close();
   }
-
-  writeFileSync(path, `${JSON.stringify(next, null, 2)}\n`);
-  stage(path, config.root);
-  return { changed: true, entry: next, path };
 }
 
-export function applyEntryEdit(entry, editable, actor, now = new Date()) {
+export function applyEntryEdit(entry, editable) {
   validateEditable(editable);
   const unchanged = EDITABLE_KEYS.every(
     (key) => JSON.stringify(entry[key]) === JSON.stringify(editable[key]),
   );
   if (unchanged) return entry;
-
   return {
     ...entry,
     type: editable.type,
     projects: editable.projects,
     changes: editable.changes,
-    updatedAt: now.toISOString(),
-    updatedBy: { name: actor.name, email: actor.email },
   };
 }
 
 function editWithConfiguredEditor(draft) {
-  const directory = mkdtempSync(join(tmpdir(), "changelog-edit-"));
+  const directory = mkdtempSync(join(tmpdir(), "changetrail-edit-"));
   const path = join(directory, `${randomUUID()}.json`);
   try {
-    writeFileSync(path, `${JSON.stringify(draft, null, 2)}\n`);
+    writeFileSync(path, `${JSON.stringify(draft, null, 2)}\n`, { mode: 0o600 });
     const editor = process.env.VISUAL ?? process.env.EDITOR ?? "vi";
     const result = spawnSync(`${editor} ${shellQuote(path)}`, {
       shell: true,
@@ -93,25 +64,13 @@ function editWithConfiguredEditor(draft) {
   }
 }
 
-function addedCommitForPath(config, path, dependencies) {
-  if (dependencies.commitForAddedPath) {
-    return dependencies.commitForAddedPath(config.root, path, "HEAD");
-  }
-  if (dependencies.commitIndexForDirectory) {
-    return dependencies.commitIndexForDirectory(config.root, config.dbDir, "HEAD").get(path) ?? {};
-  }
-  return commitForAddedPath(config.root, path, "HEAD");
-}
-
 function validateEditable(editable) {
   if (!editable || typeof editable !== "object" || Array.isArray(editable)) {
-    throw new Error("Edited entry must be a JSON object");
+    throw new Error("Edited summary must be a JSON object");
   }
   const unknown = Object.keys(editable).filter((key) => !EDITABLE_KEYS.includes(key));
   if (unknown.length) throw new Error(`Unknown editable fields: ${unknown.join(", ")}`);
-  if (!CHANGE_TYPES.includes(editable.type)) {
-    throw new Error(`Invalid type "${editable.type}"`);
-  }
+  if (!CHANGE_TYPES.includes(editable.type)) throw new Error(`Invalid type "${editable.type}"`);
   if (!Array.isArray(editable.projects) || editable.projects.some((value) => typeof value !== "string")) {
     throw new Error("projects must be an array of strings");
   }
