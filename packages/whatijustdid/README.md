@@ -37,15 +37,15 @@ Choose an agent and export its API key:
 export OPENAI_API_KEY=sk-...
 
 # DeepSeek
-export WHATIJUSTDID_AGENT=deepseek
+export changereceipt_AGENT=deepseek
 export DEEPSEEK_API_KEY=sk-...
 
 # Claude
-export WHATIJUSTDID_AGENT=claude
+export changereceipt_AGENT=claude
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # Local Ollama (no API key needed)
-export WHATIJUSTDID_AGENT=llama
+export changereceipt_AGENT=llama
 ```
 
 To override the default model per agent:
@@ -61,7 +61,11 @@ npm install --save-dev whatijustdid
 npx whatijustdid init
 ```
 
+<<<<<<<< HEAD:packages/changereceipt/README.md
+Initialization creates shared `changereceipt.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx changereceipt init --no-preview` when a script must initialize and exit.
+========
 Initialization creates shared `whatijustdid.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx whatijustdid init --no-preview` when a script must initialize and exit.
+>>>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c:packages/whatijustdid/README.md
 
 After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
 
@@ -136,12 +140,43 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 
 Put personal overrides in Git-private `.git/whatijustdid/whatijustdid.local.json`. Environment variables take precedence:
 
-- `WHATIJUSTDID_AGENT` (legacy: `whatijustdid_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
-- `whatijustdid_DB_PATH` for an advanced local database-path override
+- `WHATIJUSTDID_AGENT`
+- `WHATIJUSTDID_DB_PATH` for an advanced local database-path override
+
+### Credentials
+
+Each agent normally reads its provider's standard env var (`OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `ANTHROPIC_API_KEY`). To avoid tracking which name goes with which agent, you can instead set one generic `WHATIJUSTDID_AGENT_API_KEY` — it's used as the key for whichever agent is currently configured, and it takes precedence if both are set.
+
+Any of these can also live in a `.env` file at the repository root instead of your shell profile; it's loaded automatically and is gitignored by default, so it's never committed. A real exported shell variable still wins over the `.env` value.
+
+```dotenv
+# .env (gitignored)
+WHATIJUSTDID_AGENT_API_KEY=sk-...
+```
 
 Agent-specific variables:
 
-- Codex/OpenAI: `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`
-- DeepSeek: `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`
-- Claude: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`
-- Llama/Ollama: optional `OLLAMA_HOST`
+- Codex/OpenAI: `OPENAI_API_KEY` (or `WHATIJUSTDID_AGENT_API_KEY`), optional `OPENAI_BASE_URL`
+- DeepSeek: `DEEPSEEK_API_KEY` (or `WHATIJUSTDID_AGENT_API_KEY`), optional `DEEPSEEK_BASE_URL`
+- Claude: `ANTHROPIC_API_KEY` (or `WHATIJUSTDID_AGENT_API_KEY`), optional `ANTHROPIC_BASE_URL`
+- Llama/Ollama: no key needed, optional `OLLAMA_HOST`
+
+### Supported agents
+
+Set `"agent"` in `whatijustdid.json` (or `WHATIJUSTDID_AGENT`) to one of the values below. `"model": null` uses the listed default; set `"model"` (or `WHATIJUSTDID_MODEL`) to override it.
+
+| Agent | `agent` value | Credential | Default model | Example override |
+| --- | --- | --- | --- | --- |
+| Codex / OpenAI | `codex` (alias: `openai`) | `OPENAI_API_KEY` or `WHATIJUSTDID_AGENT_API_KEY` | `gpt-5.4-mini` | `"model": "gpt-5.4"` |
+| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` or `WHATIJUSTDID_AGENT_API_KEY` | `deepseek-v4-flash` | `"model": "deepseek-v4"` |
+| Claude | `claude` | `ANTHROPIC_API_KEY` or `WHATIJUSTDID_AGENT_API_KEY` | `claude-sonnet-5` | `"model": "claude-opus-4-8"` |
+| Llama / Ollama | `llama` | none (runs against local `OLLAMA_HOST`) | `llama3.2` | `"model": "llama3.3"` |
+
+Example `whatijustdid.json` pinned to DeepSeek's larger model:
+
+```json
+{
+  "agent": "deepseek",
+  "model": "deepseek-v4"
+}
+```

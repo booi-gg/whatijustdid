@@ -1,5 +1,5 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -11,14 +11,17 @@ import {
 // Raw HTTP keeps the package dependency-free inside latency-sensitive hooks.
 const DEFAULT_MODEL = "claude-sonnet-5";
 
-export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
-  const key = process.env.ANTHROPIC_API_KEY;
+export async function describe(input, { model, timeoutMs }) {
+  const key = resolveApiKey("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ANTHROPIC_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
   const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
 
   const data = await postJson(
-    apiUrl(process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com", "v1/messages"),
+    apiUrl(
+      process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com",
+      "v1/messages",
+    ),
     {
       label: "Anthropic Messages API",
       timeoutMs,
@@ -32,10 +35,10 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
         system: verbosityPrompt(verbosity),
         messages: [{ role: "user", content: formatAgentInput(input) }],
         output_config: {
-          format: { type: "json_schema", schema: CHANGELOG_SCHEMA },
+          format: { type: "json_schema", schema: WHATIJUSTDID_SCHEMA },
         },
       },
-    }
+    },
   );
 
   const text = data.content?.map((block) => block.text ?? "").join("") ?? "";

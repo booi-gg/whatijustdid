@@ -1,4 +1,4 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { VERBOSITY_LEVELS } from "./agents/shared.mjs";
@@ -14,8 +14,11 @@ const defaultConfigPath = join(packageDir, "whatijustdid.json");
  */
 export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
+  loadDotEnv(root);
   const env = options.env ?? process.env;
-  const defaults = normalizeLegacyConfig(JSON.parse(readFileSync(defaultConfigPath, "utf8")));
+  const defaults = normalizeLegacyConfig(
+    JSON.parse(readFileSync(defaultConfigPath, "utf8")),
+  );
   const sharedCandidates = [join(root, "whatijustdid.json")];
   const configPath = sharedCandidates.find(existsSync);
   const shared = configPath
@@ -24,16 +27,16 @@ export function loadConfig(options = {}) {
 
   const initial = mergeAgentConfig(defaults, shared);
   const privateDir = join(gitCommonDir(root), CLI_NAME);
-  const localCandidates = [
-    join(privateDir, "whatijustdid.local.json"),
-  ];
+  const localCandidates = [join(privateDir, "whatijustdid.local.json")];
   const localConfigPath = localCandidates.find(existsSync);
   const local = localConfigPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(localConfigPath, "utf8")))
     : {};
   const config = mergeAgentConfig(initial, local);
   const configuredAgent = config.agent ?? "codex";
-  const verbosity = VERBOSITY_LEVELS.includes(config.verbosity) ? config.verbosity : "normal";
+  const verbosity = VERBOSITY_LEVELS.includes(config.verbosity)
+    ? config.verbosity
+    : "normal";
   const agent =
     env.WHATIJUSTDID_AGENT ??
     env[`${ENV_PREFIX}_AGENT`] ??
@@ -41,11 +44,13 @@ export function loadConfig(options = {}) {
     legacyAgent(env.CHANGELOG_PROVIDER) ??
     configuredAgent;
   const environmentModel = env[`${ENV_PREFIX}_MODEL`] ?? env.CHANGELOG_MODEL;
-  const model = environmentModel ?? (sameAgent(agent, configuredAgent) ? config.model : null);
+  const model =
+    environmentModel ??
+    (sameAgent(agent, configuredAgent) ? config.model : null);
   const viewerLimit = positiveInteger(config.viewerLimit ?? config.limit, 200);
   const generationLimit = positiveInteger(config.generationLimit, 50);
   const dbFile = resolvePrivateDbFile(
-    env[`${ENV_PREFIX}_DB_PATH`] ?? env.CHANGELOG_DB_PATH,
+    env[`${ENV_PREFIX}_DB_PATH`],
     root,
     privateDir,
   );
@@ -76,10 +81,25 @@ export function loadConfig(options = {}) {
   };
 }
 
+/** Agent credentials can live in a repo-root .env, gitignored by default. */
+function loadDotEnv(root) {
+  const dotEnvPath = join(root, ".env");
+  if (!existsSync(dotEnvPath)) return;
+  try {
+    process.loadEnvFile(dotEnvPath);
+  } catch {
+    /* malformed .env; leave process.env as-is */
+  }
+}
+
 function normalizeLegacyConfig(config) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return {};
   if (config.provider === "raw" && !config.agent) {
-    const { provider: _provider, model: _model, ...withoutRawSelection } = config;
+    const {
+      provider: _provider,
+      model: _model,
+      ...withoutRawSelection
+    } = config;
     return withoutRawSelection;
   }
   if (config.agent || !legacyAgent(config.provider)) return config;
@@ -100,7 +120,9 @@ function mergeAgentConfig(base, override) {
 
 /** Preserve old AI selections while permanently retiring the raw mode. */
 function legacyAgent(value) {
-  return typeof value === "string" && value && value !== "raw" ? value : undefined;
+  return typeof value === "string" && value && value !== "raw"
+    ? value
+    : undefined;
 }
 
 function sameAgent(left, right) {
@@ -116,6 +138,7 @@ function positiveInteger(value, fallback) {
 }
 
 function resolvePrivateDbFile(value, root, privateDir) {
-  if (typeof value !== "string" || !value.trim()) return join(privateDir, "summaries.sqlite");
+  if (typeof value !== "string" || !value.trim())
+    return join(privateDir, "summaries.sqlite");
   return isAbsolute(value) ? normalize(value) : resolve(root, value);
 }

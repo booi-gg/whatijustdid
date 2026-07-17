@@ -10,7 +10,7 @@ test("serves the bundled viewer with live reload", async () => {
   const directory = join(root, "whatijustdid");
   const dataFile = join(directory, "data.js");
   mkdirSync(directory);
-  writeFileSync(dataFile, "window.__CHANGELOG__ = [];\n");
+  writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [];\n");
 
   const preview = await startPreview(
     { root, dir: "whatijustdid", dataFile },
@@ -29,7 +29,7 @@ test("serves the bundled viewer with live reload", async () => {
 
     const data = await fetch(`${preview.url}/data.js`);
     assert.equal(data.status, 200);
-    assert.equal(await data.text(), "window.__CHANGELOG__ = [];\n");
+    assert.equal(await data.text(), "window.__WHATIJUSTDID__ = [];\n");
 
     const events = new AbortController();
     const stream = await fetch(`${preview.url}/__whatijustdid_live`, {
@@ -37,7 +37,7 @@ test("serves the bundled viewer with live reload", async () => {
     });
     const reader = stream.body.getReader();
     await reader.read();
-    writeFileSync(dataFile, "window.__CHANGELOG__ = [1];\n");
+    writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [1];\n");
     const message = await readUntil(reader, /event: reload/, 5_000);
     assert.match(message, /event: reload/);
     events.abort();

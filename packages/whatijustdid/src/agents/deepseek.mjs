@@ -1,5 +1,6 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
+  SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -18,9 +19,14 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
   const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
   const systemPrompt = `${verbosityPrompt(verbosity)}
 The required JSON schema is:
-${JSON.stringify(CHANGELOG_SCHEMA)}
+${JSON.stringify(WHATIJUSTDID_SCHEMA)}
 Example JSON output:
 {"type":"feat","changes":[{"type":"feat","summary":"Added a new user-facing capability."}]}`;
+
+export async function describe(input, { model, timeoutMs }) {
+  const key = resolveApiKey("DEEPSEEK_API_KEY");
+  if (!key) throw new Error("DEEPSEEK_API_KEY not set");
+  const selectedModel = model ?? DEFAULT_MODEL;
 
   const data = await postJson(
     apiUrl(process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com", "chat/completions"),

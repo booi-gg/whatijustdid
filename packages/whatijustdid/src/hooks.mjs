@@ -18,9 +18,9 @@ const HOOKS = {
 };
 const MANAGED_HOOKS = ["pre-commit", ...Object.keys(HOOKS)];
 const BLOCK = new RegExp(
-  `# >>> (?:@bm\\/changelog|cvl|ctrial|ctrail|${CLI_NAME}) >>>` +
+  `# >>> (?:@bm\\/changelog|cvl|ctrial|ctrail|changetrail|changereceipt|${CLI_NAME}) >>>` +
     `[\\s\\S]*?` +
-    `# <<< (?:@bm\\/changelog|cvl|ctrial|ctrail|${CLI_NAME}) <<<(?:\\r?\\n|$)`,
+    `# <<< (?:@bm\\/changelog|cvl|ctrial|ctrail|changetrail|changereceipt|${CLI_NAME}) <<<(?:\\r?\\n|$)`,
   "g",
 );
 

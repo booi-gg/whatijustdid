@@ -6,7 +6,8 @@ import test from "node:test";
 import { describe as describeWithOpenAI } from "../src/agents/codex.mjs";
 import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
 import { getAgent } from "../src/agents/index.mjs";
-import { CHANGELOG_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
+import { WHATIJUSTDID_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
+import { ENV_PREFIX } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
 import { describeChange } from "../src/describe.mjs";
 import { applyEntryEdit, editEntry } from "../src/edit.mjs";
@@ -91,7 +92,9 @@ test("repairs truncated JSON from max_tokens cut-off in changes array", () => {
 
 test("agent failure never falls back to commit-message text", async () => {
   const originalKey = process.env.OPENAI_API_KEY;
+  const originalGenericKey = process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   delete process.env.OPENAI_API_KEY;
+  delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   try {
     await assert.rejects(
       () =>
@@ -109,14 +112,18 @@ test("agent failure never falls back to commit-message text", async () => {
   } finally {
     if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = originalKey;
+    if (originalGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = originalGenericKey;
   }
 });
 
 test("OpenAI defaults to the Codex model and receives code, not commit messages", async () => {
   const previousKey = process.env.OPENAI_API_KEY;
+  const previousGenericKey = process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   const previousFetch = globalThis.fetch;
   let request;
   process.env.OPENAI_API_KEY = "test-key";
+  delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   globalThis.fetch = async (_url, options) => {
     request = JSON.parse(options.body);
     return {
@@ -143,6 +150,8 @@ test("OpenAI defaults to the Codex model and receives code, not commit messages"
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = previousKey;
+    if (previousGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = previousGenericKey;
   }
 
   assert.equal(request.model, "gpt-5.4-mini");
@@ -153,12 +162,14 @@ test("OpenAI defaults to the Codex model and receives code, not commit messages"
 
 test("DeepSeek uses its API key, fast model, and JSON output mode", async () => {
   const previousKey = process.env.DEEPSEEK_API_KEY;
+  const previousGenericKey = process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   const previousBaseUrl = process.env.DEEPSEEK_BASE_URL;
   const previousFetch = globalThis.fetch;
   let url;
   let headers;
   let request;
   process.env.DEEPSEEK_API_KEY = "deepseek-test-key";
+  delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   delete process.env.DEEPSEEK_BASE_URL;
   globalThis.fetch = async (requestUrl, options) => {
     url = requestUrl;
@@ -197,6 +208,8 @@ test("DeepSeek uses its API key, fast model, and JSON output mode", async () => 
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
     else process.env.DEEPSEEK_API_KEY = previousKey;
+    if (previousGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = previousGenericKey;
     if (previousBaseUrl === undefined) delete process.env.DEEPSEEK_BASE_URL;
     else process.env.DEEPSEEK_BASE_URL = previousBaseUrl;
   }
@@ -214,7 +227,9 @@ test("DeepSeek uses its API key, fast model, and JSON output mode", async () => 
 
 test("DeepSeek reports its missing credential clearly", async () => {
   const previousKey = process.env.DEEPSEEK_API_KEY;
+  const previousGenericKey = process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   delete process.env.DEEPSEEK_API_KEY;
+  delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
   try {
     await assert.rejects(
       () =>
@@ -227,11 +242,13 @@ test("DeepSeek reports its missing credential clearly", async () => {
   } finally {
     if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
     else process.env.DEEPSEEK_API_KEY = previousKey;
+    if (previousGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = previousGenericKey;
   }
 });
 
 test("uses a strict-agent-compatible structured output schema", () => {
-  const changes = CHANGELOG_SCHEMA.properties.changes;
+  const changes = WHATIJUSTDID_SCHEMA.properties.changes;
   const summary = changes.items.properties.summary;
   assert.equal(changes.minItems, undefined);
   assert.equal(changes.maxItems, undefined);
@@ -326,7 +343,7 @@ test("build displays ready and pending records without commit-message text", () 
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
     assert.doesNotMatch(output, /must never appear/i);
-    assert.match(output, /window\.__CHANGELOG_PROJECTS__ = \[\s+"web"/);
+    assert.match(output, /window\.__WHATIJUSTDID_PROJECTS__ = \[\s+"web"/);
   } finally {
     store.close();
     rmSync(root, { recursive: true, force: true });

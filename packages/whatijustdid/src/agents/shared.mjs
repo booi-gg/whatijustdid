@@ -1,3 +1,5 @@
+import { ENV_PREFIX } from "../brand.mjs";
+
 export const CHANGE_TYPES = [
   "feat",
   "fix",
@@ -14,7 +16,11 @@ export const CHANGE_TYPES = [
 
 export const MAX_FILE_LIST_BYTES = 20_000;
 
-export const VERBOSITY_LEVELS = Object.freeze(["concise", "normal", "detailed"]);
+export const VERBOSITY_LEVELS = Object.freeze([
+  "concise",
+  "normal",
+  "detailed",
+]);
 
 const VERBOSITY = {
   concise: { maxTokens: 600, maxSummaryChars: 140 },
@@ -79,12 +85,18 @@ function boundedFileList(files) {
 
 function repairTruncatedJson(text) {
   let best = text;
-  try { JSON.parse(best); return best; } catch {}
+  try {
+    JSON.parse(best);
+    return best;
+  } catch {}
 
   const closings = closeOpenBrackets(text);
   for (const suffix of closings) {
     const candidate = text + suffix;
-    try { JSON.parse(candidate); return candidate; } catch {}
+    try {
+      JSON.parse(candidate);
+      return candidate;
+    } catch {}
   }
 
   let trimmed = text;
@@ -92,7 +104,10 @@ function repairTruncatedJson(text) {
     trimmed = trimmed.slice(0, -1);
     for (const suffix of closeOpenBrackets(trimmed)) {
       const candidate = trimmed + suffix;
-      try { JSON.parse(candidate); return candidate; } catch {}
+      try {
+        JSON.parse(candidate);
+        return candidate;
+      } catch {}
     }
   }
 
@@ -104,19 +119,34 @@ function closeOpenBrackets(text) {
   let inString = false;
   let escaped = false;
   for (const ch of text) {
-    if (escaped) { escaped = false; continue; }
-    if (ch === "\\" && inString) { escaped = true; continue; }
-    if (ch === '"') { inString = !inString; continue; }
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\" && inString) {
+      escaped = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      continue;
+    }
     if (inString) continue;
     if (ch === "{" || ch === "[") stack.push(ch);
     else if (ch === "}" || ch === "]") {
       const expected = ch === "}" ? "{" : "[";
       for (let i = stack.length - 1; i >= 0; i--) {
-        if (stack[i] === expected) { stack.splice(i, 1); break; }
+        if (stack[i] === expected) {
+          stack.splice(i, 1);
+          break;
+        }
       }
     }
   }
-  const closing = stack.reverse().map((ch) => (ch === "{" ? "}" : "]")).join("");
+  const closing = stack
+    .reverse()
+    .map((ch) => (ch === "{" ? "}" : "]"))
+    .join("");
   if (!closing) return [];
   const suffixes = [closing];
   if (closing.startsWith("}")) suffixes.push(closing.slice(1));
@@ -127,7 +157,8 @@ export function parseAgentJson(text, { maxSummaryChars = 280 } = {}) {
   let parsed;
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
-  const candidate = start >= 0 && end >= start ? text.slice(start, end + 1) : text;
+  const candidate =
+    start >= 0 && end >= start ? text.slice(start, end + 1) : text;
 
   try {
     parsed = JSON.parse(candidate);
@@ -137,17 +168,26 @@ export function parseAgentJson(text, { maxSummaryChars = 280 } = {}) {
       try {
         parsed = JSON.parse(repaired);
       } catch (repairError) {
-        throw new Error(`Agent returned invalid JSON: ${error.message}`, { cause: error });
+        throw new Error(`Agent returned invalid JSON: ${error.message}`, {
+          cause: error,
+        });
       }
     } else {
-      throw new Error(`Agent returned invalid JSON: ${error.message}`, { cause: error });
+      throw new Error(`Agent returned invalid JSON: ${error.message}`, {
+        cause: error,
+      });
     }
   }
 
   const entryType = CHANGE_TYPES.includes(parsed?.type) ? parsed.type : "other";
   const changes = Array.isArray(parsed?.changes)
     ? parsed.changes
-        .filter((change) => change && typeof change.summary === "string" && change.summary.trim())
+        .filter(
+          (change) =>
+            change &&
+            typeof change.summary === "string" &&
+            change.summary.trim(),
+        )
         .slice(0, 12)
         .map((change) => ({
           type: CHANGE_TYPES.includes(change.type) ? change.type : entryType,
@@ -155,7 +195,8 @@ export function parseAgentJson(text, { maxSummaryChars = 280 } = {}) {
         }))
     : [];
 
-  if (!changes.length) throw new Error("Agent returned no usable change summaries");
+  if (!changes.length)
+    throw new Error("Agent returned no usable change summaries");
 
   return {
     type: entryType === "other" ? changes[0].type : entryType,
@@ -173,10 +214,25 @@ export async function postJson(url, { headers, body, label, timeoutMs }) {
 
   if (!response.ok) {
     const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 400);
-    throw new Error(`${label}: HTTP ${response.status}${detail ? ` — ${detail}` : ""}`);
+    throw new Error(
+      `${label}: HTTP ${response.status}${detail ? ` — ${detail}` : ""}`,
+    );
   }
 
   return response.json();
+}
+
+/**
+ * A single `${ENV_PREFIX}_AGENT_API_KEY` can hold the key for whichever agent
+ * is currently configured, so switching agents doesn't require juggling
+ * provider-specific env var names. It takes precedence because setting it
+ * means "use this key for whatijustdid specifically"; the provider-specific
+ * var is the fallback for a key already set for other tools.
+ */
+export function resolveApiKey(providerEnvVar) {
+  return (
+    process.env[`${ENV_PREFIX}_AGENT_API_KEY`] ?? process.env[providerEnvVar]
+  );
 }
 
 export function apiUrl(baseUrl, path) {

@@ -1,5 +1,5 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -12,14 +12,17 @@ import {
 // not a ChatGPT/Codex subscription or local CLI session.
 const DEFAULT_MODEL = "gpt-5.4-mini";
 
-export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
-  const key = process.env.OPENAI_API_KEY;
+export async function describe(input, { model, timeoutMs }) {
+  const key = resolveApiKey("OPENAI_API_KEY");
   if (!key) throw new Error("OPENAI_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
   const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
 
   const data = await postJson(
-    apiUrl(process.env.OPENAI_BASE_URL ?? "https://api.openai.com", "v1/responses"),
+    apiUrl(
+      process.env.OPENAI_BASE_URL ?? "https://api.openai.com",
+      "v1/responses",
+    ),
     {
       label: "OpenAI Responses API",
       timeoutMs,
@@ -36,11 +39,11 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
             type: "json_schema",
             name: "changelog_entry",
             strict: true,
-            schema: CHANGELOG_SCHEMA,
+            schema: WHATIJUSTDID_SCHEMA,
           },
         },
       },
-    }
+    },
   );
 
   const text =

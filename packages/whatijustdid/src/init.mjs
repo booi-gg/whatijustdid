@@ -1,8 +1,4 @@
-import {
-  copyFileSync,
-  existsSync,
-  mkdirSync,
-} from "node:fs";
+import { copyFileSync, existsSync, mkdirSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { openSummaryStore } from "./store.mjs";
@@ -15,11 +11,12 @@ export function initializeProject(config, dependencies = {}) {
   const created = [];
   const updated = [];
   const unchanged = [];
-  const record = (status, path) => status === "created"
-    ? created.push(repositoryPath(config.root, path))
-    : status === "updated"
-      ? updated.push(repositoryPath(config.root, path))
-      : unchanged.push(repositoryPath(config.root, path));
+  const record = (status, path) =>
+    status === "created"
+      ? created.push(repositoryPath(config.root, path))
+      : status === "updated"
+        ? updated.push(repositoryPath(config.root, path))
+        : unchanged.push(repositoryPath(config.root, path));
 
   const configTarget = config.isDefaultConfig
     ? join(config.root, "whatijustdid.json")

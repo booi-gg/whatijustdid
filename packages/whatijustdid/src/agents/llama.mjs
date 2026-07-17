@@ -1,5 +1,5 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -11,7 +11,10 @@ import {
 // Local Ollama. No API key, no cloud, and no runtime dependency.
 const DEFAULT_MODEL = "llama3.2";
 
-export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
+export async function describe(
+  input,
+  { model, timeoutMs, verbosity = "normal" },
+) {
   const selectedModel = model ?? DEFAULT_MODEL;
   const { maxSummaryChars } = verbosityConfig(verbosity);
   const data = await postJson(
@@ -22,7 +25,7 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
       headers: {},
       body: {
         model: selectedModel,
-        format: CHANGELOG_SCHEMA,
+        format: WHATIJUSTDID_SCHEMA,
         stream: false,
         options: { temperature: 0 },
         messages: [
@@ -30,8 +33,11 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
           { role: "user", content: formatAgentInput(input) },
         ],
       },
-    }
+    },
   );
 
-  return { ...parseAgentJson(data.message?.content ?? "", { maxSummaryChars }), model: selectedModel };
+  return {
+    ...parseAgentJson(data.message?.content ?? "", { maxSummaryChars }),
+    model: selectedModel,
+  };
 }
