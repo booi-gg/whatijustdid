@@ -34,7 +34,7 @@
             <span class="brand">
               <img
                 class="brand-mark"
-                src="https://res.cloudinary.com/dhhmap710/image/upload/v1784311641/Container_zccajb.svg"
+                src="https://res.cloudinary.com/dhhmap710/image/upload/v1784320394/wijd-logo_f2letb.svg"
                 alt=""
                 aria-hidden="true"
               />
@@ -69,7 +69,9 @@
         const rawGroups = Array.isArray(window.__WHATIJUSTDID__)
           ? window.__WHATIJUSTDID__
           : [];
-        const configuredProjects = Array.isArray(window.__WHATIJUSTDID_PROJECTS__)
+        const configuredProjects = Array.isArray(
+          window.__WHATIJUSTDID_PROJECTS__,
+        )
           ? window.__WHATIJUSTDID_PROJECTS__
           : [];
         const knownTypes = new Set([
@@ -262,7 +264,9 @@
           const letterCls = knownTypes.has(entryType)
             ? `letter letter--${entryType}`
             : "letter";
-          item.append(element("span", letterCls, String(entry.letter || "(·)")));
+          item.append(
+            element("span", letterCls, String(entry.letter || "(·)")),
+          );
           const body = element("div", "entry-body");
           const tags = element("div", "tags");
           const entryTags =
