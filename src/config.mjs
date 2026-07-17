@@ -13,6 +13,7 @@ const defaultConfigPath = join(packageDir, "changetrail.json");
  */
 export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
+  const env = options.env ?? process.env;
   const defaults = JSON.parse(readFileSync(defaultConfigPath, "utf8"));
   const sharedCandidates = [
     join(root, "changetrail.json"),
@@ -27,7 +28,7 @@ export function loadConfig(options = {}) {
   const configPath = sharedCandidates.find(existsSync);
   const shared = configPath ? JSON.parse(readFileSync(configPath, "utf8")) : {};
 
-  const initial = { ...defaults, ...shared };
+  const initial = mergeProviderConfig(defaults, shared);
   const configuredDir = initial.dir ?? "changetrail";
   const localCandidates = [
     join(root, configuredDir, "changetrail.local.json"),
@@ -38,17 +39,20 @@ export function loadConfig(options = {}) {
   const localConfigPath = localCandidates.find(existsSync);
   const local = localConfigPath ? JSON.parse(readFileSync(localConfigPath, "utf8")) : {};
   const config = {
-    ...initial,
-    ...local,
+    ...mergeProviderConfig(initial, local),
     projects: local.projects ?? shared.projects ?? defaults.projects ?? {},
   };
   const dir = repositoryDirectory(
-    process.env.CHANGELOG_DIR ?? config.dir ?? configuredDir,
+    env.CHANGELOG_DIR ?? config.dir ?? configuredDir,
   );
+  const provider = env.CHANGELOG_PROVIDER ?? config.provider ?? "openai";
+  const model =
+    env.CHANGELOG_MODEL ??
+    (sameProvider(provider, config.provider) ? config.model : null);
 
   return {
-    provider: process.env.CHANGELOG_PROVIDER ?? config.provider ?? "raw",
-    model: process.env.CHANGELOG_MODEL ?? config.model ?? null,
+    provider,
+    model: model ?? null,
     limit: positiveInteger(config.limit, 200),
     maxDiffBytes: positiveInteger(config.maxDiffBytes, 80_000),
     timeoutMs: positiveInteger(config.timeoutMs, 20_000),
@@ -61,6 +65,26 @@ export function loadConfig(options = {}) {
     isDefaultConfig: !configPath,
     localConfigPath: localConfigPath ?? null,
   };
+}
+
+function mergeProviderConfig(base, override) {
+  const merged = { ...base, ...override };
+  if (
+    Object.hasOwn(override, "provider") &&
+    !Object.hasOwn(override, "model") &&
+    !sameProvider(override.provider, base.provider)
+  ) {
+    merged.model = null;
+  }
+  return merged;
+}
+
+function sameProvider(left, right) {
+  return providerFamily(left) === providerFamily(right);
+}
+
+function providerFamily(provider) {
+  return provider === "codex" || provider === "openai" ? "openai" : provider;
 }
 
 function positiveInteger(value, fallback) {
