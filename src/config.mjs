@@ -32,6 +32,7 @@ export function loadConfig(options = {}) {
   const config = mergeAgentConfig(initial, local);
   const configuredAgent = config.agent ?? "codex";
   const agent =
+    env.WHATIJUSTDID_AGENT ??
     env.CHANGETRAIL_AGENT ??
     env.CHANGELOG_AGENT ??
     legacyAgent(env.CHANGELOG_PROVIDER) ??
