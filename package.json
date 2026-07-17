@@ -1,5 +1,5 @@
 {
-  "name": "changetrail",
+  "name": "changereceipt",
   "version": "0.1.0",
   "type": "module",
   "description": "Private, persistent AI summaries for every committed code change.",
