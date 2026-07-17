@@ -1,17 +1,17 @@
 #!/usr/bin/env node
+import { execSync } from "node:child_process";
+import { dirname } from "node:path";
 import { CLI_NAME, TITLE_NAME } from "../src/brand.mjs";
-import { loadConfig } from "../src/config.mjs";
-import { generate, planGeneration } from "../src/generate.mjs";
 import { build } from "../src/build.mjs";
+import { loadConfig } from "../src/config.mjs";
+import { editEntry } from "../src/edit.mjs";
+import { generate, planGeneration } from "../src/generate.mjs";
+import { repoRoot } from "../src/git.mjs";
 import { installHooks, uninstallHooks } from "../src/hooks.mjs";
 import { initializeProject } from "../src/init.mjs";
-import { dirname } from "node:path";
-import { execSync } from "node:child_process";
-import { repoRoot } from "../src/git.mjs";
-import { recordCommittedChange } from "../src/record.mjs";
-import { editEntry } from "../src/edit.mjs";
 import { importLegacyRows } from "../src/legacy.mjs";
 import { startPreview } from "../src/preview.mjs";
+import { recordCommittedChange } from "../src/record.mjs";
 
 const [cmd, ...rest] = process.argv.slice(2);
 const silent = rest.includes("--silent");
@@ -23,17 +23,26 @@ async function main() {
       const config = loadConfig();
       let result;
       try {
-        result = await recordCommittedChange(config, {}, {
-          mergeOnly: rest.includes("--merge-only"),
-        });
+        result = await recordCommittedChange(
+          config,
+          {},
+          {
+            mergeOnly: rest.includes("--merge-only"),
+          },
+        );
       } catch (error) {
         const total = build(config);
-        throw new Error(`${error.message}; viewer now has ${formatEntries(total)}`, { cause: error });
+        throw new Error(
+          `${error.message}; viewer now has ${formatEntries(total)}`,
+          { cause: error },
+        );
       }
       const total = build(config);
-      log(result.created
-        ? `${CLI_NAME}: saved an AI summary for ${result.entry.commitSha.slice(0, 12)}; viewer now has ${formatEntries(total)}`
-        : `${CLI_NAME}: ${recordSkipMessage(result.reason)}; viewer now has ${formatEntries(total)}`);
+      log(
+        result.created
+          ? `${CLI_NAME}: saved an AI summary for ${result.entry.commitSha.slice(0, 12)}; viewer now has ${formatEntries(total)}`
+          : `${CLI_NAME}: ${recordSkipMessage(result.reason)}; viewer now has ${formatEntries(total)}`,
+      );
       break;
     }
     case "generate":
@@ -41,19 +50,29 @@ async function main() {
     case "refresh": {
       const config = loadConfig();
       const all = rest.includes("--all");
-      const limitRequested = rest.some((value) => value === "--limit" || value.startsWith("--limit="));
+      const limitRequested = rest.some(
+        (value) => value === "--limit" || value.startsWith("--limit="),
+      );
       const limitValue = optionValue(rest, "--limit");
-      if (limitRequested && !limitValue) throw new Error("--limit requires a positive integer");
-      const limit = limitValue === null ? null : positiveInteger(limitValue, "--limit");
+      if (limitRequested && !limitValue)
+        throw new Error("--limit requires a positive integer");
+      const limit =
+        limitValue === null ? null : positiveInteger(limitValue, "--limit");
       const force = rest.includes("--force");
 
       if (!all && limit === null) {
-        const preview = planGeneration(config, { limit: config.generationLimit, force });
+        const preview = planGeneration(config, {
+          limit: config.generationLimit,
+          force,
+        });
         log(`${CLI_NAME}: no AI calls made. ${formatPlan(preview)}`);
-        log(`${CLI_NAME}: choose a scope: --limit ${config.generationLimit}, or --all --yes`);
+        log(
+          `${CLI_NAME}: choose a scope: --limit ${config.generationLimit}, or --all --yes`,
+        );
         break;
       }
-      if (all && limit !== null) throw new Error("Choose either --limit N or --all, not both");
+      if (all && limit !== null)
+        throw new Error("Choose either --limit N or --all, not both");
 
       const options = {
         all,
@@ -64,13 +83,15 @@ async function main() {
       const plan = planGeneration(config, options);
       log(`${CLI_NAME}: ${formatPlan(plan)}`);
       if (all && !options.confirmAll) {
-        throw new Error("No AI calls made. Re-run with --all --yes to approve full-history generation");
+        throw new Error(
+          "No AI calls made. Re-run with --all --yes to approve full-history generation",
+        );
       }
       const result = await generate(config, { ...options, plan });
       const total = build(config);
       log(
         `${CLI_NAME}: generated ${result.generated}, skipped ${result.skipped}, ` +
-        `viewer now has ${formatEntries(total)}`,
+          `viewer now has ${formatEntries(total)}`,
       );
       break;
     }
@@ -97,18 +118,26 @@ async function main() {
       const result = editEntry(config, id);
       if (result.changed) {
         build(config);
-        log(`${CLI_NAME}: edited local summary for ${result.entry.commitSha.slice(0, 12)}`);
+        log(
+          `${CLI_NAME}: edited local summary for ${result.entry.commitSha.slice(0, 12)}`,
+        );
       } else {
         log(`${CLI_NAME}: no changes made`);
       }
       break;
     }
     case "sync":
-      throw new Error("Cloud sync is not available yet; no local history was generated or uploaded");
+      throw new Error(
+        "Cloud sync is not available yet; no local history was generated or uploaded",
+      );
     case "db": {
       const config = loadConfig();
       log(`${CLI_NAME}: ${config.dbFile}`);
-      try { execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" }); } catch { /* no-op */ }
+      try {
+        execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" });
+      } catch {
+        /* no-op */
+      }
       break;
     }
     case "init":
@@ -119,19 +148,23 @@ async function main() {
       const installed = installHooks(config.root);
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
-      log(changed.length
-        ? `${CLI_NAME}: initialized ${changed.join(", ")}`
-        : `${CLI_NAME}: project files already initialized`);
+      log(
+        changed.length
+          ? `${CLI_NAME}: initialized ${changed.join(", ")}`
+          : `${CLI_NAME}: project files already initialized`,
+      );
       if (migration.scanned) {
         log(
           `${CLI_NAME}: imported ${migration.imported} legacy AI summaries; ` +
-          `${migration.pending} commits still need generation`,
+            `${migration.pending} commits still need generation`,
         );
       }
       log(`${CLI_NAME}: private database ${config.dbFile}`);
-      log(installed.length
-        ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
-        : `${CLI_NAME}: hooks already current`);
+      log(
+        installed.length
+          ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
+          : `${CLI_NAME}: hooks already current`,
+      );
       log(`${CLI_NAME}: built initial viewer data (${formatEntries(total)})`);
       if (!rest.includes("--no-preview")) {
         const { url } = await startPreview(config, {
@@ -139,22 +172,26 @@ async function main() {
           open: !rest.includes("--no-open"),
         });
         log(`${CLI_NAME}: previewing the bundled viewer at ${url}`);
-      log(`${CLI_NAME}: watching for new commits (Ctrl+C to stop)`);
+        log(`${CLI_NAME}: watching for new commits (Ctrl+C to stop)`);
       }
       break;
     }
     case "hook": {
       const installed = installHooks(repoRoot());
-      log(installed.length
-        ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
-        : `${CLI_NAME}: hooks already current`);
+      log(
+        installed.length
+          ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
+          : `${CLI_NAME}: hooks already current`,
+      );
       break;
     }
     case "unhook": {
       const removed = uninstallHooks(repoRoot());
-      log(removed.length
-        ? `${CLI_NAME}: removed hooks: ${removed.join(", ")}`
-        : `${CLI_NAME}: hooks already removed`);
+      log(
+        removed.length
+          ? `${CLI_NAME}: removed hooks: ${removed.join(", ")}`
+          : `${CLI_NAME}: hooks already removed`,
+      );
       break;
     }
     default:
@@ -177,7 +214,7 @@ Usage:
   ${CLI_NAME} db                      Show and open the SQLite database location
   ${CLI_NAME} sync                    Reserved for hosted multi-device sync
 
-Config: whatijustdid.json
+Config: changereceipt.json
 Agents: codex/openai (default) | claude | llama`);
       if (cmd && cmd !== "help") process.exitCode = 1;
   }
@@ -197,14 +234,17 @@ function optionValue(args, name) {
 
 function positiveInteger(value, name) {
   const number = Number(value);
-  if (!Number.isInteger(number) || number <= 0) throw new Error(`${name} must be a positive integer`);
+  if (!Number.isInteger(number) || number <= 0)
+    throw new Error(`${name} must be a positive integer`);
   return number;
 }
 
 function formatPlan(plan) {
-  return `${plan.commitsToGenerate} of ${plan.selectedCommits} selected commits need summaries; ` +
+  return (
+    `${plan.commitsToGenerate} of ${plan.selectedCommits} selected commits need summaries; ` +
     `worst-case input ≈ ${formatNumber(plan.estimatedInputTokens)} tokens ` +
-    `(${formatBytes(plan.worstCaseInputBytes)})`;
+    `(${formatBytes(plan.worstCaseInputBytes)})`
+  );
 }
 
 function formatNumber(value) {
@@ -219,8 +259,10 @@ function formatBytes(value) {
 
 function recordSkipMessage(reason) {
   if (reason === "no-commit") return "repository has no commits yet";
-  if (reason === "no-code-changes") return "current commit has no code diff to summarize";
-  if (reason === "not-a-merge") return "fast-forward merge needs no automatic history generation";
+  if (reason === "no-code-changes")
+    return "current commit has no code diff to summarize";
+  if (reason === "not-a-merge")
+    return "fast-forward merge needs no automatic history generation";
   return "summary already exists or another process is generating it";
 }
 

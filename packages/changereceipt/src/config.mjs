@@ -1,11 +1,11 @@
-import { readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { CLI_NAME, ENV_PREFIX } from "./brand.mjs";
 import { gitCommonDir, gitDir, repoRoot } from "./git.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "whatijustdid.json");
+const defaultConfigPath = join(packageDir, "changereceipt.json");
 
 /**
  * Resolve shared presentation settings and local AI settings. Summary data is
@@ -14,8 +14,10 @@ const defaultConfigPath = join(packageDir, "whatijustdid.json");
 export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
   const env = options.env ?? process.env;
-  const defaults = normalizeLegacyConfig(JSON.parse(readFileSync(defaultConfigPath, "utf8")));
-  const sharedCandidates = [join(root, "whatijustdid.json")];
+  const defaults = normalizeLegacyConfig(
+    JSON.parse(readFileSync(defaultConfigPath, "utf8")),
+  );
+  const sharedCandidates = [join(root, "changereceipt.json")];
   const configPath = sharedCandidates.find(existsSync);
   const shared = configPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(configPath, "utf8")))
@@ -23,9 +25,7 @@ export function loadConfig(options = {}) {
 
   const initial = mergeAgentConfig(defaults, shared);
   const privateDir = join(gitCommonDir(root), CLI_NAME);
-  const localCandidates = [
-    join(privateDir, "whatijustdid.local.json"),
-  ];
+  const localCandidates = [join(privateDir, "changereceipt.local.json")];
   const localConfigPath = localCandidates.find(existsSync);
   const local = localConfigPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(localConfigPath, "utf8")))
@@ -33,13 +33,15 @@ export function loadConfig(options = {}) {
   const config = mergeAgentConfig(initial, local);
   const configuredAgent = config.agent ?? "codex";
   const agent =
-    env.WHATIJUSTDID_AGENT ??
+    env.changereceipt_AGENT ??
     env[`${ENV_PREFIX}_AGENT`] ??
     env.CHANGELOG_AGENT ??
     legacyAgent(env.CHANGELOG_PROVIDER) ??
     configuredAgent;
   const environmentModel = env[`${ENV_PREFIX}_MODEL`] ?? env.CHANGELOG_MODEL;
-  const model = environmentModel ?? (sameAgent(agent, configuredAgent) ? config.model : null);
+  const model =
+    environmentModel ??
+    (sameAgent(agent, configuredAgent) ? config.model : null);
   const viewerLimit = positiveInteger(config.viewerLimit ?? config.limit, 200);
   const generationLimit = positiveInteger(config.generationLimit, 50);
   const dbFile = resolvePrivateDbFile(
@@ -76,7 +78,11 @@ export function loadConfig(options = {}) {
 function normalizeLegacyConfig(config) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return {};
   if (config.provider === "raw" && !config.agent) {
-    const { provider: _provider, model: _model, ...withoutRawSelection } = config;
+    const {
+      provider: _provider,
+      model: _model,
+      ...withoutRawSelection
+    } = config;
     return withoutRawSelection;
   }
   if (config.agent || !legacyAgent(config.provider)) return config;
@@ -97,7 +103,9 @@ function mergeAgentConfig(base, override) {
 
 /** Preserve old AI selections while permanently retiring the raw mode. */
 function legacyAgent(value) {
-  return typeof value === "string" && value && value !== "raw" ? value : undefined;
+  return typeof value === "string" && value && value !== "raw"
+    ? value
+    : undefined;
 }
 
 function sameAgent(left, right) {
@@ -113,6 +121,7 @@ function positiveInteger(value, fallback) {
 }
 
 function resolvePrivateDbFile(value, root, privateDir) {
-  if (typeof value !== "string" || !value.trim()) return join(privateDir, "summaries.sqlite");
+  if (typeof value !== "string" || !value.trim())
+    return join(privateDir, "summaries.sqlite");
   return isAbsolute(value) ? normalize(value) : resolve(root, value);
 }

@@ -8,7 +8,7 @@ Git remains the commit ledger. changereceipt keeps compact generation state and 
 
 ```text
 repository                 Git-private metadata
-└── whatijustdid.json       └── changereceipt/
+└── changereceipt.json       └── changereceipt/
                                ├── summaries.sqlite
                                └── data.js (rebuildable viewer cache)
 ```
@@ -37,15 +37,15 @@ Choose an agent and export its API key:
 export OPENAI_API_KEY=sk-...
 
 # DeepSeek
-export WHATIJUSTDID_AGENT=deepseek
+export changereceipt_AGENT=deepseek
 export DEEPSEEK_API_KEY=sk-...
 
 # Claude
-export WHATIJUSTDID_AGENT=claude
+export changereceipt_AGENT=claude
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # Local Ollama (no API key needed)
-export WHATIJUSTDID_AGENT=llama
+export changereceipt_AGENT=llama
 ```
 
 To override the default model per agent:
@@ -61,7 +61,7 @@ npm install --save-dev changereceipt
 npx changereceipt init
 ```
 
-Initialization creates shared `whatijustdid.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx changereceipt init --no-preview` when a script must initialize and exit.
+Initialization creates shared `changereceipt.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx changereceipt init --no-preview` when a script must initialize and exit.
 
 After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
 
@@ -114,7 +114,7 @@ npx changereceipt edit <commit-sha-or-prefix>
 
 ## Configuration
 
-The tracked `whatijustdid.json` contains safe shared defaults:
+The tracked `changereceipt.json` contains safe shared defaults:
 
 ```json
 {
@@ -133,9 +133,9 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 
 `model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini` and DeepSeek resolves to `deepseek-v4-flash`; the resolved model is saved with the summary.
 
-Put personal overrides in Git-private `.git/changereceipt/whatijustdid.local.json`. Environment variables take precedence:
+Put personal overrides in Git-private `.git/changereceipt/changereceipt.local.json`. Environment variables take precedence:
 
-- `WHATIJUSTDID_AGENT` (legacy: `changereceipt_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
+- `changereceipt_AGENT` (legacy: `changereceipt_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
 - `changereceipt_DB_PATH` for an advanced local database-path override
 
 Agent-specific variables:

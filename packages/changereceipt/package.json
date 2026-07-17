@@ -37,7 +37,7 @@
     "assets",
     "bin",
     "src",
-    "whatijustdid.json",
+    "changereceipt.json",
     "README.md"
   ],
   "publishConfig": {

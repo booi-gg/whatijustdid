@@ -1,4 +1,4 @@
-# whatijustdid Product Plan -
+# changereceipt Product Plan -
 
 ## Product decision
 
