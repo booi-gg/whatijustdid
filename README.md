@@ -8,10 +8,10 @@ add different files instead of competing over one SQLite database, and every
 change stays readable in Git and reviewable in a pull request.
 
 Rows are content-addressed and stored in two hash-shard directories, for
-example `changelog/db/4a/7f/<id>.json`. Even very large histories avoid a
+example `changetrail/db/4a/7f/<id>.json`. Even very large histories avoid a
 single directory with millions of files. Viewer builds query only the latest
 `limit` row-adding commits, so hook time and generated browser data stay
-bounded as the repository grows. Existing flat `changelog/db/*.json` rows are
+bounded as the repository grows. Existing flat `changetrail/db/*.json` rows are
 still read automatically; no migration is required.
 
 ## Install
@@ -25,10 +25,10 @@ npx changetrail init
 
 `init` is safe to rerun. It:
 
-- creates `changetrail/config.json`
-- creates the dependency-free `changelog/changelog.html` viewer
-- creates `changelog/db/.gitkeep`
-- ignores only `changelog.data.js` and `changelog.local.json`
+- creates `changetrail.json`
+- creates the dependency-free `changetrail/changetrail.html` viewer
+- creates `changetrail/db/.gitkeep`
+- ignores only `data.js` and `changetrail.local.json`
 - adds its commands to Git hooks while preserving commands already there
 - builds the initial viewer data
 
@@ -67,7 +67,7 @@ rebase, or amend.
 Open this file directly in a browser:
 
 ```text
-changelog/changelog.html
+changetrail/changetrail.html
 ```
 
 No web server, framework, runtime dependency, or network connection is needed.
@@ -85,12 +85,12 @@ Those bullets become the viewer's `(a)`, `(b)` items and override an automatic
 summary.
 
 Pulling or merging only rebuilds the viewer from rows already tracked in
-`changelog/db`. Ordinary commits from people who have not installed the package
+`changetrail/db`. Ordinary commits from people who have not installed the package
 stay invisible. Hooks never backfill them.
 
 ## Edit an entry
 
-Copy the row filename without `.json` from anywhere under `changelog/db`, then
+Copy the row filename without `.json` from anywhere under `changetrail/db`, then
 run:
 
 ```sh
@@ -111,13 +111,15 @@ when hostile-user enforcement matters.
 
 ## Configuration
 
-Shared config lives at `changetrail/config.json`:
+Shared, tracked config lives at `changetrail.json` in the repository root.
+`changetrail init` creates this file when it is missing and preserves it on
+later runs, so teams can review configuration changes in Git.
 
 ```json
 {
   "provider": "raw",
   "model": null,
-  "dir": "changelog",
+  "dir": "changetrail",
   "limit": 200,
   "maxDiffBytes": 80000,
   "timeoutMs": 20000,
@@ -129,14 +131,27 @@ Shared config lives at `changetrail/config.json`:
 }
 ```
 
-To use a custom changelog directory, set `dir` in `changetrail/config.json`.
+| Setting | Description | Default |
+| --- | --- | --- |
+| `provider` | Generates change summaries. Supported values are `raw`, `claude`, `codex`/`openai`, and `llama`. | `raw` |
+| `model` | Overrides the selected provider's model. Use `null` to accept the provider default. | `null` |
+| `dir` | Repository-relative directory for the row database, viewer, generated data, and local config. | `changetrail` |
+| `limit` | Maximum recent row-adding commits considered by `backfill` and entries compiled into the viewer. | `200` |
+| `maxDiffBytes` | Maximum diff bytes supplied to a summary provider for each change. | `80000` |
+| `timeoutMs` | Provider request timeout in milliseconds before falling back to raw commit data. | `20000` |
+| `projects` | Maps viewer project names to repository path prefixes; a change can match more than one project. | `{}` |
+
+With the default `dir`, tracked rows live under `changetrail/db` and the viewer
+is `changetrail/changetrail.html`. Set `dir` to a different repository-relative
+path to move those generated assets. Files that match no `projects` prefix
+appear under `Repo` in the viewer.
 
 `limit` bounds both the recent commits considered by `backfill` and the number
 of recent entries compiled into the local viewer. The tracked row store keeps
 older history; raise the value when a larger viewer window is useful.
 
-Each developer can choose a provider without modifying tracked config. Create
-the ignored `changelog/changelog.local.json`:
+Each developer can override shared values without modifying tracked config.
+Create the ignored `changetrail/changetrail.local.json`:
 
 ```json
 {
@@ -145,7 +160,9 @@ the ignored `changelog/changelog.local.json`:
 }
 ```
 
-Environment variables override both files:
+Environment variables override both files. `CHANGELOG_PROVIDER` selects the
+provider, `CHANGELOG_MODEL` selects its model, and `CHANGELOG_DIR` overrides the
+asset directory:
 
 ```sh
 CHANGELOG_PROVIDER=codex CHANGELOG_MODEL=gpt-5.4-mini git commit
@@ -186,7 +203,7 @@ type-changed a row—not only the final diff.
 changetrail init       Scaffold files, install hooks, and build viewer data
 changetrail install    Alias of init; useful once per clone
 changetrail record     Generate and stage a row for staged source changes
-changetrail build      Compile recent db/**/*.json rows into changelog.data.js
+changetrail build      Compile recent db/**/*.json rows into data.js
 changetrail backfill   Import + stage recent Git history explicitly
 changetrail sync       Backfill, then build
 changetrail edit ID    Edit and stage an owned row

@@ -9,8 +9,8 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changetrail", "config.json");
-const viewerTemplatePath = join(packageDir, "assets", "changelog.html");
+const defaultConfigPath = join(packageDir, "changetrail.json");
+const viewerTemplatePath = join(packageDir, "assets", "changetrail.html");
 const MARKER = "# >>> changetrail >>>";
 const END_MARKER = "# <<< changetrail <<<";
 const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) <<<(?:\n|$)/g;
@@ -30,11 +30,11 @@ export function initializeProject(config, options = {}) {
   mkdirSync(config.dbDir, { recursive: true });
 
   const configTarget = config.isDefaultConfig
-    ? join(config.root, "changetrail", "config.json")
+    ? join(config.root, "changetrail.json")
     : config.configPath;
   record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
 
-  const viewerTarget = join(config.root, config.dir, "changelog.html");
+  const viewerTarget = join(config.root, config.dir, "changetrail.html");
   record(copyAsset(viewerTemplatePath, viewerTarget, force), viewerTarget);
 
   const keepTarget = join(config.dbDir, ".gitkeep");
@@ -68,8 +68,8 @@ function updateGitignore(path, root, dir) {
   const prefix = gitDir ? `/${escapeGitignore(gitDir)}/` : "/";
   const block = [
     MARKER,
-    `${prefix}changelog.data.js`,
-    `${prefix}changelog.local.json`,
+    `${prefix}data.js`,
+    `${prefix}changetrail.local.json`,
     END_MARKER,
   ].join("\n");
   const withoutBlock = current.replace(BLOCK, "\n").trimEnd();

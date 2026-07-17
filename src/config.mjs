@@ -4,20 +4,20 @@ import { fileURLToPath } from "node:url";
 import { repoRoot } from "./git.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changetrail", "config.json");
+const defaultConfigPath = join(packageDir, "changetrail.json");
 
 /**
  * Resolve config. Precedence: consumer repo config → package default.
- * Consumer config is looked up at <root>/changetrail/config.json.
+ * Consumer config is looked up at <root>/changetrail.json.
  * Earlier config names remain supported for existing repositories.
  */
 export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
   const defaults = JSON.parse(readFileSync(defaultConfigPath, "utf8"));
   const sharedCandidates = [
+    join(root, "changetrail.json"),
     join(root, "changetrail", "config.json"),
     join(root, "changelog", "changetrail.json"),
-    join(root, "changetrail.json"),
     join(root, "ctrail", "config.json"),
     join(root, "changelog", "ctrail.json"),
     join(root, "ctrail.json"),
@@ -28,8 +28,10 @@ export function loadConfig(options = {}) {
   const shared = configPath ? JSON.parse(readFileSync(configPath, "utf8")) : {};
 
   const initial = { ...defaults, ...shared };
-  const configuredDir = initial.dir ?? "changelog";
+  const configuredDir = initial.dir ?? "changetrail";
   const localCandidates = [
+    join(root, configuredDir, "changetrail.local.json"),
+    join(root, "changetrail.local.json"),
     join(root, configuredDir, "changelog.local.json"),
     join(root, "changelog.local.json"),
   ];
@@ -54,7 +56,7 @@ export function loadConfig(options = {}) {
     dir,
     root,
     dbDir: join(root, dir, "db"),
-    dataFile: join(root, dir, "changelog.data.js"),
+    dataFile: join(root, dir, "data.js"),
     configPath: configPath ?? defaultConfigPath,
     isDefaultConfig: !configPath,
     localConfigPath: localConfigPath ?? null,
