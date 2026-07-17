@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
-import { dirname } from "node:path";
+import { dirname, relative } from "node:path";
 import pc from "picocolors";
 import { validateAgentConfig } from "../src/agents/index.mjs";
 import { CLI_NAME, ENV_PREFIX, TITLE_NAME } from "../src/brand.mjs";
@@ -161,21 +161,22 @@ async function main() {
     case "init":
     case "install": {
       const config = loadConfig();
-      const validation = validateAgentConfig(config.agent);
-      if (!validation.valid) {
-        log(`${Perr} ${validation.error}`);
-        if (!rest.includes("--no-preview")) process.exitCode = 1;
-      }
       const initialized = initializeProject(config);
-      const migration = importLegacyRows(config);
-      const installed = installHooks(config.root);
-      const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(
         changed.length
           ? `${P} initialized ${green(changed.join(", "))}`
           : `${P} ${dim("project files already initialized")}`,
       );
+      const validation = validateAgentConfig(config.agent);
+      if (!validation.valid) {
+        console.error(agentConfigHelp(config, validation));
+        process.exitCode = 1;
+        break;
+      }
+      const migration = importLegacyRows(config);
+      const installed = installHooks(config.root);
+      const total = build(config);
       if (migration.scanned) {
         log(
           `${P} imported ${bold(migration.imported)} legacy AI summaries; ` +
@@ -291,6 +292,46 @@ function recordSkipMessage(reason) {
 
 function formatEntries(total) {
   return `${total} ${total === 1 ? "entry" : "entries"}`;
+}
+
+function agentConfigHelp(config, validation) {
+  const configName = repoConfigName(config);
+  const fixAgentHint = [
+    `  Using a different AI provider? Update ${bold('"agent"')} and ${bold('"model"')} in ${path(configName)}`,
+    `  ${dim(`(currently agent: ${bold(JSON.stringify(config.agent))}, model: ${bold(JSON.stringify(config.model))})`)}, then run ${green(`${CLI_NAME} init`)} again.`,
+  ];
+  if (!validation.key) {
+    return [
+      "",
+      `${Perr} ${pc.red(bold(validation.error))}`,
+      "",
+      ...fixAgentHint,
+      "",
+    ].join("\n");
+  }
+  const anyAgentKey = `${ENV_PREFIX}_AGENT_API_KEY`;
+  const assignment = (key) =>
+    `${key}=<your-api-key>`.padEnd(`${anyAgentKey}=<your-api-key>`.length + 3);
+  return [
+    "",
+    `${Perr} ${pc.red(bold(`${validation.key} environment variable is not set`))} ${dim(`(required by the "${validation.agent}" agent)`)}`,
+    "",
+    `  Add an API key to a ${path(".env")} file in your repo root:`,
+    "",
+    `    ${yellow(assignment(anyAgentKey))}${dim("works for any agent")}`,
+    `    ${yellow(assignment(validation.key))}${dim(`for the "${validation.agent}" agent only`)}`,
+    "",
+    `  or export one of them in your shell.`,
+    "",
+    ...fixAgentHint,
+    "",
+  ].join("\n");
+}
+
+function repoConfigName(config) {
+  return config.isDefaultConfig
+    ? "whatijustdid.json"
+    : relative(config.root, config.configPath) || "whatijustdid.json";
 }
 
 function commitMessageContainsSkip() {

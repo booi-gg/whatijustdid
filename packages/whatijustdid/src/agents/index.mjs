@@ -37,6 +37,7 @@ export function validateAgentConfig(agent, env = process.env) {
     return {
       valid: false,
       agent,
+      key,
       error:
         `${key} environment variable is not set. ` +
         `Add it to a .env file in your repo root: ${ENV_PREFIX}_AGENT_API_KEY=<your-api-key> ` +

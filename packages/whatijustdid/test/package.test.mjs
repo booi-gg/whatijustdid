@@ -60,7 +60,9 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       tarball,
     ], consumer, npmEnvironment);
     const cli = join(consumer, "node_modules", ".bin", "whatijustdid");
-    const initOutput = run(cli, ["init", "--no-preview"], consumer);
+    const initOutput = run(cli, ["init", "--no-preview"], consumer, {
+      OPENAI_API_KEY: "test-key",
+    });
     assert.match(initOutput, /private database/);
     assert.equal(existsSync(join(consumer, ".git", "hooks", "pre-commit")), false);
     assert.match(
@@ -203,7 +205,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
 
     const initWithPreview = spawn(cli, ["init", "--no-open", "--port", "0"], {
       cwd: consumer,
-      env: { ...process.env, NO_COLOR: "1" },
+      env: { ...process.env, NO_COLOR: "1", OPENAI_API_KEY: "test-key" },
       stdio: ["ignore", "pipe", "pipe"],
     });
     const previewOutput = await waitForOutput(initWithPreview, /previewing the bundled viewer at/);
