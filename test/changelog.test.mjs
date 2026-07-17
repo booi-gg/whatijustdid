@@ -45,6 +45,42 @@ test("normalizes agent JSON, requires a summary, and has no raw agent", () => {
   assert.throws(() => getAgent("raw"), /Unknown agent "raw"/);
 });
 
+test("repairs truncated JSON from max_tokens cut-off in changes array", () => {
+  const complete = JSON.stringify({
+    type: "feat",
+    changes: [
+      { type: "feat", summary: "Added a login form." },
+      { type: "fix", summary: "Fixed the spinner animation." },
+    ],
+  });
+
+  assert.deepEqual(parseAgentJson(complete), {
+    type: "feat",
+    changes: [
+      { type: "feat", summary: "Added a login form." },
+      { type: "fix", summary: "Fixed the spinner animation." },
+    ],
+  });
+
+  const truncatedArray = complete.slice(0, -2);
+  assert.deepEqual(parseAgentJson(truncatedArray), {
+    type: "feat",
+    changes: [
+      { type: "feat", summary: "Added a login form." },
+      { type: "fix", summary: "Fixed the spinner animation." },
+    ],
+  });
+
+  const truncatedOuter = complete.slice(0, -1);
+  assert.deepEqual(parseAgentJson(truncatedOuter), {
+    type: "feat",
+    changes: [
+      { type: "feat", summary: "Added a login form." },
+      { type: "fix", summary: "Fixed the spinner animation." },
+    ],
+  });
+});
+
 test("agent failure never falls back to commit-message text", async () => {
   const originalKey = process.env.OPENAI_API_KEY;
   delete process.env.OPENAI_API_KEY;
