@@ -14,22 +14,17 @@ import test from "node:test";
 import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
-<<<<<<<< HEAD:packages/changereceipt/test/init.test.mjs
-test("creates only changereceipt.json in the repository", () => {
-  const root = repository("changereceipt-init-");
-========
 test("creates only whatijustdid.json in the repository", () => {
   const root = repository("whatijustdid-init-");
->>>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c:packages/whatijustdid/test/init.test.mjs
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = loadConfig({ root, env: {} });
     const first = initializeProject(config);
 
-    assert.deepEqual(first.created, ["changereceipt.json"]);
+    assert.deepEqual(first.created, ["whatijustdid.json"]);
     assert.deepEqual(first.updated, []);
     assert.deepEqual(
-      JSON.parse(readFileSync(join(root, "changereceipt.json"), "utf8")),
+      JSON.parse(readFileSync(join(root, "whatijustdid.json"), "utf8")),
       {
         agent: "codex",
         model: null,
@@ -84,7 +79,7 @@ test("does not read or preserve changereceipt.json", () => {
 test("migrates provider to agent, retires raw, and respects injected env", () => {
   const root = repository("whatijustdid-config-");
   try {
-    const path = join(root, "changereceipt.json");
+    const path = join(root, "whatijustdid.json");
     writeFileSync(path, '{"provider":"claude"}\n');
     assert.equal(loadConfig({ root, env: {} }).agent, "claude");
 

@@ -5,7 +5,7 @@ import { CLI_NAME, ENV_PREFIX } from "./brand.mjs";
 import { gitCommonDir, gitDir, repoRoot } from "./git.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changereceipt.json");
+const defaultConfigPath = join(packageDir, "whatijustdid.json");
 
 /**
  * Resolve shared presentation settings and local AI settings. Summary data is
@@ -17,7 +17,7 @@ export function loadConfig(options = {}) {
   const defaults = normalizeLegacyConfig(
     JSON.parse(readFileSync(defaultConfigPath, "utf8")),
   );
-  const sharedCandidates = [join(root, "changereceipt.json")];
+  const sharedCandidates = [join(root, "whatijustdid.json")];
   const configPath = sharedCandidates.find(existsSync);
   const shared = configPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(configPath, "utf8")))
@@ -25,7 +25,7 @@ export function loadConfig(options = {}) {
 
   const initial = mergeAgentConfig(defaults, shared);
   const privateDir = join(gitCommonDir(root), CLI_NAME);
-  const localCandidates = [join(privateDir, "changereceipt.local.json")];
+  const localCandidates = [join(privateDir, "whatijustdid.local.json")];
   const localConfigPath = localCandidates.find(existsSync);
   const local = localConfigPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(localConfigPath, "utf8")))
@@ -33,7 +33,7 @@ export function loadConfig(options = {}) {
   const config = mergeAgentConfig(initial, local);
   const configuredAgent = config.agent ?? "codex";
   const agent =
-    env.changereceipt_AGENT ??
+    env.WHATIJUSTDID_AGENT ??
     env[`${ENV_PREFIX}_AGENT`] ??
     env.CHANGELOG_AGENT ??
     legacyAgent(env.CHANGELOG_PROVIDER) ??

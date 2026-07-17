@@ -214,7 +214,7 @@ Usage:
   ${CLI_NAME} db                      Show and open the SQLite database location
   ${CLI_NAME} sync                    Reserved for hosted multi-device sync
 
-Config: changereceipt.json
+Config: whatijustdid.json
 Agents: codex/openai (default) | claude | llama`);
       if (cmd && cmd !== "help") process.exitCode = 1;
   }

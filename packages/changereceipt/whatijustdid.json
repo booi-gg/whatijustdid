@@ -1,9 +1,0 @@
-{
-  "agent": "codex",
-  "model": null,
-  "viewerLimit": 200,
-  "generationLimit": 50,
-  "maxDiffBytes": 80000,
-  "timeoutMs": 20000,
-  "projects": {}
-}

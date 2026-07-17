@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { openSummaryStore } from "./store.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changereceipt.json");
+const defaultConfigPath = join(packageDir, "whatijustdid.json");
 
 /** Scaffold shared config and initialize the clone-private SQLite store. */
 export function initializeProject(config, dependencies = {}) {
@@ -19,7 +19,7 @@ export function initializeProject(config, dependencies = {}) {
         : unchanged.push(repositoryPath(config.root, path));
 
   const configTarget = config.isDefaultConfig
-    ? join(config.root, "changereceipt.json")
+    ? join(config.root, "whatijustdid.json")
     : config.configPath;
   record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
 
