@@ -240,7 +240,7 @@ test("uses a strict-agent-compatible structured output schema", () => {
 });
 
 test("history generation requires an explicit scope and resumes ready commits", async () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-generate-"));
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-generate-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   let calls = 0;
@@ -293,7 +293,7 @@ test("history generation requires an explicit scope and resumes ready commits", 
 });
 
 test("build displays ready and pending records without commit-message text", () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-build-"));
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-build-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   try {
@@ -334,7 +334,7 @@ test("build displays ready and pending records without commit-message text", () 
 });
 
 test("editing updates private SQLite without changing commit identity", () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-edit-"));
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-edit-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   try {
@@ -381,8 +381,8 @@ test("editing updates private SQLite without changing commit identity", () => {
 function testConfig(root) {
   return {
     root,
-    dbFile: join(root, ".git", "changereceipt", "summaries.sqlite"),
-    dataFile: join(root, "changereceipt", "data.js"),
+    dbFile: join(root, ".git", "whatijustdid", "summaries.sqlite"),
+    dataFile: join(root, "whatijustdid", "data.js"),
     viewerLimit: 200,
     maxDiffBytes: 80_000,
     projects: { web: ["apps/web"], worker: ["apps/worker"] },
