@@ -1,5 +1,5 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
   SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
@@ -34,7 +34,7 @@ export async function describe(input, { model, timeoutMs }) {
             type: "json_schema",
             name: "changelog_entry",
             strict: true,
-            schema: CHANGELOG_SCHEMA,
+            schema: WHATIJUSTDID_SCHEMA,
           },
         },
       },

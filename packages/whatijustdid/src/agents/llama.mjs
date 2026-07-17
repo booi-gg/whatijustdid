@@ -1,5 +1,5 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
   SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
@@ -20,7 +20,7 @@ export async function describe(input, { model, timeoutMs }) {
       headers: {},
       body: {
         model: selectedModel,
-        format: CHANGELOG_SCHEMA,
+        format: WHATIJUSTDID_SCHEMA,
         stream: false,
         options: { temperature: 0 },
         messages: [

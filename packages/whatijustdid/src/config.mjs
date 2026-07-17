@@ -32,20 +32,15 @@ export function loadConfig(options = {}) {
     : {};
   const config = mergeAgentConfig(initial, local);
   const configuredAgent = config.agent ?? "codex";
-  const agent =
-    env.WHATIJUSTDID_AGENT ??
-    env[`${ENV_PREFIX}_AGENT`] ??
-    env.CHANGELOG_AGENT ??
-    legacyAgent(env.CHANGELOG_PROVIDER) ??
-    configuredAgent;
-  const environmentModel = env[`${ENV_PREFIX}_MODEL`] ?? env.CHANGELOG_MODEL;
+  const agent = env[`${ENV_PREFIX}_AGENT`] ?? configuredAgent;
+  const environmentModel = env[`${ENV_PREFIX}_MODEL`];
   const model =
     environmentModel ??
     (sameAgent(agent, configuredAgent) ? config.model : null);
   const viewerLimit = positiveInteger(config.viewerLimit ?? config.limit, 200);
   const generationLimit = positiveInteger(config.generationLimit, 50);
   const dbFile = resolvePrivateDbFile(
-    env[`${ENV_PREFIX}_DB_PATH`] ?? env.CHANGELOG_DB_PATH,
+    env[`${ENV_PREFIX}_DB_PATH`],
     root,
     privateDir,
   );

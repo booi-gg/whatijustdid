@@ -14,7 +14,7 @@ export const CHANGE_TYPES = [
 
 export const MAX_FILE_LIST_BYTES = 20_000;
 
-export const CHANGELOG_SCHEMA = {
+export const WHATIJUSTDID_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {

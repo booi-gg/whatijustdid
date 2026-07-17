@@ -8,11 +8,7 @@ Git remains the commit ledger. whatijustdid keeps compact generation state and A
 
 ```text
 repository                 Git-private metadata
-<<<<<<<< HEAD:packages/changereceipt/README.md
-└── changereceipt.json       └── changereceipt/
-========
 └── whatijustdid.json       └── whatijustdid/
->>>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c:packages/whatijustdid/README.md
                                ├── summaries.sqlite
                                └── data.js (rebuildable viewer cache)
 ```
@@ -141,17 +137,10 @@ The tracked `changereceipt.json` contains safe shared defaults:
 
 `model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini` and DeepSeek resolves to `deepseek-v4-flash`; the resolved model is saved with the summary.
 
-<<<<<<<< HEAD:packages/changereceipt/README.md
-Put personal overrides in Git-private `.git/changereceipt/changereceipt.local.json`. Environment variables take precedence:
-
-- `changereceipt_AGENT` (legacy: `changereceipt_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
-- `changereceipt_DB_PATH` for an advanced local database-path override
-========
 Put personal overrides in Git-private `.git/whatijustdid/whatijustdid.local.json`. Environment variables take precedence:
 
-- `WHATIJUSTDID_AGENT` (legacy: `whatijustdid_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
-- `whatijustdid_DB_PATH` for an advanced local database-path override
->>>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c:packages/whatijustdid/README.md
+- `WHATIJUSTDID_AGENT`
+- `WHATIJUSTDID_DB_PATH` for an advanced local database-path override
 
 Agent-specific variables:
 

@@ -6,7 +6,7 @@ import test from "node:test";
 import { describe as describeWithOpenAI } from "../src/agents/codex.mjs";
 import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
 import { getAgent } from "../src/agents/index.mjs";
-import { CHANGELOG_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
+import { WHATIJUSTDID_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
 import { build } from "../src/build.mjs";
 import { describeChange } from "../src/describe.mjs";
 import { applyEntryEdit, editEntry } from "../src/edit.mjs";
@@ -231,7 +231,7 @@ test("DeepSeek reports its missing credential clearly", async () => {
 });
 
 test("uses a strict-agent-compatible structured output schema", () => {
-  const changes = CHANGELOG_SCHEMA.properties.changes;
+  const changes = WHATIJUSTDID_SCHEMA.properties.changes;
   const summary = changes.items.properties.summary;
   assert.equal(changes.minItems, undefined);
   assert.equal(changes.maxItems, undefined);
@@ -326,7 +326,7 @@ test("build displays ready and pending records without commit-message text", () 
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
     assert.doesNotMatch(output, /must never appear/i);
-    assert.match(output, /window\.__CHANGELOG_PROJECTS__ = \[\s+"web"/);
+    assert.match(output, /window\.__WHATIJUSTDID_PROJECTS__ = \[\s+"web"/);
   } finally {
     store.close();
     rmSync(root, { recursive: true, force: true });

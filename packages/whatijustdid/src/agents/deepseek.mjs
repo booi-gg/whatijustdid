@@ -1,5 +1,5 @@
 import {
-  CHANGELOG_SCHEMA,
+  WHATIJUSTDID_SCHEMA,
   SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
@@ -11,7 +11,7 @@ import {
 const DEFAULT_MODEL = "deepseek-v4-flash";
 const JSON_SYSTEM_PROMPT = `${SYSTEM_PROMPT}
 The required JSON schema is:
-${JSON.stringify(CHANGELOG_SCHEMA)}
+${JSON.stringify(WHATIJUSTDID_SCHEMA)}
 Example JSON output:
 {"type":"feat","changes":[{"type":"feat","summary":"Added a new user-facing capability."}]}`;
 

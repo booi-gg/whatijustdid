@@ -14,7 +14,7 @@ import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { CLI_NAME } from "../src/brand.mjs";
+import { CLI_NAME, ENV_PREFIX } from "../src/brand.mjs";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -111,10 +111,8 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
         encoding: "utf8",
         env: {
           ...process.env,
-          CHANGELOG_AGENT: undefined,
-          WHATIJUSTDID_AGENT: undefined,
-          CHANGELOG_PROVIDER: undefined,
-          CHANGELOG_MODEL: undefined,
+          [`${ENV_PREFIX}_AGENT`]: undefined,
+          [`${ENV_PREFIX}_MODEL`]: undefined,
           OPENAI_API_KEY: "test-key",
           OPENAI_BASE_URL: mockAgent.url,
         },
@@ -155,7 +153,13 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       {
         cwd: consumer,
         encoding: "utf8",
-        env: { ...process.env, OPENAI_API_KEY: "", OPENAI_BASE_URL: "" },
+        env: {
+          ...process.env,
+          [`${ENV_PREFIX}_AGENT`]: undefined,
+          [`${ENV_PREFIX}_MODEL`]: undefined,
+          OPENAI_API_KEY: "",
+          OPENAI_BASE_URL: "",
+        },
       },
     );
     assert.equal(failedCommit.status, 0);
@@ -264,10 +268,8 @@ function run(command, args, cwd, environment = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
-      CHANGELOG_AGENT: undefined,
-      WHATIJUSTDID_AGENT: undefined,
-      CHANGELOG_PROVIDER: undefined,
-      CHANGELOG_MODEL: undefined,
+      [`${ENV_PREFIX}_AGENT`]: undefined,
+      [`${ENV_PREFIX}_MODEL`]: undefined,
       npm_config_update_notifier: "false",
       ...environment,
     },

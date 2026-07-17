@@ -11,6 +11,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { ENV_PREFIX } from "../src/brand.mjs";
 import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
@@ -90,7 +91,10 @@ test("migrates provider to agent, retires raw, and respects injected env", () =>
 
     const environment = loadConfig({
       root,
-      env: { CHANGELOG_PROVIDER: "llama", CHANGELOG_MODEL: "local-model" },
+      env: {
+        [`${ENV_PREFIX}_AGENT`]: "llama",
+        [`${ENV_PREFIX}_MODEL`]: "local-model",
+      },
     });
     assert.equal(environment.agent, "llama");
     assert.equal(environment.model, "local-model");
