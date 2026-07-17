@@ -9,6 +9,7 @@ import { editEntry, applyEntryEdit } from "../src/edit.mjs";
 import { generate, planGeneration } from "../src/generate.mjs";
 import { projectsForFiles } from "../src/projects.mjs";
 import { describe as describeWithOpenAI } from "../src/agents/codex.mjs";
+import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
 import { getAgent } from "../src/agents/index.mjs";
 import { CHANGELOG_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
 import { openSummaryStore } from "../src/store.mjs";
@@ -40,6 +41,7 @@ test("normalizes agent JSON, requires a summary, and has no raw agent", () => {
     /Agent returned no usable change summaries/,
   );
   assert.equal(getAgent("codex"), getAgent("openai"));
+  assert.equal(typeof getAgent("deepseek").describe, "function");
   assert.throws(() => getAgent("raw"), /Unknown agent "raw"/);
 });
 
@@ -102,6 +104,80 @@ test("OpenAI defaults to the Codex model and receives code, not commit messages"
   assert.match(JSON.stringify(request), /export const feature/);
   assert.doesNotMatch(JSON.stringify(request), /SECRET COMMIT MESSAGE/);
   assert.equal(request.reasoning, undefined);
+});
+
+test("DeepSeek uses its API key, fast model, and JSON output mode", async () => {
+  const previousKey = process.env.DEEPSEEK_API_KEY;
+  const previousBaseUrl = process.env.DEEPSEEK_BASE_URL;
+  const previousFetch = globalThis.fetch;
+  let url;
+  let headers;
+  let request;
+  process.env.DEEPSEEK_API_KEY = "deepseek-test-key";
+  delete process.env.DEEPSEEK_BASE_URL;
+  globalThis.fetch = async (requestUrl, options) => {
+    url = requestUrl;
+    headers = options.headers;
+    request = JSON.parse(options.body);
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: JSON.stringify({
+              type: "feat",
+              changes: [{ type: "feat", summary: "Added DeepSeek summaries." }],
+            }),
+          },
+        }],
+      }),
+    };
+  };
+
+  let result;
+  try {
+    result = await describeWithDeepSeek(
+      {
+        subject: "SECRET COMMIT MESSAGE",
+        files: ["feature.js"],
+        diff: "+export const deepseek = true;",
+      },
+      { model: null, timeoutMs: 1000 },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
+    else process.env.DEEPSEEK_API_KEY = previousKey;
+    if (previousBaseUrl === undefined) delete process.env.DEEPSEEK_BASE_URL;
+    else process.env.DEEPSEEK_BASE_URL = previousBaseUrl;
+  }
+
+  assert.equal(url, "https://api.deepseek.com/chat/completions");
+  assert.equal(headers.authorization, "Bearer deepseek-test-key");
+  assert.equal(request.model, "deepseek-v4-flash");
+  assert.deepEqual(request.response_format, { type: "json_object" });
+  assert.deepEqual(request.thinking, { type: "disabled" });
+  assert.match(JSON.stringify(request), /export const deepseek/);
+  assert.match(request.messages[0].content, /"changes"/);
+  assert.doesNotMatch(JSON.stringify(request), /SECRET COMMIT MESSAGE/);
+  assert.equal(result.model, "deepseek-v4-flash");
+});
+
+test("DeepSeek reports its missing credential clearly", async () => {
+  const previousKey = process.env.DEEPSEEK_API_KEY;
+  delete process.env.DEEPSEEK_API_KEY;
+  try {
+    await assert.rejects(
+      () => describeWithDeepSeek(
+        { files: ["feature.js"], diff: "+export const deepseek = true;" },
+        { model: null, timeoutMs: 100 },
+      ),
+      /DEEPSEEK_API_KEY not set/,
+    );
+  } finally {
+    if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
+    else process.env.DEEPSEEK_API_KEY = previousKey;
+  }
 });
 
 test("uses a strict-agent-compatible structured output schema", () => {
