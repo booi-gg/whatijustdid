@@ -8,18 +8,17 @@ import {
   postJson,
 } from "./shared.mjs";
 
-// "codex" is the package's OpenAI provider alias. It uses the Responses API,
+// "codex" is an alias for this OpenAI provider. It uses the Responses API,
 // not a ChatGPT/Codex subscription or local CLI session.
 const DEFAULT_MODEL = "gpt-5.4-mini";
 
 export async function describe(input, { model, timeoutMs }) {
   const key = process.env.OPENAI_API_KEY;
-  if (!key) throw new Error("codex provider: OPENAI_API_KEY not set");
-
+  if (!key) throw new Error("openai provider: OPENAI_API_KEY not set");
   const data = await postJson(
     apiUrl(process.env.OPENAI_BASE_URL ?? "https://api.openai.com", "v1/responses"),
     {
-      label: "codex provider",
+      label: "openai provider",
       timeoutMs,
       headers: { authorization: `Bearer ${key}` },
       body: {

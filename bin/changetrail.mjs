@@ -7,6 +7,7 @@ import { initializeProject } from "../src/init.mjs";
 import { recordStagedChange } from "../src/record.mjs";
 import { editEntry } from "../src/edit.mjs";
 import { verifyOwnershipRange } from "../src/ownership.mjs";
+import { startPreview } from "../src/preview.mjs";
 
 const [cmd, ...rest] = process.argv.slice(2);
 const silent = rest.includes("--silent");
@@ -31,6 +32,17 @@ async function main() {
       const config = loadConfig();
       const n = build(config);
       log(`changetrail: built ${config.dataFile} (${n} entries)`);
+      break;
+    }
+    case "preview": {
+      const config = loadConfig();
+      build(config);
+      const { url } = await startPreview(config, {
+        port: optionValue(rest, "--port") ?? process.env.CONDUCTOR_PORT,
+        open: !rest.includes("--no-open"),
+      });
+      log(`changetrail: previewing ${config.dir}/changetrail.html at ${url}`);
+      log("changetrail: watching changetrail.html and data.js (Ctrl+C to stop)");
       break;
     }
     case "edit": {
@@ -86,6 +98,7 @@ Usage:
   changetrail backfill   Create DB rows for recent history (alias: generate)
   changetrail sync       Backfill history, then rebuild viewer data
   changetrail build      Compile recent db/**/*.json rows → data.js
+  changetrail preview    Open the viewer with live reload
   changetrail edit ID    Edit + stage an entry (creator/author/committer only)
   changetrail verify-ownership --base SHA --head SHA
                  Verify row ownership across a commit range
@@ -103,5 +116,7 @@ main().catch((err) => {
 
 function optionValue(args, name) {
   const index = args.indexOf(name);
-  return index >= 0 ? args[index + 1] : null;
+  if (index >= 0) return args[index + 1];
+  const inline = args.find((value) => value.startsWith(`${name}=`));
+  return inline ? inline.slice(name.length + 1) : null;
 }

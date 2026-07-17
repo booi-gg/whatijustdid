@@ -72,6 +72,16 @@ changetrail/changetrail.html
 
 No web server, framework, runtime dependency, or network connection is needed.
 
+For a live preview that opens in the browser and reloads when the viewer or its
+generated data changes, run:
+
+```sh
+npx changetrail preview
+```
+
+Pass `--port 4000` to choose a port or `--no-open` to start the preview without
+opening a browser.
+
 Put explicit descriptions in the final commit body when desired:
 
 ```text
@@ -117,8 +127,8 @@ later runs, so teams can review configuration changes in Git.
 
 ```json
 {
-  "provider": "raw",
-  "model": null,
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
   "dir": "changetrail",
   "limit": 200,
   "maxDiffBytes": 80000,
@@ -133,8 +143,8 @@ later runs, so teams can review configuration changes in Git.
 
 | Setting | Description | Default |
 | --- | --- | --- |
-| `provider` | Generates change summaries. Supported values are `raw`, `claude`, `codex`/`openai`, and `llama`. | `raw` |
-| `model` | Overrides the selected provider's model. Use `null` to accept the provider default. | `null` |
+| `provider` | Generates change summaries. Supported values are `raw`, `claude`, `codex`/`openai`, and `llama`. | `openai` |
+| `model` | Overrides the selected provider's model. Use `null` to accept the provider default. | `gpt-5.4-mini` |
 | `dir` | Repository-relative directory for the row database, viewer, generated data, and local config. | `changetrail` |
 | `limit` | Maximum recent row-adding commits considered by `backfill` and entries compiled into the viewer. | `200` |
 | `maxDiffBytes` | Maximum diff bytes supplied to a summary provider for each change. | `80000` |
@@ -162,7 +172,8 @@ Create the ignored `changetrail/changetrail.local.json`:
 
 Environment variables override both files. `CHANGELOG_PROVIDER` selects the
 provider, `CHANGELOG_MODEL` selects its model, and `CHANGELOG_DIR` overrides the
-asset directory:
+asset directory. Changing only the provider uses that provider's package-default
+model:
 
 ```sh
 CHANGELOG_PROVIDER=codex CHANGELOG_MODEL=gpt-5.4-mini git commit
@@ -174,6 +185,21 @@ CHANGELOG_PROVIDER=codex CHANGELOG_MODEL=gpt-5.4-mini git commit
 | `claude` | Anthropic Messages API | `ANTHROPIC_API_KEY` | `claude-sonnet-5` |
 | `codex` / `openai` | OpenAI Responses API | `OPENAI_API_KEY` | `gpt-5.4-mini` |
 | `llama` | Local Ollama API | None | `llama3.2` |
+
+The OpenAI provider works with Responses API models that support structured
+outputs. Useful choices include:
+
+| Model | Best fit |
+| --- | --- |
+| `gpt-5.4-mini` | Default; strong quality, speed, and cost balance for frequent changelog summaries. |
+| `gpt-5.4-nano` | Lowest-cost option for simple, high-volume summaries. |
+| `gpt-5-mini` | Established low-cost option for well-defined prompts. |
+| `gpt-5.4` | Higher-quality option for larger or more complex diffs. |
+| `gpt-5.3-codex` | Coding-specialized option for repositories with complex implementation changes. |
+
+Model availability depends on the OpenAI API account and region. ChatGPT or
+Codex subscriptions do not provide API access; these models use
+`OPENAI_API_KEY` billing.
 
 Optional endpoint overrides are `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, and
 `OLLAMA_HOST`.
@@ -207,6 +233,7 @@ changetrail build      Compile recent db/**/*.json rows into data.js
 changetrail backfill   Import + stage recent Git history explicitly
 changetrail sync       Backfill, then build
 changetrail edit ID    Edit and stage an owned row
+changetrail preview    Open the viewer with live reload
 changetrail verify-ownership --base SHA --head SHA
                    Verify ownership across a commit range
 ```

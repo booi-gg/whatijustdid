@@ -1,6 +1,6 @@
 {
-  "provider": "raw",
-  "model": null,
+  "provider": "openai",
+  "model": "gpt-5.4-mini",
   "dir": "changetrail",
   "limit": 200,
   "maxDiffBytes": 80000,

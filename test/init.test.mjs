@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
+import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
 test("initializes consumer files without overwriting user-owned assets", () => {
@@ -18,9 +19,27 @@ test("initializes consumer files without overwriting user-owned assets", () => {
       "changetrail/db/.gitkeep",
     ]);
     assert.deepEqual(first.updated, [".gitignore"]);
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(root, "changetrail.json"), "utf8")),
+      {
+        provider: "openai",
+        model: "gpt-5.4-mini",
+        dir: "changetrail",
+        limit: 200,
+        maxDiffBytes: 80000,
+        timeoutMs: 20000,
+        projects: {},
+      },
+    );
     const viewerPath = join(root, "changetrail", "changetrail.html");
-    assert.match(readFileSync(viewerPath, "utf8"), /Change,<br>recorded\./);
-    assert.match(readFileSync(viewerPath, "utf8"), /<script src="\.\/data\.js"><\/script>/);
+    const viewer = readFileSync(viewerPath, "utf8");
+    assert.match(viewer, /<title>Changetrail · Changelog<\/title>/);
+    assert.match(viewer, /<link rel="icon" href="data:image\/svg\+xml;base64,/);
+    assert.match(viewer, /<span class="brand-name">changetrail<\/span>/);
+    assert.match(viewer, /\.day-heading::before\s*\{/);
+    assert.match(viewer, /\.day:last-child::before \{ bottom: 0; \}/);
+    assert.match(viewer, /Change,<br>recorded\./);
+    assert.match(viewer, /<script src="\.\/data\.js"><\/script>/);
     assert.equal(
       readFileSync(join(root, ".gitignore"), "utf8"),
       "node_modules/\n\n" +
@@ -63,6 +82,29 @@ test("uses the configured directory in generated ignore rules", () => {
       /\/docs\/changes\/data\.js/,
     );
     assert.equal(readFileSync(configPath, "utf8"), "{}\n");
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("loads OpenAI defaults without leaking its model into another provider", () => {
+  const root = mkdtempSync(join(tmpdir(), "changetrail-config-"));
+  try {
+    const defaults = loadConfig({ root, env: {} });
+    assert.equal(defaults.provider, "openai");
+    assert.equal(defaults.model, "gpt-5.4-mini");
+
+    writeFileSync(join(root, "changetrail.json"), '{"provider":"claude"}\n');
+    const sharedOverride = loadConfig({ root, env: {} });
+    assert.equal(sharedOverride.provider, "claude");
+    assert.equal(sharedOverride.model, null);
+
+    const environmentOverride = loadConfig({
+      root,
+      env: { CHANGELOG_PROVIDER: "llama" },
+    });
+    assert.equal(environmentOverride.provider, "llama");
+    assert.equal(environmentOverride.model, null);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

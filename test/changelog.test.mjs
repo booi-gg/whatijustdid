@@ -13,6 +13,7 @@ import {
   verifyOwnershipRange,
 } from "../src/ownership.mjs";
 import { projectsForFiles } from "../src/projects.mjs";
+import { describe as describeWithOpenAI } from "../src/providers/codex.mjs";
 import { bulletLines, parseSubject } from "../src/providers/raw.mjs";
 import { CHANGELOG_SCHEMA, coerceModelJson } from "../src/providers/shared.mjs";
 import {
@@ -89,6 +90,39 @@ test("uses a strict-provider-compatible structured output schema", () => {
   assert.equal(changes.maxItems, undefined);
   assert.equal(summary.minLength, undefined);
   assert.equal(summary.maxLength, undefined);
+});
+
+test("uses the efficient OpenAI mini model by default", async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  let request;
+  process.env.OPENAI_API_KEY = "test-key";
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return {
+      ok: true,
+      json: async () => ({
+        output_text: JSON.stringify({
+          type: "feat",
+          changes: [{ type: "feat", summary: "Added a default model." }],
+        }),
+      }),
+    };
+  };
+
+  try {
+    await describeWithOpenAI(
+      { subject: "feat: add a default model" },
+      { model: null, timeoutMs: 1000 },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  }
+
+  assert.equal(request.model, "gpt-5.4-mini");
+  assert.equal(request.reasoning, undefined);
 });
 
 test("maps DB paths to the commits that introduced them", () => {
