@@ -18,11 +18,11 @@ npx changelog init
 
 `init` is safe to rerun. It:
 
-- creates `changelog/changelog.config.json`
+- creates `changelog/changelog.json`
 - creates the dependency-free `changelog/changelog.html` viewer
 - creates `changelog/db/.gitkeep`
 - ignores only `changelog.data.js` and `changelog.local.json`
-- installs idempotent Git hooks without replacing existing hook logic
+- adds its commands to Git hooks while preserving commands already there
 - builds the initial viewer data
 
 Commit the package lockfile and the new repository files. Every developer must
@@ -41,6 +41,8 @@ are local. A package script makes that easy:
 `changelog install` is an alias of `changelog init`. Missing assets are
 restored, but existing config and viewer files are preserved. Run
 `changelog init --force` to refresh only the viewer from the bundled template.
+Rerunning either command refreshes one marked `@bm/changelog` block in each
+hook instead of adding duplicates; everything outside that block stays intact.
 
 ## Normal use
 
@@ -101,7 +103,7 @@ when hostile-user enforcement matters.
 
 ## Configuration
 
-Shared config lives at `changelog/changelog.config.json`:
+Shared config lives at `changelog/changelog.json`:
 
 ```json
 {
@@ -120,7 +122,7 @@ Shared config lives at `changelog/changelog.config.json`:
 ```
 
 For a custom changelog directory, put the shared config at the repository root
-as `changelog.config.json` and set `dir` there.
+as `changelog.json` and set `dir` there.
 
 Each developer can choose a provider without modifying tracked config. Create
 the ignored `changelog/changelog.local.json`:

@@ -9,7 +9,7 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changelog.config.json");
+const defaultConfigPath = join(packageDir, "changelog.json");
 const viewerTemplatePath = join(packageDir, "assets", "changelog.html");
 const MARKER = "# >>> @bm/changelog >>>";
 const END_MARKER = "# <<< @bm/changelog <<<";
@@ -30,7 +30,7 @@ export function initializeProject(config, options = {}) {
   mkdirSync(config.dbDir, { recursive: true });
 
   const configTarget = config.isDefaultConfig
-    ? join(config.root, config.dir, "changelog.config.json")
+    ? join(config.root, config.dir, "changelog.json")
     : config.configPath;
   record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
 

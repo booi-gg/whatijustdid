@@ -90,7 +90,7 @@ Usage:
   changelog verify-ownership --base SHA --head SHA
                        Verify row ownership across a commit range
 
-Config: changelog/changelog.config.json
+Config: changelog/changelog.json
 Providers: raw | claude | codex/openai | llama`);
       if (cmd && cmd !== "help") process.exit(1);
   }

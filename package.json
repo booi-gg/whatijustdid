@@ -36,7 +36,7 @@
     "assets",
     "bin",
     "src",
-    "changelog.config.json",
+    "changelog.json",
     "README.md"
   ],
   "publishConfig": {

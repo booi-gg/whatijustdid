@@ -13,8 +13,8 @@ test("initializes consumer files without overwriting user-owned assets", () => {
     const first = initializeProject(config);
 
     assert.deepEqual(first.created.sort(), [
-      "changelog/changelog.config.json",
       "changelog/changelog.html",
+      "changelog/changelog.json",
       "changelog/db/.gitkeep",
     ]);
     assert.deepEqual(first.updated, [".gitignore"]);
@@ -45,7 +45,7 @@ test("initializes consumer files without overwriting user-owned assets", () => {
 test("uses the configured directory in generated ignore rules", () => {
   const root = mkdtempSync(join(tmpdir(), "bm-changelog-custom-dir-"));
   try {
-    const configPath = join(root, "changelog.config.json");
+    const configPath = join(root, "changelog.json");
     writeFileSync(configPath, "{}\n");
     initializeProject({
       ...consumerConfig(root),
