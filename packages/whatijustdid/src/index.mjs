@@ -4,7 +4,7 @@ export { startPreview } from "./preview.mjs";
 export { build, readEntries } from "./build.mjs";
 export { installHooks, uninstallHooks } from "./hooks.mjs";
 export { initializeProject } from "./init.mjs";
-export { getAgent } from "./agents/index.mjs";
+export { getAgent, validateAgentConfig } from "./agents/index.mjs";
 export { recordCommittedChange } from "./record.mjs";
 export { describeChange } from "./describe.mjs";
 export { editEntry, applyEntryEdit } from "./edit.mjs";
