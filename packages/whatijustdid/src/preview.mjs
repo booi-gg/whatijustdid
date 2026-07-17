@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
-import { CLI_NAME, VIEWER_FILENAME, VIEWER_FILE_PATH, SSE_PATH } from "./brand.mjs";
+import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, SSE_PATH } from "./brand.mjs";
 
 const DEFAULT_PORT = 4173;
 const LIVE_RELOAD_CLIENT = `<script>
@@ -79,6 +79,16 @@ function serveRequest(request, response, files, url) {
     response.write(": connected\n\n");
     files.clients.add(response);
     request.on("close", () => files.clients.delete(response));
+    return;
+  }
+  if (pathname === `/${VIEWER_CSS_FILENAME}` && existsSync(VIEWER_CSS_FILE_PATH)) {
+    send(
+      response,
+      method,
+      200,
+      "text/css; charset=utf-8",
+      readFileSync(VIEWER_CSS_FILE_PATH),
+    );
     return;
   }
   if (pathname === `/${VIEWER_FILENAME}`) {
