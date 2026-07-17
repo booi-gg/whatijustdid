@@ -412,6 +412,32 @@
         text-align: center;
       }
 
+      .letter.letter--feat {
+        color: #096348;
+        background: #dff2e9;
+      }
+      .letter.letter--fix {
+        color: #a33931;
+        background: #f9e7e4;
+      }
+      .letter.letter--perf {
+        color: #8a5a00;
+        background: #f8edce;
+      }
+      .letter.letter--docs {
+        color: #6d43a1;
+        background: #eee5f8;
+      }
+      .letter.letter--test,
+      .letter.letter--ci {
+        color: #16647b;
+        background: #dceff4;
+      }
+      .letter.letter--refactor {
+        color: #3157a3;
+        background: #e2e9f8;
+      }
+
       .entry-body {
         min-width: 0;
       }
@@ -778,7 +804,14 @@
 
         function entryRow(entry) {
           const item = element("li", "entry");
-          item.append(element("span", "letter", String(entry.letter || "(·)")));
+          const entryType =
+            Array.isArray(entry.tags) && entry.tags.length
+              ? entry.tags[0]
+              : "other";
+          const letterCls = knownTypes.has(entryType)
+            ? `letter letter--${entryType}`
+            : "letter";
+          item.append(element("span", letterCls, String(entry.letter || "(·)")));
           const body = element("div", "entry-body");
           const tags = element("div", "tags");
           const entryTags =
