@@ -8,6 +8,7 @@ export async function describeChange(input, config) {
     const result = await agent.describe(input, {
       model: config.model,
       timeoutMs: config.timeoutMs,
+      verbosity: config.verbosity,
     });
     return { ...result, agent: config.agent };
   } catch (error) {

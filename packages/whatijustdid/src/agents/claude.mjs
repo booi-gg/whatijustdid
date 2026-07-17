@@ -1,11 +1,11 @@
 import {
   WHATIJUSTDID_SCHEMA,
-  SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
   postJson,
-  resolveApiKey,
+  verbosityConfig,
+  verbosityPrompt,
 } from "./shared.mjs";
 
 // Raw HTTP keeps the package dependency-free inside latency-sensitive hooks.
@@ -15,9 +15,13 @@ export async function describe(input, { model, timeoutMs }) {
   const key = resolveApiKey("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ANTHROPIC_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
+  const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
 
   const data = await postJson(
-    apiUrl(process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com", "v1/messages"),
+    apiUrl(
+      process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com",
+      "v1/messages",
+    ),
     {
       label: "Anthropic Messages API",
       timeoutMs,
@@ -27,16 +31,16 @@ export async function describe(input, { model, timeoutMs }) {
       },
       body: {
         model: selectedModel,
-        max_tokens: 1200,
-        system: SYSTEM_PROMPT,
+        max_tokens: maxTokens,
+        system: verbosityPrompt(verbosity),
         messages: [{ role: "user", content: formatAgentInput(input) }],
         output_config: {
           format: { type: "json_schema", schema: WHATIJUSTDID_SCHEMA },
         },
       },
-    }
+    },
   );
 
   const text = data.content?.map((block) => block.text ?? "").join("") ?? "";
-  return { ...parseAgentJson(text), model: selectedModel };
+  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel };
 }
