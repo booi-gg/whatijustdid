@@ -1,6 +1,4 @@
-# whatijustdid
-
-# ChangeTrail Product Plan -
+# whatijustdid Product Plan -
 
 ## Product decision
 
