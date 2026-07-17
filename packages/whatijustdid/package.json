@@ -1,5 +1,5 @@
 {
-  "name": "@whatijustdid/cli",
+  "name": "whatijustdid",
   "version": "0.1.0",
   "type": "module",
   "description": "Private, persistent AI summaries for every committed code change.",

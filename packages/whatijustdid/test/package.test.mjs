@@ -36,7 +36,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       packDirectory,
     ], packageRoot, npmEnvironment));
     const manifest = packed[0];
-    assert.equal(manifest.name, "@whatijustdid/cli");
+    assert.equal(manifest.name, "whatijustdid");
     const paths = manifest.files.map((file) => file.path);
     assert.ok(paths.includes("assets/whatijustdid.html"));
     assert.ok(paths.includes("bin/cli.mjs"));
