@@ -32,49 +32,12 @@
         <div>
           <p class="brandline">
             <span class="brand">
-              <svg
+              <img
                 class="brand-mark"
-                viewBox="0 0 100 99"
-                fill="none"
+                src="https://res.cloudinary.com/dhhmap710/image/upload/v1784311641/Container_zccajb.svg"
+                alt=""
                 aria-hidden="true"
-              >
-                <rect
-                  x="0.5"
-                  y="0.5"
-                  width="99"
-                  height="98"
-                  rx="21.5"
-                  fill="#1e1e17"
-                />
-                <rect
-                  x="0.5"
-                  y="0.5"
-                  width="99"
-                  height="98"
-                  rx="21.5"
-                  stroke="#4a4740"
-                />
-                <path d="M32 67.5 68 31.5 32 67.5" fill="#f2f1ee" />
-                <path
-                  d="M32 67.5 68 31.5 32 67.5"
-                  stroke="#4a4740"
-                  stroke-width="3"
-                  stroke-linecap="round"
-                  stroke-dasharray="1 7"
-                />
-                <path
-                  d="M27 67.5C27 70.2596 29.2404 72.5 32 72.5S37 70.2596 37 67.5 34.7596 62.5 32 62.5 27 64.7404 27 67.5Z"
-                  fill="#e87a3e"
-                />
-                <path
-                  d="M45 49.5C45 52.2596 47.2404 54.5 50 54.5S55 52.2596 55 49.5 52.7596 44.5 50 44.5 45 46.7404 45 49.5Z"
-                  fill="#e87a3e"
-                />
-                <path
-                  d="M63 31.5C63 34.2596 65.2404 36.5 68 36.5S73 34.2596 73 31.5 70.7596 26.5 68 26.5 63 28.7404 63 31.5Z"
-                  fill="#e87a3e"
-                />
-              </svg>
+              />
               <span class="brand-name">whatijustdid</span>
             </span>
             <span class="brand-context">Repository ledger</span>
@@ -292,7 +255,14 @@
 
         function entryRow(entry) {
           const item = element("li", "entry");
-          item.append(element("span", "letter", String(entry.letter || "(·)")));
+          const entryType =
+            Array.isArray(entry.tags) && entry.tags.length
+              ? entry.tags[0]
+              : "other";
+          const letterCls = knownTypes.has(entryType)
+            ? `letter letter--${entryType}`
+            : "letter";
+          item.append(element("span", letterCls, String(entry.letter || "(·)")));
           const body = element("div", "entry-body");
           const tags = element("div", "tags");
           const entryTags =
