@@ -1,3 +1,0 @@
-#!/bin/sh
-# Creates + stages one owned DB row before Git writes the commit.
-node "$(git rev-parse --show-toplevel)/packages/changelog/bin/changelog.mjs" record --silent

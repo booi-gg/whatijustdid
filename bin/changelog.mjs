@@ -3,6 +3,7 @@ import { loadConfig } from "../src/config.mjs";
 import { generate } from "../src/generate.mjs";
 import { build } from "../src/build.mjs";
 import { installHooks } from "../src/hooks.mjs";
+import { initializeProject } from "../src/init.mjs";
 import { recordStagedChange } from "../src/record.mjs";
 import { editEntry } from "../src/edit.mjs";
 import { verifyOwnershipRange } from "../src/ownership.mjs";
@@ -61,10 +62,16 @@ async function main() {
       log(`changelog: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
       break;
     }
+    case "init":
     case "install": {
       const config = loadConfig();
+      const initialized = initializeProject(config, { force: rest.includes("--force") });
       const installed = installHooks(config.root);
       const total = build(config);
+      const changed = [...initialized.created, ...initialized.updated];
+      log(changed.length
+        ? `changelog: initialized ${changed.join(", ")}`
+        : "changelog: project files already initialized");
       log(installed.length ? `changelog: installed/updated hooks: ${installed.join(", ")}` : "changelog: hooks already current");
       log(`changelog: built initial viewer data (${total} entries)`);
       break;
@@ -73,7 +80,8 @@ async function main() {
       console.log(`changelog — git-derived change-log tracker
 
 Usage:
-  changelog install    Install automatic pre/post Git hooks (run once per clone)
+  changelog init       Create project files, install hooks, and build the viewer
+  changelog install    Refresh hooks and missing project files (alias: init)
   changelog record     Create + stage a DB row for currently staged source changes
   changelog backfill   Create DB rows for recent history (alias: generate)
   changelog sync       Backfill history, then rebuild viewer data

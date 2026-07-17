@@ -212,7 +212,7 @@ test("entry edits preserve identity and record editor", () => {
 });
 
 test("edit command restores canonical identity before writing", () => {
-  const root = mkdtempSync(join(tmpdir(), "funroll-changelog-edit-command-"));
+  const root = mkdtempSync(join(tmpdir(), "bm-changelog-edit-command-"));
   try {
     const dbDir = join(root, "changelog", "db");
     const path = join(dbDir, "row.json");
@@ -255,7 +255,7 @@ test("edit command restores canonical identity before writing", () => {
 });
 
 test("build emits configured projects and gives human commit bullets precedence", () => {
-  const root = mkdtempSync(join(tmpdir(), "funroll-changelog-"));
+  const root = mkdtempSync(join(tmpdir(), "bm-changelog-"));
   try {
     const dbDir = join(root, "changelog", "db");
     const dataFile = join(root, "changelog", "changelog.data.js");
@@ -297,7 +297,7 @@ test("build emits configured projects and gives human commit bullets precedence"
 });
 
 test("an authorized edit overrides original commit-body bullets", () => {
-  const root = mkdtempSync(join(tmpdir(), "funroll-changelog-edit-"));
+  const root = mkdtempSync(join(tmpdir(), "bm-changelog-edit-"));
   try {
     const dbDir = join(root, "changelog", "db");
     const dataFile = join(root, "changelog", "changelog.data.js");

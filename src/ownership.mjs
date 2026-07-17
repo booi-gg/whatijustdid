@@ -59,7 +59,7 @@ export function assertStagedOwnership(config, dependencies = {}) {
   const indexDirectory = dependencies.commitIndexForDirectory ?? commitIndexForDirectory;
   const currentAuthor = dependencies.gitAuthor ?? gitAuthor;
 
-  const paths = staged(config.root, config.dbDir);
+  const paths = staged(config.root, config.dbDir).filter(isRowPath);
   if (!paths.length) return 0;
 
   const actor = currentAuthor(config.root).email;
@@ -101,7 +101,7 @@ export function verifyOwnershipRange(config, { base, head }, dependencies = {}) 
   const readCommit = dependencies.commitMeta ?? commitMeta;
 
   const common = resolveMergeBase(config.root, base, head);
-  const paths = changed(config.root, config.dbDir, common, head);
+  const paths = changed(config.root, config.dbDir, common, head).filter(isRowPath);
   const commitIndex = indexDirectory(config.root, config.dbDir, common);
   const failures = [];
 
@@ -217,4 +217,8 @@ function parseEntry(text, path) {
     throw new Error(`Invalid changelog row ${path}: expected a JSON object`);
   }
   return entry;
+}
+
+function isRowPath(path) {
+  return path.endsWith(".json");
 }

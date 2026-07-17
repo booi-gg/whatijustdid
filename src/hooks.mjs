@@ -1,5 +1,5 @@
 import { readFileSync, writeFileSync, chmodSync, existsSync, mkdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { join, dirname, isAbsolute } from "node:path";
 import { fileURLToPath } from "node:url";
 import { execFileSync } from "node:child_process";
 
@@ -11,9 +11,9 @@ const HOOKS = {
   "post-checkout": "build",
   "post-rewrite": "build",
 };
-const MARKER = "# >>> @funroll/changelog >>>";
-const END_MARKER = "# <<< @funroll/changelog <<<";
-const BLOCK = /\n?# >>> @funroll\/changelog >>>[\s\S]*?# <<< @funroll\/changelog <<<(?:\n|$)/g;
+const MARKER = "# >>> @bm/changelog >>>";
+const END_MARKER = "# <<< @bm/changelog <<<";
+const BLOCK = /\n?# >>> @bm\/changelog >>>[\s\S]*?# <<< @bm\/changelog <<<(?:\n|$)/g;
 
 /**
  * pre-commit stages the merge-safe DB row into the same commit as the code.
@@ -24,10 +24,10 @@ export function installHooks(root) {
     cwd: root,
     encoding: "utf8",
   }).trim());
-  const absHooksDir = hooksDir.startsWith("/") ? hooksDir : join(root, hooksDir);
+  const absHooksDir = isAbsolute(hooksDir) ? hooksDir : join(root, hooksDir);
   mkdirSync(absHooksDir, { recursive: true });
 
-  const runner = join(packageDir, "bin", "changelog.mjs");
+  const runner = join(packageDir, "bin", "changelog.mjs").replace(/\\/g, "/");
 
   const installed = [];
   for (const [name, command] of Object.entries(HOOKS)) {

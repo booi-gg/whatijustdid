@@ -1,5 +1,5 @@
 import { readFileSync, existsSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { dirname, isAbsolute, join, normalize, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { repoRoot } from "./git.mjs";
 
@@ -34,7 +34,9 @@ export function loadConfig(options = {}) {
     ...local,
     projects: local.projects ?? shared.projects ?? defaults.projects ?? {},
   };
-  const dir = process.env.CHANGELOG_DIR ?? config.dir ?? configuredDir;
+  const dir = repositoryDirectory(
+    process.env.CHANGELOG_DIR ?? config.dir ?? configuredDir,
+  );
 
   return {
     provider: process.env.CHANGELOG_PROVIDER ?? config.provider ?? "raw",
@@ -48,10 +50,22 @@ export function loadConfig(options = {}) {
     dbDir: join(root, dir, "db"),
     dataFile: join(root, dir, "changelog.data.js"),
     configPath: configPath ?? defaultConfigPath,
+    isDefaultConfig: !configPath,
     localConfigPath: localConfigPath ?? null,
   };
 }
 
 function positiveInteger(value, fallback) {
   return Number.isInteger(value) && value > 0 ? value : fallback;
+}
+
+function repositoryDirectory(value) {
+  if (typeof value !== "string" || !value.trim()) {
+    throw new Error("Changelog dir must be a non-empty repository-relative path");
+  }
+  const dir = normalize(value.trim());
+  if (isAbsolute(dir) || dir === ".." || dir.startsWith(`..${sep}`)) {
+    throw new Error(`Changelog dir must stay inside the repository: ${value}`);
+  }
+  return dir;
 }
