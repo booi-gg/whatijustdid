@@ -5,13 +5,14 @@ import {
   formatAgentInput,
   parseAgentJson,
   postJson,
+  resolveApiKey,
 } from "./shared.mjs";
 
 // Raw HTTP keeps the package dependency-free inside latency-sensitive hooks.
 const DEFAULT_MODEL = "claude-sonnet-5";
 
 export async function describe(input, { model, timeoutMs }) {
-  const key = process.env.ANTHROPIC_API_KEY;
+  const key = resolveApiKey("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ANTHROPIC_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
 

@@ -5,6 +5,7 @@ import {
   formatAgentInput,
   parseAgentJson,
   postJson,
+  resolveApiKey,
 } from "./shared.mjs";
 
 // DeepSeek's fast model keeps generation practical inside post-commit hooks.
@@ -16,7 +17,7 @@ Example JSON output:
 {"type":"feat","changes":[{"type":"feat","summary":"Added a new user-facing capability."}]}`;
 
 export async function describe(input, { model, timeoutMs }) {
-  const key = process.env.DEEPSEEK_API_KEY;
+  const key = resolveApiKey("DEEPSEEK_API_KEY");
   if (!key) throw new Error("DEEPSEEK_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
 

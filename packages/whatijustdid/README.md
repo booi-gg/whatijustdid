@@ -118,7 +118,7 @@ npx whatijustdid edit <commit-sha-or-prefix>
 
 ## Configuration
 
-The tracked `changereceipt.json` contains safe shared defaults:
+The tracked `whatijustdid.json` contains safe shared defaults:
 
 ```json
 {
@@ -142,9 +142,40 @@ Put personal overrides in Git-private `.git/whatijustdid/whatijustdid.local.json
 - `WHATIJUSTDID_AGENT`
 - `WHATIJUSTDID_DB_PATH` for an advanced local database-path override
 
+### Credentials
+
+Each agent normally reads its provider's standard env var (`OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, `ANTHROPIC_API_KEY`). To avoid tracking which name goes with which agent, you can instead set one generic `WHATIJUSTDID_AGENT_API_KEY` — it's used as the key for whichever agent is currently configured, and it takes precedence if both are set.
+
+Any of these can also live in a `.env` file at the repository root instead of your shell profile; it's loaded automatically and is gitignored by default, so it's never committed. A real exported shell variable still wins over the `.env` value.
+
+```dotenv
+# .env (gitignored)
+WHATIJUSTDID_AGENT_API_KEY=sk-...
+```
+
 Agent-specific variables:
 
-- Codex/OpenAI: `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`
-- DeepSeek: `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`
-- Claude: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`
-- Llama/Ollama: optional `OLLAMA_HOST`
+- Codex/OpenAI: `OPENAI_API_KEY` (or `WHATIJUSTDID_AGENT_API_KEY`), optional `OPENAI_BASE_URL`
+- DeepSeek: `DEEPSEEK_API_KEY` (or `WHATIJUSTDID_AGENT_API_KEY`), optional `DEEPSEEK_BASE_URL`
+- Claude: `ANTHROPIC_API_KEY` (or `WHATIJUSTDID_AGENT_API_KEY`), optional `ANTHROPIC_BASE_URL`
+- Llama/Ollama: no key needed, optional `OLLAMA_HOST`
+
+### Supported agents
+
+Set `"agent"` in `whatijustdid.json` (or `WHATIJUSTDID_AGENT`) to one of the values below. `"model": null` uses the listed default; set `"model"` (or `WHATIJUSTDID_MODEL`) to override it.
+
+| Agent | `agent` value | Credential | Default model | Example override |
+| --- | --- | --- | --- | --- |
+| Codex / OpenAI | `codex` (alias: `openai`) | `OPENAI_API_KEY` or `WHATIJUSTDID_AGENT_API_KEY` | `gpt-5.4-mini` | `"model": "gpt-5.4"` |
+| DeepSeek | `deepseek` | `DEEPSEEK_API_KEY` or `WHATIJUSTDID_AGENT_API_KEY` | `deepseek-v4-flash` | `"model": "deepseek-v4"` |
+| Claude | `claude` | `ANTHROPIC_API_KEY` or `WHATIJUSTDID_AGENT_API_KEY` | `claude-sonnet-5` | `"model": "claude-opus-4-8"` |
+| Llama / Ollama | `llama` | none (runs against local `OLLAMA_HOST`) | `llama3.2` | `"model": "llama3.3"` |
+
+Example `whatijustdid.json` pinned to DeepSeek's larger model:
+
+```json
+{
+  "agent": "deepseek",
+  "model": "deepseek-v4"
+}
+```

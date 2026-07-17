@@ -1,6 +1,6 @@
 {
-  "agent": "codex",
-  "model": null,
+  "agent": "deepseek",
+  "model": "deepseek-v4-pro",
   "viewerLimit": 200,
   "generationLimit": 50,
   "maxDiffBytes": 80000,

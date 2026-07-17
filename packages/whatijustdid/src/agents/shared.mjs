@@ -1,3 +1,5 @@
+import { ENV_PREFIX } from "../brand.mjs";
+
 export const CHANGE_TYPES = [
   "feat",
   "fix",
@@ -162,6 +164,17 @@ export async function postJson(url, { headers, body, label, timeoutMs }) {
   }
 
   return response.json();
+}
+
+/**
+ * A single `${ENV_PREFIX}_AGENT_API_KEY` can hold the key for whichever agent
+ * is currently configured, so switching agents doesn't require juggling
+ * provider-specific env var names. It takes precedence because setting it
+ * means "use this key for whatijustdid specifically"; the provider-specific
+ * var is the fallback for a key already set for other tools.
+ */
+export function resolveApiKey(providerEnvVar) {
+  return process.env[`${ENV_PREFIX}_AGENT_API_KEY`] ?? process.env[providerEnvVar];
 }
 
 export function apiUrl(baseUrl, path) {

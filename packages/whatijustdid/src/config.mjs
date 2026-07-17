@@ -13,6 +13,7 @@ const defaultConfigPath = join(packageDir, "whatijustdid.json");
  */
 export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
+  loadDotEnv(root);
   const env = options.env ?? process.env;
   const defaults = normalizeLegacyConfig(
     JSON.parse(readFileSync(defaultConfigPath, "utf8")),
@@ -68,6 +69,17 @@ export function loadConfig(options = {}) {
     isDefaultConfig: !configPath,
     localConfigPath: localConfigPath ?? null,
   };
+}
+
+/** Agent credentials can live in a repo-root .env, gitignored by default. */
+function loadDotEnv(root) {
+  const dotEnvPath = join(root, ".env");
+  if (!existsSync(dotEnvPath)) return;
+  try {
+    process.loadEnvFile(dotEnvPath);
+  } catch {
+    /* malformed .env; leave process.env as-is */
+  }
 }
 
 function normalizeLegacyConfig(config) {

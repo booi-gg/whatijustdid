@@ -5,6 +5,7 @@ import {
   formatAgentInput,
   parseAgentJson,
   postJson,
+  resolveApiKey,
 } from "./shared.mjs";
 
 // "codex" is the package's OpenAI agent name. It uses the Responses API,
@@ -12,7 +13,7 @@ import {
 const DEFAULT_MODEL = "gpt-5.4-mini";
 
 export async function describe(input, { model, timeoutMs }) {
-  const key = process.env.OPENAI_API_KEY;
+  const key = resolveApiKey("OPENAI_API_KEY");
   if (!key) throw new Error("OPENAI_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
 
