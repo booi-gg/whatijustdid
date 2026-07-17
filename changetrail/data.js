@@ -68,18 +68,42 @@ window.__CHANGELOG__ = [
   },
   {
     "kind": "commit",
-    "ref": "bf2640a",
-    "author": "booi-dev",
-    "date": "2026-07-17T18:57:43+05:30",
+    "ref": "91aa64c",
+    "author": "Booi",
+    "date": "2026-07-17T18:59:11+05:30",
     "projects": [],
     "link": null,
     "entries": [
       {
         "letter": "(a)",
         "tags": [
-          "feat"
+          "other"
         ],
-        "description": "serve bundled changetrail viewer"
+        "description": "feat: serve bundled changetrail viewer"
+      },
+      {
+        "letter": "(b)",
+        "tags": [
+          "other"
+        ],
+        "description": "chore: refresh changetrail data"
+      }
+    ]
+  },
+  {
+    "kind": "commit",
+    "ref": "2dbdff2",
+    "author": "booi-dev",
+    "date": "2026-07-17T19:22:36+05:30",
+    "projects": [],
+    "link": null,
+    "entries": [
+      {
+        "letter": "(a)",
+        "tags": [
+          "other"
+        ],
+        "description": "Add changetrail unhook command"
       }
     ]
   }
