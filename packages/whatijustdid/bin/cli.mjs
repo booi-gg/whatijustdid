@@ -3,7 +3,7 @@ import { execSync } from "node:child_process";
 import { dirname } from "node:path";
 import pc from "picocolors";
 import { validateAgentConfig } from "../src/agents/index.mjs";
-import { CLI_NAME, TITLE_NAME } from "../src/brand.mjs";
+import { CLI_NAME, ENV_PREFIX, TITLE_NAME } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
 import { loadConfig } from "../src/config.mjs";
 import { editEntry } from "../src/edit.mjs";
@@ -32,6 +32,14 @@ const log = (message) => silent || console.log(message);
 async function main() {
   switch (cmd) {
     case "record": {
+      if (process.env[`${ENV_PREFIX}_SKIP`]) {
+        log(`${P} ${dim(`skipped summary generation (${ENV_PREFIX}_SKIP is set)`)}`);
+        break;
+      }
+      if (commitMessageContainsSkip()) {
+        log(`${P} ${dim("skipped summary generation ([skip wijd] in commit message)")}`);
+        break;
+      }
       const config = loadConfig();
       let result;
       try {
@@ -283,4 +291,13 @@ function recordSkipMessage(reason) {
 
 function formatEntries(total) {
   return `${total} ${total === 1 ? "entry" : "entries"}`;
+}
+
+function commitMessageContainsSkip() {
+  try {
+    const message = execSync("git log -1 --pretty=%B", { encoding: "utf8" });
+    return message.includes("[skip wijd]");
+  } catch {
+    return false;
+  }
 }
