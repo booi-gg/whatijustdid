@@ -36,8 +36,17 @@ export async function describe(
     },
   );
 
+  const usage =
+    typeof data.prompt_eval_count === "number" || typeof data.eval_count === "number"
+      ? {
+          input: data.prompt_eval_count ?? 0,
+          output: data.eval_count ?? 0,
+          total: (data.prompt_eval_count ?? 0) + (data.eval_count ?? 0),
+        }
+      : null;
   return {
     ...parseAgentJson(data.message?.content ?? "", { maxSummaryChars }),
     model: selectedModel,
+    usage,
   };
 }

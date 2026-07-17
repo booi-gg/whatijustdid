@@ -32,6 +32,7 @@ test("creates only whatijustdid.json in the repository", () => {
         verbosity: "normal",
         viewerLimit: 200,
         generationLimit: 50,
+        showTokens: false,
         maxDiffBytes: 80000,
         timeoutMs: 20000,
         projects: {},

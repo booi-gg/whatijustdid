@@ -236,8 +236,19 @@
             meta.append(time);
           }
           const url = safeHttpUrl(group.link);
+          if (group.usage) {
+            const tokenSpan = element("span", "tokens");
+            const total = group.usage.total ?? 0;
+            if (total > 0) {
+              tokenSpan.textContent =
+                total >= 1000
+                  ? `${(total / 1000).toFixed(1)}k tok`
+                  : `${total} tok`;
+            }
+            meta.append(tokenSpan);
+          }
           if (url) {
-            const link = element("a", "commit-link", "View →");
+            const link = element("a", "commit-link", "View \u2192");
             link.href = url;
             link.target = "_blank";
             link.rel = "noreferrer";

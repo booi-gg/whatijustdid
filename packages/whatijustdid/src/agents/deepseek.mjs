@@ -44,5 +44,8 @@ Example JSON output:
   );
 
   const text = data.choices?.[0]?.message?.content ?? "";
-  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel };
+  const usage = data.usage
+    ? { input: data.usage.prompt_tokens ?? 0, output: data.usage.completion_tokens ?? 0, total: data.usage.total_tokens ?? 0 }
+    : null;
+  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel, usage };
 }

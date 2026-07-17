@@ -55,5 +55,8 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
       .map((item) => item.text ?? "")
       .join("") ??
     "";
-  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel };
+  const usage = data.usage
+    ? { input: data.usage.input_tokens ?? 0, output: data.usage.output_tokens ?? 0, total: data.usage.total_tokens ?? 0 }
+    : null;
+  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel, usage };
 }

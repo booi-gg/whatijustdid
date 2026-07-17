@@ -77,6 +77,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
         verbosity: "normal",
         viewerLimit: 200,
         generationLimit: 50,
+        showTokens: false,
         maxDiffBytes: 80000,
         timeoutMs: 20000,
         projects: {},

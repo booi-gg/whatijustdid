@@ -11,7 +11,7 @@ import {
 // Raw HTTP keeps the package dependency-free inside latency-sensitive hooks.
 const DEFAULT_MODEL = "claude-sonnet-5";
 
-export async function describe(input, { model, timeoutMs }) {
+export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
   const key = resolveApiKey("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ANTHROPIC_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
@@ -42,5 +42,12 @@ export async function describe(input, { model, timeoutMs }) {
   );
 
   const text = data.content?.map((block) => block.text ?? "").join("") ?? "";
-  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel };
+  const usage = data.usage
+    ? {
+        input: data.usage.input_tokens ?? 0,
+        output: data.usage.output_tokens ?? 0,
+        total: (data.usage.input_tokens ?? 0) + (data.usage.output_tokens ?? 0),
+      }
+    : null;
+  return { ...parseAgentJson(text, { maxSummaryChars }), model: selectedModel, usage };
 }
