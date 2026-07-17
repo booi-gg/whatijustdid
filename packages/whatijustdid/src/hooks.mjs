@@ -8,7 +8,7 @@ import {
 } from "node:fs";
 import { join, isAbsolute } from "node:path";
 import { execFileSync } from "node:child_process";
-import { BINARY_PATH, CLI_NAME, HOOK_MARKER, HOOK_END_MARKER } from "./brand.mjs";
+import { BINARY_PATH, CLI_NAME, ENV_PREFIX, HOOK_MARKER, HOOK_END_MARKER } from "./brand.mjs";
 
 const HOOKS = {
   "post-commit": ["record"],
@@ -39,7 +39,10 @@ export function installHooks(root) {
     let content = existsSync(path) ? readFileSync(path, "utf8") : "#!/bin/sh\n";
     if (!content.startsWith("#!")) content = "#!/bin/sh\n" + content;
     const commandLines = commands
-      .map((command) => `node --no-warnings ${shellQuote(runner)} ${command} || true`)
+      .map(
+        (command) =>
+          `if [ -z "\${${ENV_PREFIX}_SKIP}" ] && ! git log -1 --pretty=%B | grep -q '\\[skip wijd\\]'; then node --no-warnings ${shellQuote(runner)} ${command} || true; fi`,
+      )
       .join("\n");
     const block = `${HOOK_MARKER}\n${commandLines}\n${HOOK_END_MARKER}\n`;
     const base = content.replace(BLOCK, "").trimEnd();
