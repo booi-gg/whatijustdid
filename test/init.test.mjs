@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -13,30 +13,32 @@ test("initializes consumer files without overwriting user-owned assets", () => {
     const first = initializeProject(config);
 
     assert.deepEqual(first.created.sort(), [
-      "changelog/changelog.html",
-      "changelog/db/.gitkeep",
-      "changetrail/config.json",
+      "changetrail.json",
+      "changetrail/changetrail.html",
+      "changetrail/db/.gitkeep",
     ]);
     assert.deepEqual(first.updated, [".gitignore"]);
-    assert.match(readFileSync(join(root, "changelog", "changelog.html"), "utf8"), /Change,<br>recorded\./);
+    const viewerPath = join(root, "changetrail", "changetrail.html");
+    assert.match(readFileSync(viewerPath, "utf8"), /Change,<br>recorded\./);
+    assert.match(readFileSync(viewerPath, "utf8"), /<script src="\.\/data\.js"><\/script>/);
     assert.equal(
       readFileSync(join(root, ".gitignore"), "utf8"),
       "node_modules/\n\n" +
         "# >>> changetrail >>>\n" +
-        "/changelog/changelog.data.js\n" +
-        "/changelog/changelog.local.json\n" +
+        "/changetrail/data.js\n" +
+        "/changetrail/changetrail.local.json\n" +
         "# <<< changetrail <<<\n",
     );
 
-    writeFileSync(join(root, "changelog", "changelog.html"), "custom viewer\n");
+    writeFileSync(viewerPath, "custom viewer\n");
     const second = initializeProject(config);
-    assert.equal(readFileSync(join(root, "changelog", "changelog.html"), "utf8"), "custom viewer\n");
+    assert.equal(readFileSync(viewerPath, "utf8"), "custom viewer\n");
     assert.equal(second.created.length, 0);
     assert.equal(second.updated.length, 0);
 
     const forced = initializeProject(config, { force: true });
-    assert.deepEqual(forced.updated, ["changelog/changelog.html"]);
-    assert.match(readFileSync(join(root, "changelog", "changelog.html"), "utf8"), /Repository ledger/);
+    assert.deepEqual(forced.updated, ["changetrail/changetrail.html"]);
+    assert.match(readFileSync(viewerPath, "utf8"), /Repository ledger/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -45,21 +47,20 @@ test("initializes consumer files without overwriting user-owned assets", () => {
 test("uses the configured directory in generated ignore rules", () => {
   const root = mkdtempSync(join(tmpdir(), "changetrail-custom-dir-"));
   try {
-    const configPath = join(root, "changetrail", "config.json");
-    mkdirSync(join(root, "changetrail"));
+    const configPath = join(root, "changetrail.json");
     writeFileSync(configPath, "{}\n");
     initializeProject({
       ...consumerConfig(root),
       dir: "docs/changes",
       dbDir: join(root, "docs", "changes", "db"),
-      dataFile: join(root, "docs", "changes", "changelog.data.js"),
+      dataFile: join(root, "docs", "changes", "data.js"),
       configPath,
       isDefaultConfig: false,
     });
 
     assert.match(
       readFileSync(join(root, ".gitignore"), "utf8"),
-      /\/docs\/changes\/changelog\.data\.js/,
+      /\/docs\/changes\/data\.js/,
     );
     assert.equal(readFileSync(configPath, "utf8"), "{}\n");
   } finally {
@@ -70,9 +71,9 @@ test("uses the configured directory in generated ignore rules", () => {
 function consumerConfig(root) {
   return {
     root,
-    dir: "changelog",
-    dbDir: join(root, "changelog", "db"),
-    dataFile: join(root, "changelog", "changelog.data.js"),
+    dir: "changetrail",
+    dbDir: join(root, "changetrail", "db"),
+    dataFile: join(root, "changetrail", "data.js"),
     configPath: null,
     isDefaultConfig: true,
   };

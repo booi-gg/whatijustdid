@@ -298,7 +298,7 @@ test("build emits configured projects and gives human commit bullets precedence"
   const root = mkdtempSync(join(tmpdir(), "bm-changelog-"));
   try {
     const dbDir = join(root, "changelog", "db");
-    const dataFile = join(root, "changelog", "changelog.data.js");
+    const dataFile = join(root, "changelog", "data.js");
     mkdirSync(dbDir, { recursive: true });
     writeFileSync(
       join(dbDir, "row.json"),
@@ -340,7 +340,7 @@ test("bounded builds read only recent indexed rows", () => {
   const root = mkdtempSync(join(tmpdir(), "bm-changelog-bounded-build-"));
   try {
     const dbDir = join(root, "changelog", "db");
-    const dataFile = join(root, "changelog", "changelog.data.js");
+    const dataFile = join(root, "changelog", "data.js");
     const commitIndex = new Map();
     const rows = [
       ["1111111111111111111111111111111111111111", "2026-07-16T10:00:00.000Z", "Older selected"],
@@ -384,7 +384,7 @@ test("an authorized edit overrides original commit-body bullets", () => {
   const root = mkdtempSync(join(tmpdir(), "bm-changelog-edit-"));
   try {
     const dbDir = join(root, "changelog", "db");
-    const dataFile = join(root, "changelog", "changelog.data.js");
+    const dataFile = join(root, "changelog", "data.js");
     mkdirSync(dbDir, { recursive: true });
     writeFileSync(
       join(dbDir, "row.json"),

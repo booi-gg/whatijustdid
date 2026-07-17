@@ -36,7 +36,7 @@
     "assets",
     "bin",
     "src",
-    "changetrail/config.json",
+    "changetrail.json",
     "README.md"
   ],
   "publishConfig": {

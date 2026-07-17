@@ -1,7 +1,7 @@
 {
   "provider": "raw",
   "model": null,
-  "dir": "changelog",
+  "dir": "changetrail",
   "limit": 200,
   "maxDiffBytes": 80000,
   "timeoutMs": 20000,

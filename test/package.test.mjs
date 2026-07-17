@@ -35,9 +35,9 @@ test("packed package installs and initializes a working consumer repository", { 
     const manifest = packed[0];
     assert.equal(manifest.name, "changetrail");
     const paths = manifest.files.map((file) => file.path);
-    assert.ok(paths.includes("assets/changelog.html"));
+    assert.ok(paths.includes("assets/changetrail.html"));
     assert.ok(paths.includes("bin/changetrail.mjs"));
-    assert.ok(paths.includes("changetrail/config.json"));
+    assert.ok(paths.includes("changetrail.json"));
     assert.ok(paths.includes("src/init.mjs"));
     assert.equal(paths.some((path) => path.startsWith("test/")), false);
     assert.equal(paths.some((path) => path.startsWith("hooks/")), false);
@@ -63,8 +63,11 @@ test("packed package installs and initializes a working consumer repository", { 
     assert.match(initOutput, /initialized/);
     assert.match(initOutput, /installed\/updated hooks/);
     assert.match(readFileSync(join(consumer, ".git", "hooks", "pre-commit"), "utf8"), /# >>> changetrail >>>/);
-    assert.match(readFileSync(join(consumer, "changelog", "changelog.html"), "utf8"), /Repository ledger/);
-    assert.equal(existsSync(join(consumer, "changetrail", "config.json")), true);
+    const viewer = readFileSync(join(consumer, "changetrail", "changetrail.html"), "utf8");
+    assert.match(viewer, /Repository ledger/);
+    assert.match(viewer, /<script src="\.\/data\.js"><\/script>/);
+    assert.equal(existsSync(join(consumer, "changetrail.json")), true);
+    assert.equal(existsSync(join(consumer, "changetrail", "config.json")), false);
     assert.equal(existsSync(join(consumer, "ctrail", "config.json")), false);
     assert.equal(existsSync(join(consumer, "changelog", "changetrail.json")), false);
     assert.equal(existsSync(join(consumer, "changelog", "ctrail.json")), false);
@@ -72,11 +75,11 @@ test("packed package installs and initializes a working consumer repository", { 
 
     run("git", ["add", "."], consumer);
     run("git", ["commit", "--quiet", "-m", "chore: initialize changelog"], consumer);
-    const rows = jsonFiles(join(consumer, "changelog", "db"));
+    const rows = jsonFiles(join(consumer, "changetrail", "db"));
     assert.equal(rows.length, 1);
     assert.match(rows[0], /[/\\][0-9a-f]{2}[/\\][0-9a-f]{2}[/\\][0-9a-f]{64}\.json$/);
     assert.match(
-      readFileSync(join(consumer, "changelog", "changelog.data.js"), "utf8"),
+      readFileSync(join(consumer, "changetrail", "data.js"), "utf8"),
       /initialize changelog/,
     );
   } finally {

@@ -59,7 +59,7 @@ async function main() {
       const config = loadConfig();
       const created = await generate(config);
       const total = build(config);
-      log(`changetrail: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
+      log(`changetrail: +${created} new, ${total} total → ${config.dir}/data.js`);
       break;
     }
     case "init":
@@ -85,12 +85,12 @@ Usage:
   changetrail record     Create + stage a DB row for currently staged source changes
   changetrail backfill   Create DB rows for recent history (alias: generate)
   changetrail sync       Backfill history, then rebuild viewer data
-  changetrail build      Compile recent db/**/*.json rows → changelog.data.js
+  changetrail build      Compile recent db/**/*.json rows → data.js
   changetrail edit ID    Edit + stage an entry (creator/author/committer only)
   changetrail verify-ownership --base SHA --head SHA
                  Verify row ownership across a commit range
 
-Config: changetrail/config.json
+Config: changetrail.json
 Providers: raw | claude | codex/openai | llama`);
       if (cmd && cmd !== "help") process.exit(1);
   }

@@ -11,7 +11,7 @@ export function readEntries(dbDir) {
 
 const abc = "abcdefghijklmnopqrstuvwxyz";
 
-/** Map a stored entry to the shape changelog.html renders. */
+/** Map a stored entry to the shape changetrail.html renders. */
 function toGroup(entry, commit) {
   const parsed = parseSubject(commit.subject ?? "");
   const humanBullets = bulletLines(commit.body ?? "");
@@ -41,8 +41,8 @@ function toGroup(entry, commit) {
 }
 
 /**
- * Compile the file DB into changelog.data.js — a plain script that sets
- * window.__CHANGELOG__. Loaded by changelog.html; works over file:// (script
+ * Compile the file DB into data.js — a plain script that sets
+ * window.__CHANGELOG__. Loaded by changetrail.html; works over file:// (script
  * tags load local siblings, unlike fetch). This file is a rebuildable cache.
  */
 export function build(config, options = {}) {
