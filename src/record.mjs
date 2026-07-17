@@ -1,12 +1,5 @@
-import { createHash, randomUUID } from "node:crypto";
-import {
-  existsSync,
-  lstatSync,
-  mkdirSync,
-  readdirSync,
-  readFileSync,
-  writeFileSync,
-} from "node:fs";
+import { createHash } from "node:crypto";
+import { lstatSync, readFileSync } from "node:fs";
 import { join, relative } from "node:path";
 import { describeChange } from "./describe.mjs";
 import {
@@ -20,6 +13,7 @@ import {
 } from "./git.mjs";
 import { projectsForFiles } from "./projects.mjs";
 import { assertStagedOwnership } from "./ownership.mjs";
+import { existingEntryPath, writeEntry } from "./store.mjs";
 
 const SCHEMA_VERSION = 1;
 
@@ -28,14 +22,14 @@ export async function recordStagedChange(config) {
   assertStagedOwnership(config);
   const dbPath = directoryPrefix(config.root, config.dbDir);
   const dataPath = toGitPath(relative(config.root, config.dataFile));
-  const files = stagedFiles(config.root).filter(
+  const staged = stagedFiles(config.root);
+  const files = staged.filter(
     (file) => !file.startsWith(dbPath) && file !== dataPath,
   );
 
   // Amend/message-only commit, or an internal DB-only commit: nothing new.
   if (!files.length) return { created: false, entry: null };
 
-  mkdirSync(config.dbDir, { recursive: true });
   const author = gitAuthor(config.root);
   const fingerprint = createHash("sha256")
     .update(currentHead(config.root))
@@ -45,7 +39,13 @@ export async function recordStagedChange(config) {
     .update(stagedIdentity(files, config.root))
     .digest("hex");
 
-  const existing = findFingerprint(config.dbDir, fingerprint);
+  // New rows use the fingerprint as their ID, so repeat pre-commit attempts
+  // are a constant-time lookup. Check only already-staged DB rows as a bridge
+  // for rows created by older package versions.
+  const exact = existingEntryPath(config.dbDir, fingerprint);
+  const existing = exact
+    ? readExisting(exact)
+    : findStagedFingerprint(config.root, staged.filter((file) => file.startsWith(dbPath)), fingerprint);
   if (existing) {
     stageFile(existing.path, config.root);
     return { created: false, entry: existing.entry };
@@ -54,10 +54,9 @@ export async function recordStagedChange(config) {
   const diff = stagedDiff(files, config.maxDiffBytes, config.root);
   const description = await describeChange({ files, diff, subject: "", body: "" }, config);
   const createdAt = new Date().toISOString();
-  const id = `${createdAt.replace(/[-:.TZ]/g, "").slice(0, 14)}-${randomUUID()}`;
   const entry = {
     schemaVersion: SCHEMA_VERSION,
-    id,
+    id: fingerprint,
     createdAt,
     author,
     projects: projectsForFiles(files, config.projects),
@@ -67,8 +66,7 @@ export async function recordStagedChange(config) {
     model: description.provider === "raw" ? null : config.model,
     sourceFingerprint: fingerprint,
   };
-  const path = join(config.dbDir, `${id}.json`);
-  writeFileSync(path, `${JSON.stringify(entry, null, 2)}\n`, { flag: "wx" });
+  const path = writeEntry(config.dbDir, entry, { exclusive: true });
   stageFile(path, config.root);
   return { created: true, entry };
 }
@@ -78,18 +76,23 @@ function directoryPrefix(root, directory) {
   return `${path}/`;
 }
 
-function findFingerprint(dbDir, fingerprint) {
-  if (!existsSync(dbDir)) return null;
-  for (const file of readdirSync(dbDir)) {
-    if (!file.endsWith(".json")) continue;
-    const path = join(dbDir, file);
-    if (!lstatSync(path).isFile()) continue;
-    try {
-      const entry = JSON.parse(readFileSync(path, "utf8"));
-      if (entry.sourceFingerprint === fingerprint) return { path, entry };
-    } catch {
-      // Build reports malformed rows with their filename; do not hide it here.
-    }
+function findStagedFingerprint(root, files, fingerprint) {
+  for (const file of files) {
+    const existing = readExisting(join(root, file), false);
+    if (existing?.entry.sourceFingerprint === fingerprint) return existing;
   }
   return null;
+}
+
+function readExisting(path, strict = true) {
+  try {
+    if (!lstatSync(path).isFile()) {
+      if (!strict) return null;
+      throw new Error(`Changelog row must be a regular file: ${path}`);
+    }
+    return { path, entry: JSON.parse(readFileSync(path, "utf8")) };
+  } catch (error) {
+    if (!strict) return null;
+    throw new Error(`Invalid changelog row ${path}: ${error.message}`);
+  }
 }

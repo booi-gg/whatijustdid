@@ -1,19 +1,26 @@
-# @bm/changelog
+# cvl
 
-A zero-dependency Node CLI that records opted-in commits in a Git-owned
+CVL (Change View and Logs) is a zero-dependency Node CLI that records opted-in commits in a Git-owned
 changelog and renders them in a standalone HTML viewer.
 
 Each participating commit adds its own JSON row. Parallel branches therefore
 add different files instead of competing over one SQLite database, and every
 change stays readable in Git and reviewable in a pull request.
 
+Rows are content-addressed and stored in two hash-shard directories, for
+example `changelog/db/4a/7f/<id>.json`. Even very large histories avoid a
+single directory with millions of files. Viewer builds query only the latest
+`limit` row-adding commits, so hook time and generated browser data stay
+bounded as the repository grows. Existing flat `changelog/db/*.json` rows are
+still read automatically; no migration is required.
+
 ## Install
 
 Install the package in the repository that should own the changelog:
 
 ```sh
-npm install --save-dev @bm/changelog
-npx changelog init
+npm install --save-dev cvl
+npx cvl init
 ```
 
 `init` is safe to rerun. It:
@@ -26,22 +33,22 @@ npx changelog init
 - builds the initial viewer data
 
 Commit the package lockfile and the new repository files. Every developer must
-run `npm install` and `npx changelog install` once per clone because Git hooks
+run `npm install` and `npx cvl install` once per clone because Git hooks
 are local. A package script makes that easy:
 
 ```json
 {
   "scripts": {
-    "changelog:install": "changelog install",
-    "changelog:build": "changelog build"
+    "changelog:install": "cvl install",
+    "changelog:build": "cvl build"
   }
 }
 ```
 
-`changelog install` is an alias of `changelog init`. Missing assets are
+`cvl install` is an alias of `cvl init`. Missing assets are
 restored, but existing config and viewer files are preserved. Run
-`changelog init --force` to refresh only the viewer from the bundled template.
-Rerunning either command refreshes one marked `@bm/changelog` block in each
+`cvl init --force` to refresh only the viewer from the bundled template.
+Rerunning either command refreshes one marked `cvl` block in each
 hook instead of adding duplicates; everything outside that block stays intact.
 
 ## Normal use
@@ -83,10 +90,11 @@ stay invisible. Hooks never backfill them.
 
 ## Edit an entry
 
-Copy the row filename without `.json` from `changelog/db`, then run:
+Copy the row filename without `.json` from anywhere under `changelog/db`, then
+run:
 
 ```sh
-npx changelog edit <id-or-unique-prefix>
+npx cvl edit <id-or-unique-prefix>
 ```
 
 The command opens `$VISUAL`, then `$EDITOR`, then `vi`. Only `type`, `projects`,
@@ -124,6 +132,10 @@ Shared config lives at `changelog/changelog.json`:
 For a custom changelog directory, put the shared config at the repository root
 as `changelog.json` and set `dir` there.
 
+`limit` bounds both the recent commits considered by `backfill` and the number
+of recent entries compiled into the local viewer. The tracked row store keeps
+older history; raise the value when a larger viewer window is useful.
+
 Each developer can choose a provider without modifying tracked config. Create
 the ignored `changelog/changelog.local.json`:
 
@@ -160,7 +172,7 @@ commit.
 Run the same range check in pull-request CI after installing dependencies:
 
 ```sh
-npx --no-install changelog verify-ownership \
+npx --no-install cvl verify-ownership \
   --base "$BASE_SHA" \
   --head "$HEAD_SHA"
 ```
@@ -172,15 +184,15 @@ type-changed a row—not only the final diff.
 ## Commands
 
 ```text
-changelog init       Scaffold files, install hooks, and build viewer data
-changelog install    Alias of init; useful once per clone
-changelog record     Generate and stage a row for staged source changes
-changelog build      Compile db/*.json into changelog.data.js
-changelog backfill   Explicitly import recent Git history
-changelog sync       Backfill, then build
-changelog edit ID    Edit and stage an owned row
-changelog verify-ownership --base SHA --head SHA
-                     Verify ownership across a commit range
+cvl init       Scaffold files, install hooks, and build viewer data
+cvl install    Alias of init; useful once per clone
+cvl record     Generate and stage a row for staged source changes
+cvl build      Compile recent db/**/*.json rows into changelog.data.js
+cvl backfill   Import + stage recent Git history explicitly
+cvl sync       Backfill, then build
+cvl edit ID    Edit and stage an owned row
+cvl verify-ownership --base SHA --head SHA
+               Verify ownership across a commit range
 ```
 
 `git commit --no-verify` bypasses `pre-commit`, so it also opts that commit out
@@ -197,7 +209,7 @@ import {
   initializeProject,
   loadConfig,
   recordStagedChange,
-} from "@bm/changelog";
+} from "cvl";
 ```
 
 ## Package development
@@ -211,6 +223,6 @@ To test the exact tarball in another repository:
 
 ```sh
 npm pack
-npm install --save-dev ./bm-changelog-0.1.0.tgz
-npx changelog init
+npm install --save-dev ./cvl-0.1.0.tgz
+npx cvl init
 ```

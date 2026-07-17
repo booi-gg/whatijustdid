@@ -1,5 +1,3 @@
-import { mkdirSync, writeFileSync, existsSync } from "node:fs";
-import { join } from "node:path";
 import {
   recentShas,
   commitMeta,
@@ -7,32 +5,28 @@ import {
   commitDiff,
   commitIndexForDirectory,
   gitAuthor,
+  stageFile,
 } from "./git.mjs";
 import { projectsForFiles } from "./projects.mjs";
 import { describeChange } from "./describe.mjs";
-import { readEntries } from "./build.mjs";
+import { existingEntryPath, writeEntry } from "./store.mjs";
 
 const SCHEMA_VERSION = 1;
 
 /**
- * Materialize db/<sha>.json for every recent commit not already stored.
- * Idempotent + backfilling: safe to run on every commit, merge, or startup.
- * One file per commit → unique names → conflict-free merges.
+ * Materialize + stage one hash-sharded row for every recent commit not already
+ * stored. Idempotent + backfilling; unique files keep merges conflict-free.
  */
 export async function generate(config) {
-  mkdirSync(config.dbDir, { recursive: true });
   const creator = gitAuthor(config.root);
   const represented = new Set(
-    [...commitIndexForDirectory(config.root, config.dbDir).values()].map((meta) => meta.sha),
+    [...commitIndexForDirectory(config.root, config.dbDir, "HEAD", config.limit).values()]
+      .map((meta) => meta.sha),
   );
-  for (const entry of readEntries(config.dbDir)) {
-    if (entry.commit?.sha) represented.add(entry.commit.sha);
-  }
 
   let created = 0;
   for (const sha of recentShas(config.limit, config.root)) {
-    const file = join(config.dbDir, `${sha}.json`);
-    if (represented.has(sha) || existsSync(file)) continue;
+    if (represented.has(sha) || existingEntryPath(config.dbDir, sha)) continue;
 
     const meta = commitMeta(sha, config.root);
     const files = commitFiles(sha, config.root);
@@ -63,7 +57,8 @@ export async function generate(config) {
       provider: result.provider,
       model: result.provider === "raw" ? null : config.model,
     };
-    writeFileSync(file, JSON.stringify(entry, null, 2) + "\n");
+    const path = writeEntry(config.dbDir, entry);
+    stageFile(path, config.root);
     created++;
   }
   return created;

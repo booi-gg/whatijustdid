@@ -11,9 +11,9 @@ import { fileURLToPath } from "node:url";
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const defaultConfigPath = join(packageDir, "changelog.json");
 const viewerTemplatePath = join(packageDir, "assets", "changelog.html");
-const MARKER = "# >>> @bm/changelog >>>";
-const END_MARKER = "# <<< @bm/changelog <<<";
-const BLOCK = /\n?# >>> @bm\/changelog >>>[\s\S]*?# <<< @bm\/changelog <<<(?:\n|$)/g;
+const MARKER = "# >>> cvl >>>";
+const END_MARKER = "# <<< cvl <<<";
+const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl) <<<(?:\n|$)/g;
 
 /** Scaffold the tracked consumer files without replacing user-owned config. */
 export function initializeProject(config, options = {}) {

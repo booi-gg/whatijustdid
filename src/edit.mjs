@@ -3,16 +3,15 @@ import {
   mkdtempSync,
   lstatSync,
   readFileSync,
-  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
-import { basename, join, relative } from "node:path";
+import { join, relative } from "node:path";
 import { spawnSync } from "node:child_process";
 import {
+  commitForAddedPath,
   commitMeta,
-  commitIndexForDirectory,
   fileAtRevision,
   gitAuthor,
   stageFile,
@@ -20,10 +19,12 @@ import {
 } from "./git.mjs";
 import { assertEntryOwner } from "./ownership.mjs";
 import { CHANGE_TYPES } from "./providers/shared.mjs";
+import { findEntryPath } from "./store.mjs";
 
 const EDITABLE_KEYS = ["type", "projects", "changes"];
 
 export function editEntry(config, id, dependencies = {}) {
+  if (!id) throw new Error("edit requires an entry id or unique id prefix");
   const path = findEntryPath(config.dbDir, id);
   if (!lstatSync(path).isFile()) throw new Error(`Changelog row must be a regular file: ${path}`);
   const text = readFileSync(path, "utf8");
@@ -31,7 +32,6 @@ export function editEntry(config, id, dependencies = {}) {
   const gitPath = toGitPath(relative(config.root, path));
 
   const readRevision = dependencies.fileAtRevision ?? fileAtRevision;
-  const indexDirectory = dependencies.commitIndexForDirectory ?? commitIndexForDirectory;
   const readCommit = dependencies.commitMeta ?? commitMeta;
   const currentAuthor = dependencies.gitAuthor ?? gitAuthor;
   const stage = dependencies.stageFile ?? stageFile;
@@ -40,7 +40,7 @@ export function editEntry(config, id, dependencies = {}) {
   const canonical = canonicalText === null ? entry : parseJson(canonicalText, gitPath);
   const sourceCommit = canonical.commit?.sha
     ? readCommit(canonical.commit.sha, config.root)
-    : indexDirectory(config.root, config.dbDir, "HEAD").get(gitPath) ?? {};
+    : addedCommitForPath(config, gitPath, dependencies);
   assertEntryOwner(canonical, sourceCommit, actor.email, gitPath);
 
   const draft = Object.fromEntries(EDITABLE_KEYS.map((key) => [key, entry[key]]));
@@ -75,18 +75,6 @@ export function applyEntryEdit(entry, editable, actor, now = new Date()) {
   };
 }
 
-function findEntryPath(dbDir, id) {
-  if (!id) throw new Error("edit requires an entry id or unique id prefix");
-  const files = readdirSync(dbDir).filter((file) => file.endsWith(".json"));
-  const exact = files.find((file) => file === `${id}.json`);
-  if (exact) return join(dbDir, exact);
-
-  const matches = files.filter((file) => basename(file, ".json").startsWith(id));
-  if (!matches.length) throw new Error(`No changelog entry matches "${id}"`);
-  if (matches.length > 1) throw new Error(`Entry prefix "${id}" is ambiguous`);
-  return join(dbDir, matches[0]);
-}
-
 function editWithConfiguredEditor(draft) {
   const directory = mkdtempSync(join(tmpdir(), "changelog-edit-"));
   const path = join(directory, `${randomUUID()}.json`);
@@ -103,6 +91,16 @@ function editWithConfiguredEditor(draft) {
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
+}
+
+function addedCommitForPath(config, path, dependencies) {
+  if (dependencies.commitForAddedPath) {
+    return dependencies.commitForAddedPath(config.root, path, "HEAD");
+  }
+  if (dependencies.commitIndexForDirectory) {
+    return dependencies.commitIndexForDirectory(config.root, config.dbDir, "HEAD").get(path) ?? {};
+  }
+  return commitForAddedPath(config.root, path, "HEAD");
 }
 
 function validateEditable(editable) {
