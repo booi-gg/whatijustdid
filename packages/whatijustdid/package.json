@@ -19,7 +19,8 @@
     "url": "https://github.com/booi-gg/changelog/issues"
   },
   "bin": {
-    "whatijustdid": "./bin/cli.mjs"
+    "whatijustdid": "./bin/cli.mjs",
+    "wijd": "./bin/cli.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",
