@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { VERBOSITY_LEVELS } from "./agents/shared.mjs";
 import { CLI_NAME, ENV_PREFIX } from "./brand.mjs";
 import { gitCommonDir, gitDir, repoRoot } from "./git.mjs";
 
@@ -33,8 +34,16 @@ export function loadConfig(options = {}) {
     : {};
   const config = mergeAgentConfig(initial, local);
   const configuredAgent = config.agent ?? "codex";
-  const agent = env[`${ENV_PREFIX}_AGENT`] ?? configuredAgent;
-  const environmentModel = env[`${ENV_PREFIX}_MODEL`];
+  const verbosity = VERBOSITY_LEVELS.includes(config.verbosity)
+    ? config.verbosity
+    : "normal";
+  const agent =
+    env.WHATIJUSTDID_AGENT ??
+    env[`${ENV_PREFIX}_AGENT`] ??
+    env.CHANGELOG_AGENT ??
+    legacyAgent(env.CHANGELOG_PROVIDER) ??
+    configuredAgent;
+  const environmentModel = env[`${ENV_PREFIX}_MODEL`] ?? env.CHANGELOG_MODEL;
   const model =
     environmentModel ??
     (sameAgent(agent, configuredAgent) ? config.model : null);
@@ -51,6 +60,7 @@ export function loadConfig(options = {}) {
   return {
     agent,
     model: model ?? null,
+    verbosity,
     viewerLimit,
     generationLimit,
     // Kept as a read-only compatibility alias for older API consumers.

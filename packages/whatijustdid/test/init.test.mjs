@@ -29,6 +29,7 @@ test("creates only whatijustdid.json in the repository", () => {
       {
         agent: "codex",
         model: null,
+        verbosity: "normal",
         viewerLimit: 200,
         generationLimit: 50,
         maxDiffBytes: 80000,
