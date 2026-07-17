@@ -49,7 +49,7 @@ test(
       assert.equal(manifest.name, CLI_NAME);
       const paths = manifest.files.map((file) => file.path);
       assert.ok(paths.includes("assets/changereceipt.html"));
-      assert.ok(paths.includes("bin/changereceipt.mjs"));
+      assert.ok(paths.includes("bin/cli.mjs"));
       assert.ok(paths.includes("src/store.mjs"));
       assert.ok(paths.includes("whatijustdid.json"));
       assert.equal(paths.includes("changereceipt.json"), false);
