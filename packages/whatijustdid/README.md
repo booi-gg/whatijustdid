@@ -137,6 +137,7 @@ The tracked `whatijustdid.json` contains safe shared defaults:
   "generationLimit": 50,
   "maxDiffBytes": 80000,
   "timeoutMs": 20000,
+  "showTokens": false,
   "projects": {
     "web": ["apps/web"],
     "worker": ["apps/worker"]
@@ -144,7 +145,7 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 }
 ```
 
-`model: null` lets the selected agent use its package default. `verbosity` controls summary detail: `"concise"` (600 tokens, 140 chars/change), `"normal"` (1200, 280), to `"detailed"` (2400, 560).
+`model: null` lets the selected agent use its package default. `verbosity` controls summary detail: `"concise"` (600 tokens, 140 chars/change), `"normal"` (1200, 280), to `"detailed"` (2400, 560). `showTokens` (default `false`) — when `true`, the bundled viewer displays a per-commit token-count badge next to each summary entry showing the AI usage for that generation.
 
 Put personal overrides in Git-private `.git/whatijustdid/whatijustdid.local.json`. Environment variables take precedence:
 
