@@ -41,5 +41,22 @@ window.__CHANGELOG__ = [
         "description": "update: fix naming"
       }
     ]
+  },
+  {
+    "kind": "commit",
+    "ref": "fc9b9d0",
+    "author": "booi-dev",
+    "date": "2026-07-17T18:34:36+05:30",
+    "projects": [],
+    "link": null,
+    "entries": [
+      {
+        "letter": "(a)",
+        "tags": [
+          "feat"
+        ],
+        "description": "improve defaults and changelog viewer"
+      }
+    ]
   }
 ];
