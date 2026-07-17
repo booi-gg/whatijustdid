@@ -61,13 +61,21 @@ npm install --save-dev whatijustdid
 npx whatijustdid init
 ```
 
-<<<<<<<< HEAD:packages/changereceipt/README.md
-Initialization creates shared `changereceipt.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx changereceipt init --no-preview` when a script must initialize and exit.
-========
 Initialization creates shared `whatijustdid.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx whatijustdid init --no-preview` when a script must initialize and exit.
->>>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c:packages/whatijustdid/README.md
 
 After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
+
+### Skipping summary generation
+
+Skip per-commit summary generation in one of two ways:
+
+```bash
+# Include [skip wijd] in the commit message
+git commit -m "chore: bump deps [skip wijd]"
+
+# Set the WHATIJUSTDID_SKIP environment variable
+WHATIJUSTDID_SKIP=1 git commit -m "chore: bump deps"
+```
 
 To install or refresh only the local hooks:
 
