@@ -1,10 +1,9 @@
-import { parseSubject } from "./raw.mjs";
 import {
   CHANGELOG_SCHEMA,
   SYSTEM_PROMPT,
   apiUrl,
-  coerceModelJson,
-  formatProviderInput,
+  formatAgentInput,
+  parseAgentJson,
   postJson,
 } from "./shared.mjs";
 
@@ -13,22 +12,23 @@ const DEFAULT_MODEL = "claude-sonnet-5";
 
 export async function describe(input, { model, timeoutMs }) {
   const key = process.env.ANTHROPIC_API_KEY;
-  if (!key) throw new Error("claude provider: ANTHROPIC_API_KEY not set");
+  if (!key) throw new Error("ANTHROPIC_API_KEY not set");
+  const selectedModel = model ?? DEFAULT_MODEL;
 
   const data = await postJson(
     apiUrl(process.env.ANTHROPIC_BASE_URL ?? "https://api.anthropic.com", "v1/messages"),
     {
-      label: "claude provider",
+      label: "Anthropic Messages API",
       timeoutMs,
       headers: {
         "x-api-key": key,
         "anthropic-version": "2023-06-01",
       },
       body: {
-        model: model ?? DEFAULT_MODEL,
+        model: selectedModel,
         max_tokens: 1200,
         system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: formatProviderInput(input) }],
+        messages: [{ role: "user", content: formatAgentInput(input) }],
         output_config: {
           format: { type: "json_schema", schema: CHANGELOG_SCHEMA },
         },
@@ -37,6 +37,5 @@ export async function describe(input, { model, timeoutMs }) {
   );
 
   const text = data.content?.map((block) => block.text ?? "").join("") ?? "";
-  const { type, title } = parseSubject(input.subject ?? "");
-  return coerceModelJson(text, { type, summary: title });
+  return { ...parseAgentJson(text), model: selectedModel };
 }

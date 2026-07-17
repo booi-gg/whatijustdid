@@ -1,17 +1,17 @@
 export { loadConfig } from "./config.mjs";
-export { generate } from "./generate.mjs";
+export { generate, planGeneration } from "./generate.mjs";
 export { startPreview } from "./preview.mjs";
 export { build, readEntries } from "./build.mjs";
 export { installHooks, uninstallHooks } from "./hooks.mjs";
 export { initializeProject } from "./init.mjs";
-export { getProvider } from "./providers/index.mjs";
-export { recordStagedChange } from "./record.mjs";
+export { getAgent } from "./agents/index.mjs";
+export { recordCommittedChange } from "./record.mjs";
 export { describeChange } from "./describe.mjs";
 export { editEntry, applyEntryEdit } from "./edit.mjs";
+export { importLegacyRows } from "./legacy.mjs";
 export {
-  assertEntryOwner,
-  assertStagedOwnership,
-  canEditEntry,
-  ownerEmails,
-  verifyOwnershipRange,
-} from "./ownership.mjs";
+  LocalSummaryStore,
+  openSummaryStore,
+  PROMPT_VERSION,
+  STORE_SCHEMA_VERSION,
+} from "./store.mjs";

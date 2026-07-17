@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { relative, sep } from "node:path";
+import { isAbsolute, relative, resolve, sep } from "node:path";
 
 function git(args, opts = {}) {
   const output = execFileSync("git", args, {
@@ -22,88 +22,100 @@ export function repoRoot(cwd = process.cwd()) {
   return git(["rev-parse", "--show-toplevel"], { cwd });
 }
 
-/** Most recent commit SHAs, newest first, capped at `limit`. */
-export function recentShas(limit, cwd = process.cwd()) {
-  const out = git(["log", `-n${limit}`, "--no-merges", "--format=%H"], { cwd });
+/** Git-private directory shared by every worktree in this clone. */
+export function gitCommonDir(cwd = process.cwd()) {
+  const root = repoRoot(cwd);
+  const directory = git(["rev-parse", "--git-common-dir"], { cwd: root });
+  return isAbsolute(directory) ? directory : resolve(root, directory);
+}
+
+/** Commit SHAs, newest first. Omitting `limit` walks all reachable history. */
+export function commitShas(limit, cwd = process.cwd()) {
+  const count = Number.isInteger(limit) && limit > 0 ? [`-n${limit}`] : [];
+  const out = tryGit(["rev-list", "--topo-order", ...count, "HEAD"], { cwd });
   return out ? out.split("\n") : [];
 }
 
+/** Backwards-compatible name for API consumers. */
+export const recentShas = commitShas;
+
 const FIELD = "\x1f"; // unit separator
 const RECORD = "\x1e"; // record separator
+const END = "\x1d";
+
+/** Recent reachable commit metadata in one Git process, newest first. */
+export function recentCommitMetas(limit, cwd = process.cwd()) {
+  const count = Number.isInteger(limit) && limit > 0 ? [`-n${limit}`] : [];
+  const format = `%x1e%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%cI%x1d`;
+  const out = tryGit(["log", "--topo-order", ...count, `--format=${format}`, "HEAD"], { cwd });
+  return out
+    .split(RECORD)
+    .map((chunk) => parseCompactCommit(chunk))
+    .filter(Boolean);
+}
 
 /** Structured metadata for a single commit. */
 export function commitMeta(sha, cwd = process.cwd()) {
-  const fmt = ["%H", "%h", "%an", "%ae", "%cn", "%ce", "%aI", "%s", "%b"].join(FIELD) + RECORD;
+  const fmt = ["%H", "%h", "%P", "%an", "%ae", "%cn", "%ce", "%cI"].join(FIELD) + RECORD;
   const raw = git(["show", "--no-patch", `--format=${fmt}`, sha], { cwd });
   const end = raw.indexOf(RECORD);
-  const [hash, short, author, authorEmail, committer, committerEmail, date, subject, body] = raw
+  const [hash, short, parents, author, authorEmail, committer, committerEmail, date] = raw
     .slice(0, end >= 0 ? end : undefined)
     .split(FIELD);
   return {
     sha: hash,
     shortSha: short,
+    parents: parents ? parents.split(" ") : [],
     author,
     authorEmail,
     committer,
     committerEmail,
     date,
-    subject,
-    body: body ?? "",
+  };
+}
+
+function parseCompactCommit(chunk) {
+  const end = chunk.indexOf(END);
+  if (end < 0) return null;
+  const [sha, shortSha, parents, author, authorEmail, committer, committerEmail, date] = chunk
+    .slice(0, end)
+    .trimStart()
+    .split(FIELD);
+  if (!sha) return null;
+  return {
+    sha,
+    shortSha,
+    parents: parents ? parents.split(" ") : [],
+    author,
+    authorEmail,
+    committer,
+    committerEmail,
+    date,
   };
 }
 
 /** Paths changed by a commit. */
 export function commitFiles(sha, cwd = process.cwd()) {
-  const out = git(["show", "--name-only", "--format=", sha], { cwd });
+  const parent = tryGit(["rev-parse", "--verify", `${sha}^1`], { cwd });
+  const out = parent
+    ? git(["diff", "--name-only", "--no-ext-diff", parent, sha], { cwd })
+    : git(["show", "--root", "--name-only", "--format=", sha], { cwd });
   return out ? out.split("\n").filter(Boolean) : [];
 }
 
 export function commitDiff(sha, maxBytes, cwd = process.cwd()) {
-  const out = git(["show", "--format=", "--no-ext-diff", "--unified=2", sha], { cwd });
+  const parent = tryGit(["rev-parse", "--verify", `${sha}^1`], { cwd });
+  const out = parent
+    ? git(["diff", "--no-ext-diff", "--unified=2", parent, sha], { cwd })
+    : git(["show", "--root", "--format=", "--no-ext-diff", "--unified=2", sha], { cwd });
   return truncateUtf8(out, maxBytes);
-}
-
-export function stagedFiles(cwd = process.cwd()) {
-  const out = git(["diff", "--cached", "--name-only", "--diff-filter=ACMRD", "-z"], {
-    cwd,
-    encoding: "buffer",
-  });
-  return out ? out.toString("utf8").split("\0").filter(Boolean) : [];
-}
-
-export function stagedDiff(files, maxBytes, cwd = process.cwd()) {
-  if (!files.length) return "";
-  const out = git(
-    ["diff", "--cached", "--no-ext-diff", "--unified=2", "--", ...files],
-    { cwd },
-  );
-  return truncateUtf8(out, maxBytes);
-}
-
-export function stagedIdentity(files, cwd = process.cwd()) {
-  if (!files.length) return "";
-  return git(["diff", "--cached", "--raw", "--no-abbrev", "--", ...files], { cwd });
-}
-
-export function stageFile(path, cwd = process.cwd()) {
-  git(["add", "--", path], { cwd });
 }
 
 export function currentHead(cwd = process.cwd()) {
   return tryGit(["rev-parse", "HEAD"], { cwd });
 }
 
-export function gitAuthor(cwd = process.cwd()) {
-  return {
-    name: tryGit(["config", "--get", "user.name"], { cwd }) || "Unknown",
-    email: tryGit(["config", "--get", "user.email"], { cwd }) || "",
-  };
-}
-
-/**
- * Resolve DB row paths to commits that introduced them. One git process for
- * every row would make post-commit hooks increasingly slow; parse one log.
- */
+/** Resolve legacy JSON row paths to their adding commits in one Git process. */
 export function commitIndexForDirectory(root, directory, revision = "HEAD", maxCount) {
   const directoryPath = toGitPath(relative(root, directory));
   const format = `%x1e%H%x1f%h%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%aI%x1f%s%x1f%b%x1d`;
@@ -113,20 +125,6 @@ export function commitIndexForDirectory(root, directory, revision = "HEAD", maxC
     { cwd: root },
   );
   return parseCommitIndexLog(out);
-}
-
-/** Resolve one row's adding commit without indexing the database's full history. */
-export function commitForAddedPath(root, path, revision = "HEAD") {
-  const format = `%x1e%H%x1f%h%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%aI%x1f%s%x1f%b%x1d`;
-  const out = tryGit(
-    ["log", "-n1", `--format=${format}`, "--diff-filter=A", revision, "--", path],
-    { cwd: root },
-  );
-  for (const chunk of out.split(RECORD)) {
-    const meta = parseIndexedCommit(chunk);
-    if (meta) return meta;
-  }
-  return {};
 }
 
 export function parseCommitIndexLog(out) {
@@ -180,105 +178,6 @@ function parseIndexedCommit(chunk) {
 
 export function toGitPath(path) {
   return sep === "/" ? path : path.split(sep).join("/");
-}
-
-/** DB rows added, modified, deleted, or type-changed in the pending commit. */
-export function stagedModifiedPaths(root, directory) {
-  const directoryPath = toGitPath(relative(root, directory));
-  const out = git(
-    [
-      "diff",
-      "--cached",
-      "--name-only",
-      "--diff-filter=AMDT",
-      "--no-renames",
-      "-z",
-      "--",
-      directoryPath,
-    ],
-    { cwd: root, encoding: "buffer" },
-  );
-  return nulPaths(out);
-}
-
-/** DB rows added, modified, deleted, or type-changed between two revisions. */
-export function modifiedPathsBetween(root, directory, base, head) {
-  const directoryPath = toGitPath(relative(root, directory));
-  const out = git(
-    [
-      "diff",
-      "--name-only",
-      "--diff-filter=AMDT",
-      "--no-renames",
-      "-z",
-      `${base}..${head}`,
-      "--",
-      directoryPath,
-    ],
-    { cwd: root, encoding: "buffer" },
-  );
-  return nulPaths(out);
-}
-
-export function fileAtRevision(root, revision, path) {
-  try {
-    return git(["show", `${revision}:${path}`], { cwd: root });
-  } catch {
-    return null;
-  }
-}
-
-export function fileAtIndex(root, path) {
-  try {
-    return git(["show", `:${path}`], { cwd: root });
-  } catch {
-    return null;
-  }
-}
-
-export function fileModeAtIndex(root, path) {
-  const out = tryGit(["ls-files", "--stage", "--", path], { cwd: root });
-  return out ? out.split(/\s/, 1)[0] : null;
-}
-
-export function fileModeAtRevision(root, revision, path) {
-  const out = tryGit(["ls-tree", revision, "--", path], { cwd: root });
-  return out ? out.split(/\s/, 1)[0] : null;
-}
-
-export function mergeBase(root, base, head) {
-  return git(["merge-base", base, head], { cwd: root });
-}
-
-export function commitActorsBetween(root, base, head, path) {
-  const format = `%x1e%H%x1f%ae%x1f%ce`;
-  const out = tryGit(["log", `--format=${format}`, `${base}..${head}`, "--", path], {
-    cwd: root,
-  });
-  return parseCommitActors(out);
-}
-
-export function firstAddedCommitBetween(root, base, head, path) {
-  const out = tryGit(
-    ["log", "--reverse", "--diff-filter=A", "--format=%H", `${base}..${head}`, "--", path],
-    { cwd: root },
-  );
-  return out.split("\n").find(Boolean) ?? "";
-}
-
-export function parseCommitActors(out) {
-  return out
-    .split(RECORD)
-    .map((chunk) => chunk.trim())
-    .filter(Boolean)
-    .map((chunk) => {
-      const [sha, authorEmail, committerEmail] = chunk.split(FIELD);
-      return { sha, authorEmail, committerEmail };
-    });
-}
-
-function nulPaths(output) {
-  return output ? output.toString("utf8").split("\0").filter(Boolean) : [];
 }
 
 function truncateUtf8(value, maxBytes) {

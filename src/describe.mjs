@@ -1,22 +1,18 @@
-import { getProvider } from "./providers/index.mjs";
-import * as raw from "./providers/raw.mjs";
+import { getAgent } from "./agents/index.mjs";
 
-/** AI failure must never strand a developer mid-commit. Raw output is safe. */
+/** Every stored description must come from the configured AI agent. */
 export async function describeChange(input, config) {
-  const provider = getProvider(config.provider);
+  const agent = getAgent(config.agent);
 
   try {
-    const result = await provider.describe(input, {
+    const result = await agent.describe(input, {
       model: config.model,
       timeoutMs: config.timeoutMs,
     });
-    return { ...result, provider: config.provider };
+    return { ...result, agent: config.agent };
   } catch (error) {
-    if (config.provider !== "raw") {
-      console.warn(
-        `changetrail: ${config.provider} failed (${error.message}); using commit-message fallback`,
-      );
-    }
-    return { ...(await raw.describe(input)), provider: "raw" };
+    throw new Error(`Agent "${config.agent}" could not generate a summary: ${error.message}`, {
+      cause: error,
+    });
   }
 }

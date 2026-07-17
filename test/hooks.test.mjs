@@ -14,7 +14,6 @@ import test from "node:test";
 import { installHooks, uninstallHooks } from "../src/hooks.mjs";
 
 const hookNames = [
-  "pre-commit",
   "post-commit",
   "post-merge",
   "post-checkout",
@@ -28,16 +27,33 @@ test("uninstalls Changetrail hooks while preserving unrelated hook logic", () =>
     const hooksDir = join(root, ".git", "hooks");
     mkdirSync(hooksDir, { recursive: true });
     const preCommit = join(hooksDir, "pre-commit");
-    writeFileSync(preCommit, "#!/bin/sh\necho user-hook\n");
+    writeFileSync(
+      preCommit,
+      "#!/bin/sh\n" +
+        "echo user-hook\n" +
+        "# >>> changetrail >>>\n" +
+        "node old-runner record --silent\n" +
+        "# <<< changetrail <<<\n",
+    );
 
     assert.deepEqual(installHooks(root), hookNames);
     for (const name of hookNames) {
       assert.match(readFileSync(join(hooksDir, name), "utf8"), /# >>> changetrail >>>/);
     }
+    assert.equal(readFileSync(preCommit, "utf8"), "#!/bin/sh\necho user-hook\n");
+    const postCommit = readFileSync(join(hooksDir, "post-commit"), "utf8");
+    assert.match(postCommit, /record --silent \|\| true[\s\S]*build --silent \|\| true/);
+    assert.match(
+      readFileSync(join(hooksDir, "post-merge"), "utf8"),
+      /record --merge-only --silent \|\| true[\s\S]*build --silent \|\| true/,
+    );
+    for (const name of ["post-checkout", "post-rewrite"]) {
+      assert.doesNotMatch(readFileSync(join(hooksDir, name), "utf8"), /record --silent/);
+    }
 
     assert.deepEqual(uninstallHooks(root), hookNames);
     assert.equal(readFileSync(preCommit, "utf8"), "#!/bin/sh\necho user-hook\n");
-    for (const name of hookNames.slice(1)) {
+    for (const name of hookNames) {
       assert.equal(existsSync(join(hooksDir, name)), false);
     }
     assert.deepEqual(uninstallHooks(root), []);
