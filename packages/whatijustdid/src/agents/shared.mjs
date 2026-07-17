@@ -14,6 +14,26 @@ export const CHANGE_TYPES = [
 
 export const MAX_FILE_LIST_BYTES = 20_000;
 
+export const VERBOSITY_LEVELS = Object.freeze(["concise", "normal", "detailed"]);
+
+const VERBOSITY = {
+  concise: { maxTokens: 600, maxSummaryChars: 140 },
+  normal: { maxTokens: 1200, maxSummaryChars: 280 },
+  detailed: { maxTokens: 2400, maxSummaryChars: 560 },
+};
+
+export function verbosityConfig(verbosity) {
+  return VERBOSITY[verbosity] ?? VERBOSITY.normal;
+}
+
+export function verbosityPrompt(verbosity) {
+  const level = VERBOSITY_LEVELS.includes(verbosity) ? verbosity : "normal";
+  return `Turn the supplied code diff into a ${level} user-facing changelog entry.
+Return one item per distinct job performed. Describe observable behavior, not filenames or implementation trivia.
+Use past tense. Base every claim on the code diff; never substitute a commit message. Do not invent changes.
+Return only data matching the supplied JSON schema.`;
+}
+
 export const CHANGELOG_SCHEMA = {
   type: "object",
   additionalProperties: false,
@@ -34,11 +54,6 @@ export const CHANGELOG_SCHEMA = {
   },
   required: ["type", "changes"],
 };
-
-export const SYSTEM_PROMPT = `Turn the supplied code diff into a concise user-facing changelog entry.
-Return one item per distinct job performed. Describe observable behavior, not filenames or implementation trivia.
-Use past tense. Base every claim on the code diff; never substitute a commit message. Do not invent changes.
-Return only data matching the supplied JSON schema.`;
 
 export function formatAgentInput({ files = [], diff = "" }) {
   return [
@@ -108,7 +123,7 @@ function closeOpenBrackets(text) {
   return suffixes;
 }
 
-export function parseAgentJson(text) {
+export function parseAgentJson(text, { maxSummaryChars = 280 } = {}) {
   let parsed;
   const start = text.indexOf("{");
   const end = text.lastIndexOf("}");
@@ -136,7 +151,7 @@ export function parseAgentJson(text) {
         .slice(0, 12)
         .map((change) => ({
           type: CHANGE_TYPES.includes(change.type) ? change.type : entryType,
-          summary: change.summary.trim().slice(0, 280),
+          summary: change.summary.trim().slice(0, maxSummaryChars),
         }))
     : [];
 

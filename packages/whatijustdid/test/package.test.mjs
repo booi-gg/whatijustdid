@@ -74,6 +74,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       {
         agent: "codex",
         model: null,
+        verbosity: "normal",
         viewerLimit: 200,
         generationLimit: 50,
         maxDiffBytes: 80000,

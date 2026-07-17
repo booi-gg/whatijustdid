@@ -1,17 +1,19 @@
 import {
   CHANGELOG_SCHEMA,
-  SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
   postJson,
+  verbosityConfig,
+  verbosityPrompt,
 } from "./shared.mjs";
 
 // Local Ollama. No API key, no cloud, and no runtime dependency.
 const DEFAULT_MODEL = "llama3.2";
 
-export async function describe(input, { model, timeoutMs }) {
+export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
   const selectedModel = model ?? DEFAULT_MODEL;
+  const { maxSummaryChars } = verbosityConfig(verbosity);
   const data = await postJson(
     apiUrl(process.env.OLLAMA_HOST ?? "http://localhost:11434", "api/chat"),
     {
@@ -24,12 +26,12 @@ export async function describe(input, { model, timeoutMs }) {
         stream: false,
         options: { temperature: 0 },
         messages: [
-          { role: "system", content: SYSTEM_PROMPT },
+          { role: "system", content: verbosityPrompt(verbosity) },
           { role: "user", content: formatAgentInput(input) },
         ],
       },
     }
   );
 
-  return { ...parseAgentJson(data.message?.content ?? ""), model: selectedModel };
+  return { ...parseAgentJson(data.message?.content ?? "", { maxSummaryChars }), model: selectedModel };
 }
