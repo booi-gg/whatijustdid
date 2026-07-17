@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import {
   existsSync,
-  mkdtempSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -20,8 +20,8 @@ const hookNames = [
   "post-rewrite",
 ];
 
-test("uninstalls Changetrail hooks while preserving unrelated hook logic", () => {
-  const root = mkdtempSync(join(tmpdir(), "changetrail-hooks-"));
+test("uninstalls changereceipt hooks while preserving unrelated hook logic", () => {
+  const root = mkdtempSync(join(tmpdir(), "changereceipt-hooks-"));
   try {
     git(["init", "--quiet"], root);
     const hooksDir = join(root, ".git", "hooks");
@@ -31,16 +31,22 @@ test("uninstalls Changetrail hooks while preserving unrelated hook logic", () =>
       preCommit,
       "#!/bin/sh\n" +
         "echo user-hook\n" +
-        "# >>> changetrail >>>\n" +
+        "# >>> changereceipt >>>\n" +
         "node old-runner record --silent\n" +
-        "# <<< changetrail <<<\n",
+        "# <<< changereceipt <<<\n",
     );
 
     assert.deepEqual(installHooks(root), hookNames);
     for (const name of hookNames) {
-      assert.match(readFileSync(join(hooksDir, name), "utf8"), /# >>> changetrail >>>/);
+      assert.match(
+        readFileSync(join(hooksDir, name), "utf8"),
+        /# >>> changereceipt >>>/,
+      );
     }
-    assert.equal(readFileSync(preCommit, "utf8"), "#!/bin/sh\necho user-hook\n");
+    assert.equal(
+      readFileSync(preCommit, "utf8"),
+      "#!/bin/sh\necho user-hook\n",
+    );
     const postCommit = readFileSync(join(hooksDir, "post-commit"), "utf8");
     assert.match(postCommit, /record \|\| true/);
     assert.doesNotMatch(postCommit, /--silent| build/);
@@ -49,12 +55,21 @@ test("uninstalls Changetrail hooks while preserving unrelated hook logic", () =>
       /record --merge-only \|\| true/,
     );
     for (const name of ["post-checkout", "post-rewrite"]) {
-      assert.match(readFileSync(join(hooksDir, name), "utf8"), /build \|\| true/);
-      assert.doesNotMatch(readFileSync(join(hooksDir, name), "utf8"), /--silent|record/);
+      assert.match(
+        readFileSync(join(hooksDir, name), "utf8"),
+        /build \|\| true/,
+      );
+      assert.doesNotMatch(
+        readFileSync(join(hooksDir, name), "utf8"),
+        /--silent|record/,
+      );
     }
 
     assert.deepEqual(uninstallHooks(root), hookNames);
-    assert.equal(readFileSync(preCommit, "utf8"), "#!/bin/sh\necho user-hook\n");
+    assert.equal(
+      readFileSync(preCommit, "utf8"),
+      "#!/bin/sh\necho user-hook\n",
+    );
     for (const name of hookNames) {
       assert.equal(existsSync(join(hooksDir, name)), false);
     }
@@ -66,7 +81,7 @@ test("uninstalls Changetrail hooks while preserving unrelated hook logic", () =>
 });
 
 test("uninstalls hook blocks written by earlier package names", () => {
-  const root = mkdtempSync(join(tmpdir(), "changetrail-legacy-hooks-"));
+  const root = mkdtempSync(join(tmpdir(), "changereceipt-legacy-hooks-"));
   try {
     git(["init", "--quiet"], root);
     const postMerge = join(root, ".git", "hooks", "post-merge");

@@ -3,15 +3,15 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { build } from "../src/build.mjs";
-import { describeChange } from "../src/describe.mjs";
-import { editEntry, applyEntryEdit } from "../src/edit.mjs";
-import { generate, planGeneration } from "../src/generate.mjs";
-import { projectsForFiles } from "../src/projects.mjs";
 import { describe as describeWithOpenAI } from "../src/agents/codex.mjs";
 import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
 import { getAgent } from "../src/agents/index.mjs";
 import { CHANGELOG_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
+import { build } from "../src/build.mjs";
+import { describeChange } from "../src/describe.mjs";
+import { applyEntryEdit, editEntry } from "../src/edit.mjs";
+import { generate, planGeneration } from "../src/generate.mjs";
+import { projectsForFiles } from "../src/projects.mjs";
 import { openSummaryStore } from "../src/store.mjs";
 
 const SHA_A = "a".repeat(40);
@@ -29,13 +29,21 @@ test("maps one commit to every touched project", () => {
 
 test("normalizes agent JSON, requires a summary, and has no raw agent", () => {
   assert.deepEqual(
-    parseAgentJson(JSON.stringify({
-      type: "made-up",
-      changes: [{ type: "fix", summary: " Fixed the retry loop. " }],
-    })),
-    { type: "fix", changes: [{ type: "fix", summary: "Fixed the retry loop." }] },
+    parseAgentJson(
+      JSON.stringify({
+        type: "made-up",
+        changes: [{ type: "fix", summary: " Fixed the retry loop. " }],
+      }),
+    ),
+    {
+      type: "fix",
+      changes: [{ type: "fix", summary: "Fixed the retry loop." }],
+    },
   );
-  assert.throws(() => parseAgentJson("not json"), /Agent returned invalid JSON/);
+  assert.throws(
+    () => parseAgentJson("not json"),
+    /Agent returned invalid JSON/,
+  );
   assert.throws(
     () => parseAgentJson(JSON.stringify({ type: "feat", changes: [] })),
     /Agent returned no usable change summaries/,
@@ -86,15 +94,16 @@ test("agent failure never falls back to commit-message text", async () => {
   delete process.env.OPENAI_API_KEY;
   try {
     await assert.rejects(
-      () => describeChange(
-        {
-          subject: "feat: misleading fallback",
-          body: "- Not an AI summary",
-          files: ["feature.js"],
-          diff: "+export const feature = true;",
-        },
-        { agent: "codex", model: null, timeoutMs: 100 },
-      ),
+      () =>
+        describeChange(
+          {
+            subject: "feat: misleading fallback",
+            body: "- Not an AI summary",
+            files: ["feature.js"],
+            diff: "+export const feature = true;",
+          },
+          { agent: "codex", model: null, timeoutMs: 100 },
+        ),
       /Agent "codex" could not generate a summary: OPENAI_API_KEY not set/,
     );
   } finally {
@@ -158,14 +167,18 @@ test("DeepSeek uses its API key, fast model, and JSON output mode", async () => 
     return {
       ok: true,
       json: async () => ({
-        choices: [{
-          message: {
-            content: JSON.stringify({
-              type: "feat",
-              changes: [{ type: "feat", summary: "Added DeepSeek summaries." }],
-            }),
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                type: "feat",
+                changes: [
+                  { type: "feat", summary: "Added DeepSeek summaries." },
+                ],
+              }),
+            },
           },
-        }],
+        ],
       }),
     };
   };
@@ -204,10 +217,11 @@ test("DeepSeek reports its missing credential clearly", async () => {
   delete process.env.DEEPSEEK_API_KEY;
   try {
     await assert.rejects(
-      () => describeWithDeepSeek(
-        { files: ["feature.js"], diff: "+export const deepseek = true;" },
-        { model: null, timeoutMs: 100 },
-      ),
+      () =>
+        describeWithDeepSeek(
+          { files: ["feature.js"], diff: "+export const deepseek = true;" },
+          { model: null, timeoutMs: 100 },
+        ),
       /DEEPSEEK_API_KEY not set/,
     );
   } finally {
@@ -226,7 +240,7 @@ test("uses a strict-agent-compatible structured output schema", () => {
 });
 
 test("history generation requires an explicit scope and resumes ready commits", async () => {
-  const root = mkdtempSync(join(tmpdir(), "changetrail-generate-"));
+  const root = mkdtempSync(join(tmpdir(), "changereceipt-generate-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   let calls = 0;
@@ -239,14 +253,19 @@ test("history generation requires an explicit scope and resumes ready commits", 
       calls++;
       return {
         type: "feat",
-        changes: [{ type: "feat", summary: `Generated from ${diff.slice(-4)}` }],
+        changes: [
+          { type: "feat", summary: `Generated from ${diff.slice(-4)}` },
+        ],
         agent: "codex",
         model: "gpt-test",
       };
     },
   };
   try {
-    await assert.rejects(() => generate(config, {}, dependencies), /Choose a generation scope/);
+    await assert.rejects(
+      () => generate(config, {}, dependencies),
+      /Choose a generation scope/,
+    );
     const plan = planGeneration(config, { limit: 2 }, dependencies);
     assert.equal(plan.commitsToGenerate, 2);
     assert.equal(plan.estimatedInputTokens, 50_000);
@@ -256,7 +275,11 @@ test("history generation requires an explicit scope and resumes ready commits", 
     assert.equal(calls, 2);
     const resumedPlan = planGeneration(config, { limit: 2 }, dependencies);
     assert.equal(resumedPlan.commitsToGenerate, 0);
-    const resumed = await generate(config, { limit: 2, plan: resumedPlan }, dependencies);
+    const resumed = await generate(
+      config,
+      { limit: 2, plan: resumedPlan },
+      dependencies,
+    );
     assert.equal(resumed.generated, 0);
     assert.equal(calls, 2);
     await assert.rejects(
@@ -270,7 +293,7 @@ test("history generation requires an explicit scope and resumes ready commits", 
 });
 
 test("build displays ready and pending records without commit-message text", () => {
-  const root = mkdtempSync(join(tmpdir(), "changetrail-build-"));
+  const root = mkdtempSync(join(tmpdir(), "changereceipt-build-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   try {
@@ -311,7 +334,7 @@ test("build displays ready and pending records without commit-message text", () 
 });
 
 test("editing updates private SQLite without changing commit identity", () => {
-  const root = mkdtempSync(join(tmpdir(), "changetrail-edit-"));
+  const root = mkdtempSync(join(tmpdir(), "changereceipt-edit-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   try {
@@ -335,10 +358,18 @@ test("editing updates private SQLite without changing commit identity", () => {
     assert.equal(result.changed, true);
     assert.equal(result.entry.commitSha, SHA_A);
     assert.equal(result.entry.origin, "manual");
-    assert.equal(store.getBySha(SHA_A).changes[0].summary, "Corrected local summary");
+    assert.equal(
+      store.getBySha(SHA_A).changes[0].summary,
+      "Corrected local summary",
+    );
 
     assert.throws(
-      () => applyEntryEdit(result.entry, { type: "invalid", projects: [], changes: [] }),
+      () =>
+        applyEntryEdit(result.entry, {
+          type: "invalid",
+          projects: [],
+          changes: [],
+        }),
       /Invalid type/,
     );
   } finally {
@@ -350,8 +381,8 @@ test("editing updates private SQLite without changing commit identity", () => {
 function testConfig(root) {
   return {
     root,
-    dbFile: join(root, ".git", "changetrail", "summaries.sqlite"),
-    dataFile: join(root, "changetrail", "data.js"),
+    dbFile: join(root, ".git", "changereceipt", "summaries.sqlite"),
+    dataFile: join(root, "changereceipt", "data.js"),
     viewerLimit: 200,
     maxDiffBytes: 80_000,
     projects: { web: ["apps/web"], worker: ["apps/worker"] },
