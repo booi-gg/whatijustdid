@@ -1,6 +1,6 @@
-# cvl
+# ctrial
 
-CVL (Change View and Logs) is a zero-dependency Node CLI that records opted-in commits in a Git-owned
+`ctrial` is a zero-dependency Node CLI that records opted-in commits in a Git-owned
 changelog and renders them in a standalone HTML viewer.
 
 Each participating commit adds its own JSON row. Parallel branches therefore
@@ -19,8 +19,8 @@ still read automatically; no migration is required.
 Install the package in the repository that should own the changelog:
 
 ```sh
-npm install --save-dev cvl
-npx cvl init
+npm install --save-dev ctrial
+npx ctrial init
 ```
 
 `init` is safe to rerun. It:
@@ -33,22 +33,22 @@ npx cvl init
 - builds the initial viewer data
 
 Commit the package lockfile and the new repository files. Every developer must
-run `npm install` and `npx cvl install` once per clone because Git hooks
+run `npm install` and `npx ctrial install` once per clone because Git hooks
 are local. A package script makes that easy:
 
 ```json
 {
   "scripts": {
-    "changelog:install": "cvl install",
-    "changelog:build": "cvl build"
+    "changelog:install": "ctrial install",
+    "changelog:build": "ctrial build"
   }
 }
 ```
 
-`cvl install` is an alias of `cvl init`. Missing assets are
+`ctrial install` is an alias of `ctrial init`. Missing assets are
 restored, but existing config and viewer files are preserved. Run
-`cvl init --force` to refresh only the viewer from the bundled template.
-Rerunning either command refreshes one marked `cvl` block in each
+`ctrial init --force` to refresh only the viewer from the bundled template.
+Rerunning either command refreshes one marked `ctrial` block in each
 hook instead of adding duplicates; everything outside that block stays intact.
 
 ## Normal use
@@ -94,7 +94,7 @@ Copy the row filename without `.json` from anywhere under `changelog/db`, then
 run:
 
 ```sh
-npx cvl edit <id-or-unique-prefix>
+npx ctrial edit <id-or-unique-prefix>
 ```
 
 The command opens `$VISUAL`, then `$EDITOR`, then `vi`. Only `type`, `projects`,
@@ -172,7 +172,7 @@ commit.
 Run the same range check in pull-request CI after installing dependencies:
 
 ```sh
-npx --no-install cvl verify-ownership \
+npx --no-install ctrial verify-ownership \
   --base "$BASE_SHA" \
   --head "$HEAD_SHA"
 ```
@@ -184,14 +184,14 @@ type-changed a row—not only the final diff.
 ## Commands
 
 ```text
-cvl init       Scaffold files, install hooks, and build viewer data
-cvl install    Alias of init; useful once per clone
-cvl record     Generate and stage a row for staged source changes
-cvl build      Compile recent db/**/*.json rows into changelog.data.js
-cvl backfill   Import + stage recent Git history explicitly
-cvl sync       Backfill, then build
-cvl edit ID    Edit and stage an owned row
-cvl verify-ownership --base SHA --head SHA
+ctrial init       Scaffold files, install hooks, and build viewer data
+ctrial install    Alias of init; useful once per clone
+ctrial record     Generate and stage a row for staged source changes
+ctrial build      Compile recent db/**/*.json rows into changelog.data.js
+ctrial backfill   Import + stage recent Git history explicitly
+ctrial sync       Backfill, then build
+ctrial edit ID    Edit and stage an owned row
+ctrial verify-ownership --base SHA --head SHA
                Verify ownership across a commit range
 ```
 
@@ -209,7 +209,7 @@ import {
   initializeProject,
   loadConfig,
   recordStagedChange,
-} from "cvl";
+} from "ctrial";
 ```
 
 ## Package development
@@ -223,6 +223,6 @@ To test the exact tarball in another repository:
 
 ```sh
 npm pack
-npm install --save-dev ./cvl-0.1.0.tgz
-npx cvl init
+npm install --save-dev ./ctrial-0.1.0.tgz
+npx ctrial init
 ```

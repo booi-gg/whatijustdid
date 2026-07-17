@@ -1,5 +1,5 @@
 {
-  "name": "cvl",
+  "name": "ctrial",
   "version": "0.1.0",
   "type": "module",
   "description": "Change View and Logs: Git-native changelog tracking with merge-safe rows, owned edits, and a standalone viewer.",
@@ -19,7 +19,7 @@
     "url": "https://github.com/booi-gg/changelog/issues"
   },
   "bin": {
-    "cvl": "./bin/cvl.mjs"
+    "ctrial": "./bin/ctrial.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",

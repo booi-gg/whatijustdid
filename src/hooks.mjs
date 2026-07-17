@@ -11,9 +11,9 @@ const HOOKS = {
   "post-checkout": "build",
   "post-rewrite": "build",
 };
-const MARKER = "# >>> cvl >>>";
-const END_MARKER = "# <<< cvl <<<";
-const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl) <<<(?:\n|$)/g;
+const MARKER = "# >>> ctrial >>>";
+const END_MARKER = "# <<< ctrial <<<";
+const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial) <<<(?:\n|$)/g;
 
 /**
  * pre-commit stages the merge-safe DB row into the same commit as the code.
@@ -27,7 +27,7 @@ export function installHooks(root) {
   const absHooksDir = isAbsolute(hooksDir) ? hooksDir : join(root, hooksDir);
   mkdirSync(absHooksDir, { recursive: true });
 
-  const runner = join(packageDir, "bin", "cvl.mjs").replace(/\\/g, "/");
+  const runner = join(packageDir, "bin", "ctrial.mjs").replace(/\\/g, "/");
 
   const installed = [];
   for (const [name, command] of Object.entries(HOOKS)) {

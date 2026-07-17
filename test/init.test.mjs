@@ -6,7 +6,7 @@ import test from "node:test";
 import { initializeProject } from "../src/init.mjs";
 
 test("initializes consumer files without overwriting user-owned assets", () => {
-  const root = mkdtempSync(join(tmpdir(), "cvl-init-"));
+  const root = mkdtempSync(join(tmpdir(), "ctrial-init-"));
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = consumerConfig(root);
@@ -22,10 +22,10 @@ test("initializes consumer files without overwriting user-owned assets", () => {
     assert.equal(
       readFileSync(join(root, ".gitignore"), "utf8"),
       "node_modules/\n\n" +
-        "# >>> cvl >>>\n" +
+        "# >>> ctrial >>>\n" +
         "/changelog/changelog.data.js\n" +
         "/changelog/changelog.local.json\n" +
-        "# <<< cvl <<<\n",
+        "# <<< ctrial <<<\n",
     );
 
     writeFileSync(join(root, "changelog", "changelog.html"), "custom viewer\n");
@@ -43,7 +43,7 @@ test("initializes consumer files without overwriting user-owned assets", () => {
 });
 
 test("uses the configured directory in generated ignore rules", () => {
-  const root = mkdtempSync(join(tmpdir(), "cvl-custom-dir-"));
+  const root = mkdtempSync(join(tmpdir(), "ctrial-custom-dir-"));
   try {
     const configPath = join(root, "changelog.json");
     writeFileSync(configPath, "{}\n");

@@ -17,20 +17,20 @@ async function main() {
     case "record": {
       const config = loadConfig();
       const { created } = await recordStagedChange(config);
-      log(created ? `cvl: staged one DB row (provider: ${config.provider})` : "cvl: row already staged or no source changes");
+      log(created ? `ctrial: staged one DB row (provider: ${config.provider})` : "ctrial: row already staged or no source changes");
       break;
     }
     case "generate":
     case "backfill": {
       const config = loadConfig();
       const n = await generate(config);
-      log(`cvl: generated ${n} new ${n === 1 ? "entry" : "entries"} (provider: ${config.provider})`);
+      log(`ctrial: generated ${n} new ${n === 1 ? "entry" : "entries"} (provider: ${config.provider})`);
       break;
     }
     case "build": {
       const config = loadConfig();
       const n = build(config);
-      log(`cvl: built ${config.dataFile} (${n} entries)`);
+      log(`ctrial: built ${config.dataFile} (${n} entries)`);
       break;
     }
     case "edit": {
@@ -39,9 +39,9 @@ async function main() {
       const result = editEntry(config, id);
       if (result.changed) {
         build(config);
-        log(`cvl: edited + staged ${result.entry.id}`);
+        log(`ctrial: edited + staged ${result.entry.id}`);
       } else {
-        log("cvl: no changes made");
+        log("ctrial: no changes made");
       }
       break;
     }
@@ -51,7 +51,7 @@ async function main() {
         base: optionValue(rest, "--base"),
         head: optionValue(rest, "--head"),
       });
-      log(`cvl: ownership verified (${result.checked} existing rows checked)`);
+      log(`ctrial: ownership verified (${result.checked} existing rows checked)`);
       break;
     }
     case "sync": {
@@ -59,7 +59,7 @@ async function main() {
       const config = loadConfig();
       const created = await generate(config);
       const total = build(config);
-      log(`cvl: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
+      log(`ctrial: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
       break;
     }
     case "init":
@@ -70,24 +70,24 @@ async function main() {
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(changed.length
-        ? `cvl: initialized ${changed.join(", ")}`
-        : "cvl: project files already initialized");
-      log(installed.length ? `cvl: installed/updated hooks: ${installed.join(", ")}` : "cvl: hooks already current");
-      log(`cvl: built initial viewer data (${total} entries)`);
+        ? `ctrial: initialized ${changed.join(", ")}`
+        : "ctrial: project files already initialized");
+      log(installed.length ? `ctrial: installed/updated hooks: ${installed.join(", ")}` : "ctrial: hooks already current");
+      log(`ctrial: built initial viewer data (${total} entries)`);
       break;
     }
     default:
-      console.log(`cvl — Change View and Logs
+      console.log(`ctrial — Change View and Logs
 
 Usage:
-  cvl init       Create project files, install hooks, and build the viewer
-  cvl install    Refresh hooks and missing project files (alias: init)
-  cvl record     Create + stage a DB row for currently staged source changes
-  cvl backfill   Create DB rows for recent history (alias: generate)
-  cvl sync       Backfill history, then rebuild viewer data
-  cvl build      Compile recent db/**/*.json rows → changelog.data.js
-  cvl edit ID    Edit + stage an entry (creator/author/committer only)
-  cvl verify-ownership --base SHA --head SHA
+  ctrial init       Create project files, install hooks, and build the viewer
+  ctrial install    Refresh hooks and missing project files (alias: init)
+  ctrial record     Create + stage a DB row for currently staged source changes
+  ctrial backfill   Create DB rows for recent history (alias: generate)
+  ctrial sync       Backfill history, then rebuild viewer data
+  ctrial build      Compile recent db/**/*.json rows → changelog.data.js
+  ctrial edit ID    Edit + stage an entry (creator/author/committer only)
+  ctrial verify-ownership --base SHA --head SHA
                  Verify row ownership across a commit range
 
 Config: changelog/changelog.json
@@ -97,7 +97,7 @@ Providers: raw | claude | codex/openai | llama`);
 }
 
 main().catch((err) => {
-  console.error(`cvl: ${err.message}`);
+  console.error(`ctrial: ${err.message}`);
   process.exit(1);
 });
 
