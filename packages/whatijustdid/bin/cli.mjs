@@ -166,10 +166,6 @@ async function main() {
     case "install": {
       const config = loadConfig();
       const initialized = initializeProject(config);
-      const migration = importLegacyRows(config);
-      uninstallHooks(config.root);
-      const installed = installHooks(config.root);
-      const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(
         changed.length
@@ -183,6 +179,7 @@ async function main() {
         break;
       }
       const migration = importLegacyRows(config);
+      uninstallHooks(config.root);
       const installed = installHooks(config.root);
       const total = build(config);
       if (migration.scanned) {

@@ -5,7 +5,6 @@
   "showTokens": false,
   "viewerLimit": 200,
   "generationLimit": 50,
-  "showTokens": false,
   "maxDiffBytes": 80000,
   "timeoutMs": 20000,
   "projects": {}
