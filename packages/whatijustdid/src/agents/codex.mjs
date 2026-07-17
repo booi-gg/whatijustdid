@@ -4,6 +4,7 @@ import {
   formatAgentInput,
   parseAgentJson,
   postJson,
+  resolveApiKey,
   verbosityConfig,
   verbosityPrompt,
 } from "./shared.mjs";
@@ -12,7 +13,7 @@ import {
 // not a ChatGPT/Codex subscription or local CLI session.
 const DEFAULT_MODEL = "gpt-5.4-mini";
 
-export async function describe(input, { model, timeoutMs }) {
+export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
   const key = resolveApiKey("OPENAI_API_KEY");
   if (!key) throw new Error("OPENAI_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
