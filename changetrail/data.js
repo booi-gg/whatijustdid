@@ -63,6 +63,26 @@ window.__CHANGELOG__ = [
           "other"
         ],
         "description": "chore: refresh changetrail data"
+<<<<<<< HEAD
+=======
+      }
+    ]
+  },
+  {
+    "kind": "commit",
+    "ref": "2dbdff2",
+    "author": "booi-dev",
+    "date": "2026-07-17T19:22:36+05:30",
+    "projects": [],
+    "link": null,
+    "entries": [
+      {
+        "letter": "(a)",
+        "tags": [
+          "other"
+        ],
+        "description": "Add changetrail unhook command"
+>>>>>>> d332f36fe0628413057d280f28bab519f75e7bed
       }
     ]
   }

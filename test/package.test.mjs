@@ -110,6 +110,12 @@ test("packed package installs and initializes a working consumer repository", { 
       readFileSync(join(consumer, "changetrail", "data.js"), "utf8"),
       /initialize changelog/,
     );
+
+    const unhookOutput = run(cli, ["unhook"], consumer);
+    assert.match(unhookOutput, /removed hooks/);
+    for (const name of ["pre-commit", "post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
+      assert.equal(existsSync(join(consumer, ".git", "hooks", name)), false);
+    }
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
