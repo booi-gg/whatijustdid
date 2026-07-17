@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Pricing — Changetrail",
+  title: "Pricing — WhatIJustDid",
   description: "Choose the plan that fits how you build with AI.",
 };
 
@@ -55,7 +55,7 @@ const plans = [
       "Private sharing",
     ],
     cta: "Contact sales",
-    href: "mailto:hello@changetrail.dev?subject=Team%20plan",
+    href: "mailto:hello@whatijustdid.dev?subject=Team%20plan",
     featured: false,
   },
 ];
@@ -66,7 +66,7 @@ export default function Pricing() {
       <header className="border-b border-gray-200">
         <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="text-xl font-bold tracking-tight">
-            Changetrail
+            WhatIJustDid
           </Link>
           <div className="flex items-center gap-6 text-sm font-medium">
             <Link
@@ -156,7 +156,7 @@ export default function Pricing() {
 
       <footer className="border-t border-gray-200 py-8 text-center text-sm text-gray-500">
         <div className="max-w-6xl mx-auto px-6">
-          Changetrail &mdash; Built for vibe coders.
+          WhatIJustDid &mdash; Built for vibe coders.
         </div>
       </footer>
     </div>

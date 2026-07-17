@@ -20,8 +20,8 @@ const hookNames = [
   "post-rewrite",
 ];
 
-test("uninstalls changereceipt hooks while preserving unrelated hook logic", () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-hooks-"));
+test("uninstalls whatijustdid hooks while preserving unrelated hook logic", () => {
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-hooks-"));
   try {
     git(["init", "--quiet"], root);
     const hooksDir = join(root, ".git", "hooks");
@@ -31,16 +31,16 @@ test("uninstalls changereceipt hooks while preserving unrelated hook logic", () 
       preCommit,
       "#!/bin/sh\n" +
         "echo user-hook\n" +
-        "# >>> changereceipt >>>\n" +
+        "# >>> whatijustdid >>>\n" +
         "node old-runner record --silent\n" +
-        "# <<< changereceipt <<<\n",
+        "# <<< whatijustdid <<<\n",
     );
 
     assert.deepEqual(installHooks(root), hookNames);
     for (const name of hookNames) {
       assert.match(
         readFileSync(join(hooksDir, name), "utf8"),
-        /# >>> changereceipt >>>/,
+        /# >>> whatijustdid >>>/,
       );
     }
     assert.equal(
@@ -81,7 +81,7 @@ test("uninstalls changereceipt hooks while preserving unrelated hook logic", () 
 });
 
 test("uninstalls hook blocks written by earlier package names", () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-legacy-hooks-"));
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-legacy-hooks-"));
   try {
     git(["init", "--quiet"], root);
     const postMerge = join(root, ".git", "hooks", "post-merge");

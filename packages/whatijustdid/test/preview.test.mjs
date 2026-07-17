@@ -6,33 +6,33 @@ import test from "node:test";
 import { startPreview } from "../src/preview.mjs";
 
 test("serves the bundled viewer with live reload", async () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-preview-"));
-  const directory = join(root, "changereceipt");
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-preview-"));
+  const directory = join(root, "whatijustdid");
   const dataFile = join(directory, "data.js");
   mkdirSync(directory);
   writeFileSync(dataFile, "window.__CHANGELOG__ = [];\n");
 
   const preview = await startPreview(
-    { root, dir: "changereceipt", dataFile },
+    { root, dir: "whatijustdid", dataFile },
     { open: false, port: 0 },
   );
   try {
     const redirect = await fetch(preview.url, { redirect: "manual" });
     assert.equal(redirect.status, 302);
-    assert.equal(redirect.headers.get("location"), "/changereceipt.html");
+    assert.equal(redirect.headers.get("location"), "/whatijustdid.html");
 
-    const html = await fetch(`${preview.url}/changereceipt.html`);
+    const html = await fetch(`${preview.url}/whatijustdid.html`);
     assert.equal(html.status, 200);
     const htmlBody = await html.text();
-    assert.match(htmlBody, /<title>changereceipt · Changelog<\/title>/);
-    assert.match(htmlBody, /new EventSource\("\/__changereceipt_live"\)/);
+    assert.match(htmlBody, /<title>whatijustdid · Changelog<\/title>/);
+    assert.match(htmlBody, /new EventSource\("\/__whatijustdid_live"\)/);
 
     const data = await fetch(`${preview.url}/data.js`);
     assert.equal(data.status, 200);
     assert.equal(await data.text(), "window.__CHANGELOG__ = [];\n");
 
     const events = new AbortController();
-    const stream = await fetch(`${preview.url}/__changereceipt_live`, {
+    const stream = await fetch(`${preview.url}/__whatijustdid_live`, {
       signal: events.signal,
     });
     const reader = stream.body.getReader();

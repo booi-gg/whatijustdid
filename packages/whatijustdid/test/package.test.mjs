@@ -19,7 +19,7 @@ import { CLI_NAME } from "../src/brand.mjs";
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 test("packed package keeps AI summaries private and persistent", { timeout: 30_000 }, async () => {
-  const root = mkdtempSync(join(tmpdir(), "changereceipt-package-"));
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-package-"));
   let mockAgent = null;
   try {
     const packDirectory = join(root, "pack");
@@ -36,13 +36,12 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       packDirectory,
     ], packageRoot, npmEnvironment));
     const manifest = packed[0];
-    assert.equal(manifest.name, "@changetrail/cli");
+    assert.equal(manifest.name, "@whatijustdid/cli");
     const paths = manifest.files.map((file) => file.path);
-    assert.ok(paths.includes("assets/changereceipt.html"));
+    assert.ok(paths.includes("assets/whatijustdid.html"));
     assert.ok(paths.includes("bin/cli.mjs"));
     assert.ok(paths.includes("src/store.mjs"));
     assert.ok(paths.includes("whatijustdid.json"));
-    assert.equal(paths.includes("changereceipt.json"), false);
     assert.equal(paths.some((path) => path.startsWith("test/")), false);
 
     run("git", ["init", "--quiet"], consumer);
@@ -60,7 +59,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       "--no-fund",
       tarball,
     ], consumer, npmEnvironment);
-    const cli = join(consumer, "node_modules", ".bin", "changereceipt");
+    const cli = join(consumer, "node_modules", ".bin", "whatijustdid");
     const initOutput = run(cli, ["init", "--no-preview"], consumer);
     assert.match(initOutput, /private database/);
     assert.equal(existsSync(join(consumer, ".git", "hooks", "pre-commit")), false);
@@ -68,8 +67,8 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       readFileSync(join(consumer, ".git", "hooks", "post-commit"), "utf8"),
       /record \|\| true/,
     );
-    assert.equal(existsSync(join(consumer, "changereceipt")), false);
-    assert.equal(existsSync(join(consumer, ".git", "changereceipt", "summaries.sqlite")), true);
+    assert.equal(existsSync(join(consumer, "whatijustdid")), false);
+    assert.equal(existsSync(join(consumer, ".git", "whatijustdid", "summaries.sqlite")), true);
     assert.deepEqual(
       JSON.parse(readFileSync(join(consumer, "whatijustdid.json"), "utf8")),
       {
@@ -90,12 +89,12 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     const preview = await startPreview(
       {
         root: consumer,
-        dataFile: join(consumer, ".git", "changereceipt", "data.js"),
+        dataFile: join(consumer, ".git", "whatijustdid", "data.js"),
       },
       { open: false, port: 0 },
     );
     try {
-      const response = await fetch(`${preview.url}/changereceipt.html`);
+      const response = await fetch(`${preview.url}/whatijustdid.html`);
       assert.equal(response.status, 200);
       assert.match(await response.text(), /Repository ledger/);
     } finally {
@@ -122,7 +121,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     assert.match(successfulCommit.stderr, /viewer now has 1 entry/);
 
     const sha = run("git", ["rev-parse", "HEAD"], consumer).trim();
-    const database = new DatabaseSync(join(consumer, ".git", "changereceipt", "summaries.sqlite"));
+    const database = new DatabaseSync(join(consumer, ".git", "whatijustdid", "summaries.sqlite"));
     try {
       const row = database.prepare(
         "SELECT status, agent, model, changes_json FROM commit_summaries WHERE commit_sha = ?",
@@ -132,16 +131,16 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       assert.equal(row.model, "gpt-5.4-mini");
       assert.equal(
         JSON.parse(row.changes_json)[0].summary,
-        "Initialized changereceipt from the committed code",
+        "Initialized whatijustdid from the committed code",
       );
     } finally {
       database.close();
     }
 
-    let viewerData = readFileSync(join(consumer, ".git", "changereceipt", "data.js"), "utf8");
-    assert.match(viewerData, /Initialized changereceipt from the committed code/);
+    let viewerData = readFileSync(join(consumer, ".git", "whatijustdid", "data.js"), "utf8");
+    assert.match(viewerData, /Initialized whatijustdid from the committed code/);
     assert.doesNotMatch(viewerData, /THIS MESSAGE MUST NOT BECOME THE SUMMARY/);
-    assert.equal(existsSync(join(consumer, "changereceipt")), false);
+    assert.equal(existsSync(join(consumer, "whatijustdid")), false);
     assert.equal(run("git", ["status", "--short"], consumer).trim(), "");
 
     writeFileSync(join(consumer, "failed.js"), "export const failed = true;\n");
@@ -157,7 +156,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     );
     assert.equal(failedCommit.status, 0);
     assert.match(failedCommit.stderr, /OPENAI_API_KEY not set/);
-    viewerData = readFileSync(join(consumer, ".git", "changereceipt", "data.js"), "utf8");
+    viewerData = readFileSync(join(consumer, ".git", "whatijustdid", "data.js"), "utf8");
     assert.match(viewerData, /Summary failed:.*OPENAI_API_KEY not set/);
     assert.doesNotMatch(viewerData, /failure remains visible/);
 
@@ -180,7 +179,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     for (const name of ["post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
       assert.match(
         readFileSync(join(consumer, ".git", "hooks", name), "utf8"),
-        /# >>> changereceipt >>>/,
+        /# >>> whatijustdid >>>/,
       );
     }
     assert.match(run(cli, ["hook"], consumer), /hooks already current/);
@@ -235,7 +234,7 @@ async function startMockOpenAi() {
       type: "chore",
       changes: [{
         type: "chore",
-        summary: "Initialized changereceipt from the committed code",
+        summary: "Initialized whatijustdid from the committed code",
       }],
     });
     const server = createServer((_request, response) => {
