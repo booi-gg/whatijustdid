@@ -20,7 +20,7 @@ try {
   process.emitWarning = originalEmitWarning;
 }
 
-export const STORE_SCHEMA_VERSION = 1;
+export const STORE_SCHEMA_VERSION = 2;
 export const PROMPT_VERSION = 1;
 const LEASE_MS = 5 * 60 * 1000;
 
@@ -75,12 +75,20 @@ export class LocalSummaryStore {
           key TEXT PRIMARY KEY,
           value TEXT NOT NULL
         ) STRICT;
-        PRAGMA user_version = 1;
+        PRAGMA user_version = 2;
         COMMIT;
       `);
       this.database.prepare(
         "INSERT OR IGNORE INTO store_metadata (key, value) VALUES ('store_id', ?)",
       ).run(randomUUID());
+    }
+    if (version < 2) {
+      this.database.exec(`
+        BEGIN IMMEDIATE;
+        ALTER TABLE commit_summaries ADD COLUMN usage_json TEXT;
+        PRAGMA user_version = 2;
+        COMMIT;
+      `);
     }
   }
 
@@ -146,6 +154,7 @@ export class LocalSummaryStore {
     assertSha(commitSha);
     validateSummary(summary);
     const timestamp = iso(now);
+    const usageJson = summary.usage ? JSON.stringify(normalizeUsage(summary.usage)) : null;
     const result = this.database.prepare(`
       UPDATE commit_summaries SET
         status = 'ready',
@@ -158,6 +167,7 @@ export class LocalSummaryStore {
         lease_token = NULL,
         lease_expires_at = NULL,
         origin = ?,
+        usage_json = ?,
         generated_at = ?,
         updated_at = ?
       WHERE commit_sha = ? AND status = 'generating' AND lease_token = ?
@@ -168,6 +178,7 @@ export class LocalSummaryStore {
       summary.model ?? null,
       summary.promptVersion ?? PROMPT_VERSION,
       summary.origin ?? "local-ai",
+      usageJson,
       timestamp,
       timestamp,
       commitSha,
@@ -265,12 +276,13 @@ export class LocalSummaryStore {
     assertSha(commitSha);
     validateSummary(entry);
     const timestamp = iso(now);
+    const usageJson = entry.usage ? JSON.stringify(normalizeUsage(entry.usage)) : null;
     this.database.prepare(`
       INSERT INTO commit_summaries (
         commit_sha, status, change_type, projects_json, changes_json,
         agent, model, prompt_version, attempt_count, origin,
-        generated_at, updated_at
-      ) VALUES (?, 'ready', ?, ?, ?, ?, ?, ?, 0, 'legacy', ?, ?)
+        usage_json, generated_at, updated_at
+      ) VALUES (?, 'ready', ?, ?, ?, ?, ?, ?, 0, 'legacy', ?, ?, ?)
       ON CONFLICT(commit_sha) DO NOTHING
     `).run(
       commitSha,
@@ -280,6 +292,7 @@ export class LocalSummaryStore {
       entry.agent,
       entry.model ?? null,
       entry.promptVersion ?? PROMPT_VERSION,
+      usageJson,
       entry.generatedAt ?? timestamp,
       timestamp,
     );
@@ -323,9 +336,11 @@ export function openSummaryStore(configOrPath) {
 function decodeRow(row) {
   let projects;
   let changes;
+  let usage;
   try {
     projects = JSON.parse(row.projects_json);
     changes = row.changes_json === null ? null : JSON.parse(row.changes_json);
+    usage = row.usage_json === null ? null : JSON.parse(row.usage_json);
   } catch (error) {
     throw new Error(`Corrupt summary data for ${row.commit_sha}: ${error.message}`, { cause: error });
   }
@@ -338,6 +353,7 @@ function decodeRow(row) {
     type: row.change_type,
     projects,
     changes,
+    usage,
     agent: row.agent,
     model: row.model,
     promptVersion: Number(row.prompt_version),
@@ -391,4 +407,11 @@ function iso(value) {
   const date = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(date.valueOf())) throw new Error("Invalid timestamp");
   return date.toISOString();
+}
+
+function normalizeUsage(usage) {
+  if (!usage || typeof usage !== "object") return null;
+  const input = typeof usage.input === "number" ? usage.input : 0;
+  const output = typeof usage.output === "number" ? usage.output : 0;
+  return { input, output, total: (typeof usage.total === "number" ? usage.total : input + output) };
 }
