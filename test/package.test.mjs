@@ -17,7 +17,7 @@ import test from "node:test";
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
 test("packed package installs and initializes a working consumer repository", { timeout: 30_000 }, () => {
-  const root = mkdtempSync(join(tmpdir(), "ctrial-package-"));
+  const root = mkdtempSync(join(tmpdir(), "ctrail-package-"));
   try {
     const packDirectory = join(root, "pack");
     const consumer = join(root, "consumer");
@@ -33,10 +33,11 @@ test("packed package installs and initializes a working consumer repository", { 
       packDirectory,
     ], packageRoot, npmEnvironment));
     const manifest = packed[0];
-    assert.equal(manifest.name, "ctrial");
+    assert.equal(manifest.name, "ctrail");
     const paths = manifest.files.map((file) => file.path);
     assert.ok(paths.includes("assets/changelog.html"));
-    assert.ok(paths.includes("bin/ctrial.mjs"));
+    assert.ok(paths.includes("bin/ctrail.mjs"));
+    assert.ok(paths.includes("ctrail/config.json"));
     assert.ok(paths.includes("src/init.mjs"));
     assert.equal(paths.some((path) => path.startsWith("test/")), false);
     assert.equal(paths.some((path) => path.startsWith("hooks/")), false);
@@ -56,13 +57,16 @@ test("packed package installs and initializes a working consumer repository", { 
       "--no-fund",
       tarball,
     ], consumer, npmEnvironment);
-    const cli = join(consumer, "node_modules", ".bin", "ctrial");
+    const cli = join(consumer, "node_modules", ".bin", "ctrail");
     assert.equal(existsSync(cli), true);
     const initOutput = run(cli, ["init"], consumer);
     assert.match(initOutput, /initialized/);
     assert.match(initOutput, /installed\/updated hooks/);
-    assert.match(readFileSync(join(consumer, ".git", "hooks", "pre-commit"), "utf8"), /# >>> ctrial >>>/);
+    assert.match(readFileSync(join(consumer, ".git", "hooks", "pre-commit"), "utf8"), /# >>> ctrail >>>/);
     assert.match(readFileSync(join(consumer, "changelog", "changelog.html"), "utf8"), /Repository ledger/);
+    assert.equal(existsSync(join(consumer, "ctrail", "config.json")), true);
+    assert.equal(existsSync(join(consumer, "changelog", "ctrail.json")), false);
+    assert.equal(existsSync(join(consumer, "changelog", "changelog.json")), false);
 
     run("git", ["add", "."], consumer);
     run("git", ["commit", "--quiet", "-m", "chore: initialize changelog"], consumer);

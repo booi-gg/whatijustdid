@@ -4,17 +4,20 @@ import { fileURLToPath } from "node:url";
 import { repoRoot } from "./git.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changelog.json");
+const defaultConfigPath = join(packageDir, "ctrail", "config.json");
 
 /**
  * Resolve config. Precedence: consumer repo config → package default.
- * Consumer config is looked up at <root>/changelog/changelog.json,
- * then <root>/changelog.json.
+ * Consumer config is looked up at <root>/ctrail/config.json.
+ * Earlier config names remain supported for existing repositories.
  */
 export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
   const defaults = JSON.parse(readFileSync(defaultConfigPath, "utf8"));
   const sharedCandidates = [
+    join(root, "ctrail", "config.json"),
+    join(root, "changelog", "ctrail.json"),
+    join(root, "ctrail.json"),
     join(root, "changelog", "changelog.json"),
     join(root, "changelog.json"),
   ];

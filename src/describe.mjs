@@ -14,7 +14,7 @@ export async function describeChange(input, config) {
   } catch (error) {
     if (config.provider !== "raw") {
       console.warn(
-        `ctrial: ${config.provider} failed (${error.message}); using commit-message fallback`,
+        `ctrail: ${config.provider} failed (${error.message}); using commit-message fallback`,
       );
     }
     return { ...(await raw.describe(input)), provider: "raw" };

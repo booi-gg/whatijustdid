@@ -17,20 +17,20 @@ async function main() {
     case "record": {
       const config = loadConfig();
       const { created } = await recordStagedChange(config);
-      log(created ? `ctrial: staged one DB row (provider: ${config.provider})` : "ctrial: row already staged or no source changes");
+      log(created ? `ctrail: staged one DB row (provider: ${config.provider})` : "ctrail: row already staged or no source changes");
       break;
     }
     case "generate":
     case "backfill": {
       const config = loadConfig();
       const n = await generate(config);
-      log(`ctrial: generated ${n} new ${n === 1 ? "entry" : "entries"} (provider: ${config.provider})`);
+      log(`ctrail: generated ${n} new ${n === 1 ? "entry" : "entries"} (provider: ${config.provider})`);
       break;
     }
     case "build": {
       const config = loadConfig();
       const n = build(config);
-      log(`ctrial: built ${config.dataFile} (${n} entries)`);
+      log(`ctrail: built ${config.dataFile} (${n} entries)`);
       break;
     }
     case "edit": {
@@ -39,9 +39,9 @@ async function main() {
       const result = editEntry(config, id);
       if (result.changed) {
         build(config);
-        log(`ctrial: edited + staged ${result.entry.id}`);
+        log(`ctrail: edited + staged ${result.entry.id}`);
       } else {
-        log("ctrial: no changes made");
+        log("ctrail: no changes made");
       }
       break;
     }
@@ -51,7 +51,7 @@ async function main() {
         base: optionValue(rest, "--base"),
         head: optionValue(rest, "--head"),
       });
-      log(`ctrial: ownership verified (${result.checked} existing rows checked)`);
+      log(`ctrail: ownership verified (${result.checked} existing rows checked)`);
       break;
     }
     case "sync": {
@@ -59,7 +59,7 @@ async function main() {
       const config = loadConfig();
       const created = await generate(config);
       const total = build(config);
-      log(`ctrial: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
+      log(`ctrail: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
       break;
     }
     case "init":
@@ -70,34 +70,34 @@ async function main() {
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(changed.length
-        ? `ctrial: initialized ${changed.join(", ")}`
-        : "ctrial: project files already initialized");
-      log(installed.length ? `ctrial: installed/updated hooks: ${installed.join(", ")}` : "ctrial: hooks already current");
-      log(`ctrial: built initial viewer data (${total} entries)`);
+        ? `ctrail: initialized ${changed.join(", ")}`
+        : "ctrail: project files already initialized");
+      log(installed.length ? `ctrail: installed/updated hooks: ${installed.join(", ")}` : "ctrail: hooks already current");
+      log(`ctrail: built initial viewer data (${total} entries)`);
       break;
     }
     default:
-      console.log(`ctrial — Change View and Logs
+      console.log(`ctrail — Change View and Logs
 
 Usage:
-  ctrial init       Create project files, install hooks, and build the viewer
-  ctrial install    Refresh hooks and missing project files (alias: init)
-  ctrial record     Create + stage a DB row for currently staged source changes
-  ctrial backfill   Create DB rows for recent history (alias: generate)
-  ctrial sync       Backfill history, then rebuild viewer data
-  ctrial build      Compile recent db/**/*.json rows → changelog.data.js
-  ctrial edit ID    Edit + stage an entry (creator/author/committer only)
-  ctrial verify-ownership --base SHA --head SHA
+  ctrail init       Create project files, install hooks, and build the viewer
+  ctrail install    Refresh hooks and missing project files (alias: init)
+  ctrail record     Create + stage a DB row for currently staged source changes
+  ctrail backfill   Create DB rows for recent history (alias: generate)
+  ctrail sync       Backfill history, then rebuild viewer data
+  ctrail build      Compile recent db/**/*.json rows → changelog.data.js
+  ctrail edit ID    Edit + stage an entry (creator/author/committer only)
+  ctrail verify-ownership --base SHA --head SHA
                  Verify row ownership across a commit range
 
-Config: changelog/changelog.json
+Config: ctrail/config.json
 Providers: raw | claude | codex/openai | llama`);
       if (cmd && cmd !== "help") process.exit(1);
   }
 }
 
 main().catch((err) => {
-  console.error(`ctrial: ${err.message}`);
+  console.error(`ctrail: ${err.message}`);
   process.exit(1);
 });
 
