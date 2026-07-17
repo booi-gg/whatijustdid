@@ -42,8 +42,8 @@ function toGroup(entry, commit) {
 
 /**
  * Compile the file DB into data.js — a plain script that sets
- * window.__CHANGELOG__. Loaded by changetrail.html; works over file:// (script
- * tags load local siblings, unlike fetch). This file is a rebuildable cache.
+ * window.__CHANGELOG__. The bundled viewer loads it from the preview server.
+ * This file is a rebuildable cache.
  */
 export function build(config, options = {}) {
   const limit = Number.isInteger(config.limit) && config.limit > 0 ? config.limit : Infinity;

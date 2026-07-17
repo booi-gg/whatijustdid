@@ -10,14 +10,12 @@ import { fileURLToPath } from "node:url";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const defaultConfigPath = join(packageDir, "changetrail.json");
-const viewerTemplatePath = join(packageDir, "assets", "changetrail.html");
 const MARKER = "# >>> changetrail >>>";
 const END_MARKER = "# <<< changetrail <<<";
 const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) <<<(?:\n|$)/g;
 
 /** Scaffold the tracked consumer files without replacing user-owned config. */
-export function initializeProject(config, options = {}) {
-  const force = options.force === true;
+export function initializeProject(config) {
   const created = [];
   const updated = [];
   const unchanged = [];
@@ -33,9 +31,6 @@ export function initializeProject(config, options = {}) {
     ? join(config.root, "changetrail.json")
     : config.configPath;
   record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
-
-  const viewerTarget = join(config.root, config.dir, "changetrail.html");
-  record(copyAsset(viewerTemplatePath, viewerTarget, force), viewerTarget);
 
   const keepTarget = join(config.dbDir, ".gitkeep");
   record(writeText(keepTarget, "", false), keepTarget);
@@ -69,6 +64,7 @@ function updateGitignore(path, root, dir) {
   const block = [
     MARKER,
     `${prefix}data.js`,
+    `${prefix}changetrail.html`,
     `${prefix}changetrail.local.json`,
     END_MARKER,
   ].join("\n");
