@@ -40,7 +40,7 @@ Use past tense. Base every claim on the code diff; never substitute a commit mes
 Return only data matching the supplied JSON schema.`;
 }
 
-export const CHANGELOG_SCHEMA = {
+export const WHATIJUSTDID_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {

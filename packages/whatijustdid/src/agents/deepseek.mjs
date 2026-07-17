@@ -1,10 +1,10 @@
 import {
   WHATIJUSTDID_SCHEMA,
-  SYSTEM_PROMPT,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
   postJson,
+  resolveApiKey,
   verbosityConfig,
   verbosityPrompt,
 } from "./shared.mjs";
@@ -13,7 +13,7 @@ import {
 const DEFAULT_MODEL = "deepseek-v4-flash";
 
 export async function describe(input, { model, timeoutMs, verbosity = "normal" }) {
-  const key = process.env.DEEPSEEK_API_KEY;
+  const key = resolveApiKey("DEEPSEEK_API_KEY");
   if (!key) throw new Error("DEEPSEEK_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
   const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
@@ -22,11 +22,6 @@ The required JSON schema is:
 ${JSON.stringify(WHATIJUSTDID_SCHEMA)}
 Example JSON output:
 {"type":"feat","changes":[{"type":"feat","summary":"Added a new user-facing capability."}]}`;
-
-export async function describe(input, { model, timeoutMs }) {
-  const key = resolveApiKey("DEEPSEEK_API_KEY");
-  if (!key) throw new Error("DEEPSEEK_API_KEY not set");
-  const selectedModel = model ?? DEFAULT_MODEL;
 
   const data = await postJson(
     apiUrl(process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com", "chat/completions"),
