@@ -10,9 +10,7 @@
   --blue-soft: oklch(0.22 0.02 35);
   --green: oklch(0.68 0.19 35);
   --shadow: 4px 4px 0 oklch(0.1 0.01 60);
-  font-family:
-    "JetBrains Mono",
-    monospace;
+  font-family: "JetBrains Mono", monospace;
   color: var(--ink);
   background: var(--paper);
   font-synthesis: none;
@@ -27,10 +25,7 @@ body {
   min-width: 280px;
   min-height: 100vh;
   background:
-    linear-gradient(
-      oklch(0.25 0.013 60 / 0.35) 1px,
-      transparent 1px
-    ),
+    linear-gradient(oklch(0.25 0.013 60 / 0.35) 1px, transparent 1px),
     var(--paper);
   background-size: 100% 28px;
 }
@@ -205,7 +200,7 @@ h1 {
 .day::before {
   content: "";
   position: absolute;
-  left: var(--thread-x);
+  left: calc(var(--thread-x) + 2px);
   top: 9px;
   bottom: -12px;
   width: 1px;
@@ -221,7 +216,7 @@ h1 {
   margin: 0 0 24px;
   color: var(--muted);
   font:
-    700 13px/18px     "JetBrains Mono",
+    700 13px/18px "JetBrains Mono",
     monospace;
   letter-spacing: -0.015em;
 }
@@ -292,7 +287,7 @@ h1 {
   color: var(--blue);
   background: var(--blue-soft);
   font:
-    750 10px/1.2     "JetBrains Mono",
+    750 10px/1.2 "JetBrains Mono",
     monospace;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -306,7 +301,7 @@ h1 {
 .ref {
   color: var(--ink);
   font:
-    750 13px/1.2     "JetBrains Mono",
+    750 13px/1.2 "JetBrains Mono",
     monospace;
 }
 
@@ -365,7 +360,7 @@ h1 {
   color: var(--blue);
   background: var(--blue-soft);
   font:
-    750 11px/1.35     "JetBrains Mono",
+    750 11px/1.35 "JetBrains Mono",
     monospace;
   text-align: center;
 }
@@ -387,7 +382,7 @@ h1 {
   color: oklch(0.64 0.015 60);
   background: oklch(0.2 0.013 60);
   font:
-    700 9px/1.35     "JetBrains Mono",
+    700 9px/1.35 "JetBrains Mono",
     monospace;
 }
 
@@ -439,7 +434,7 @@ h1 {
   margin-bottom: 8px;
   color: var(--ink);
   font:
-    700 15px/1.3     "JetBrains Mono",
+    700 15px/1.3 "JetBrains Mono",
     monospace;
 }
 
@@ -452,7 +447,7 @@ h1 {
   border-top: 1px solid var(--line);
   color: var(--faint);
   font:
-    600 10px/1.5     "JetBrains Mono",
+    600 10px/1.5 "JetBrains Mono",
     monospace;
 }
 
