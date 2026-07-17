@@ -62,14 +62,71 @@ function boundedFileList(files) {
   return selected.join("\n");
 }
 
+function repairTruncatedJson(text) {
+  let best = text;
+  try { JSON.parse(best); return best; } catch {}
+
+  const closings = closeOpenBrackets(text);
+  for (const suffix of closings) {
+    const candidate = text + suffix;
+    try { JSON.parse(candidate); return candidate; } catch {}
+  }
+
+  let trimmed = text;
+  while (trimmed.length > 0) {
+    trimmed = trimmed.slice(0, -1);
+    for (const suffix of closeOpenBrackets(trimmed)) {
+      const candidate = trimmed + suffix;
+      try { JSON.parse(candidate); return candidate; } catch {}
+    }
+  }
+
+  return null;
+}
+
+function closeOpenBrackets(text) {
+  const stack = [];
+  let inString = false;
+  let escaped = false;
+  for (const ch of text) {
+    if (escaped) { escaped = false; continue; }
+    if (ch === "\\" && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === "{" || ch === "[") stack.push(ch);
+    else if (ch === "}" || ch === "]") {
+      const expected = ch === "}" ? "{" : "[";
+      for (let i = stack.length - 1; i >= 0; i--) {
+        if (stack[i] === expected) { stack.splice(i, 1); break; }
+      }
+    }
+  }
+  const closing = stack.reverse().map((ch) => (ch === "{" ? "}" : "]")).join("");
+  if (!closing) return [];
+  const suffixes = [closing];
+  if (closing.startsWith("}")) suffixes.push(closing.slice(1));
+  return suffixes;
+}
+
 export function parseAgentJson(text) {
   let parsed;
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  const candidate = start >= 0 && end >= start ? text.slice(start, end + 1) : text;
+
   try {
-    const start = text.indexOf("{");
-    const end = text.lastIndexOf("}");
-    parsed = JSON.parse(start >= 0 && end >= start ? text.slice(start, end + 1) : text);
+    parsed = JSON.parse(candidate);
   } catch (error) {
-    throw new Error(`Agent returned invalid JSON: ${error.message}`, { cause: error });
+    const repaired = repairTruncatedJson(candidate);
+    if (repaired) {
+      try {
+        parsed = JSON.parse(repaired);
+      } catch (repairError) {
+        throw new Error(`Agent returned invalid JSON: ${error.message}`, { cause: error });
+      }
+    } else {
+      throw new Error(`Agent returned invalid JSON: ${error.message}`, { cause: error });
+    }
   }
 
   const entryType = CHANGE_TYPES.includes(parsed?.type) ? parsed.type : "other";
