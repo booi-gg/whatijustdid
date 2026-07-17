@@ -44,9 +44,33 @@ window.__CHANGELOG__ = [
   },
   {
     "kind": "commit",
-    "ref": "fc9b9d0",
+    "ref": "3d0bb4a",
+    "author": "Booi",
+    "date": "2026-07-17T18:36:42+05:30",
+    "projects": [],
+    "link": null,
+    "entries": [
+      {
+        "letter": "(a)",
+        "tags": [
+          "other"
+        ],
+        "description": "feat: improve defaults and changelog viewer"
+      },
+      {
+        "letter": "(b)",
+        "tags": [
+          "other"
+        ],
+        "description": "chore: refresh changetrail data"
+      }
+    ]
+  },
+  {
+    "kind": "commit",
+    "ref": "bf2640a",
     "author": "booi-dev",
-    "date": "2026-07-17T18:34:36+05:30",
+    "date": "2026-07-17T18:57:43+05:30",
     "projects": [],
     "link": null,
     "entries": [
@@ -55,7 +79,7 @@ window.__CHANGELOG__ = [
         "tags": [
           "feat"
         ],
-        "description": "improve defaults and changelog viewer"
+        "description": "serve bundled changetrail viewer"
       }
     ]
   }

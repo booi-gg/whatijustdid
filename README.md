@@ -1,7 +1,7 @@
 # changetrail
 
 `changetrail` is a zero-dependency Node CLI that records opted-in commits in a Git-owned
-changelog and renders them in a standalone HTML viewer.
+changelog and renders them with a bundled HTML viewer.
 
 Each participating commit adds its own JSON row. Parallel branches therefore
 add different files instead of competing over one SQLite database, and every
@@ -26,9 +26,8 @@ npx changetrail init
 `init` is safe to rerun. It:
 
 - creates `changetrail.json`
-- creates the dependency-free `changetrail/changetrail.html` viewer
 - creates `changetrail/db/.gitkeep`
-- ignores only `data.js` and `changetrail.local.json`
+- ignores the generated `data.js`, legacy viewer copies, and `changetrail.local.json`
 - adds its commands to Git hooks while preserving commands already there
 - builds the initial viewer data
 
@@ -45,11 +44,11 @@ are local. A package script makes that easy:
 }
 ```
 
-`changetrail install` is an alias of `changetrail init`. Missing assets are
-restored, but existing config and viewer files are preserved. Run
-`changetrail init --force` to refresh only the viewer from the bundled template.
-Rerunning either command refreshes one marked `changetrail` block in each
-hook instead of adding duplicates; everything outside that block stays intact.
+`changetrail install` is an alias of `changetrail init`. The HTML/CSS template
+stays in the installed package at `node_modules/changetrail/assets/changetrail.html`;
+it is not copied into the consumer repository. Rerunning either command refreshes
+one marked `changetrail` block in each hook instead of adding duplicates;
+everything outside that block stays intact.
 
 ## Normal use
 
@@ -61,26 +60,23 @@ git commit
 ```
 
 The pre-commit hook creates and stages one row in the same commit as the code.
-The other hooks rebuild the local viewer after a commit, merge, checkout,
+The other hooks rebuild the local viewer data after a commit, merge, checkout,
 rebase, or amend.
 
-Open this file directly in a browser:
-
-```text
-changetrail/changetrail.html
-```
-
-No web server, framework, runtime dependency, or network connection is needed.
-
-For a live preview that opens in the browser and reloads when the viewer or its
-generated data changes, run:
+Open the bundled viewer with live reload:
 
 ```sh
 npx changetrail preview
 ```
 
 Pass `--port 4000` to choose a port or `--no-open` to start the preview without
-opening a browser.
+opening a browser. The server is local and needs no framework or network
+connection.
+
+The merge-safe source data in `changetrail/db/**/*.json` stays tracked in Git.
+`changetrail/data.js` is only a rebuildable browser cache and remains ignored.
+Repositories that tracked a viewer created by an older release can remove that
+copy once with `git rm changetrail/changetrail.html`.
 
 Put explicit descriptions in the final commit body when desired:
 
@@ -94,7 +90,7 @@ feat: add export
 Those bullets become the viewer's `(a)`, `(b)` items and override an automatic
 summary.
 
-Pulling or merging only rebuilds the viewer from rows already tracked in
+Pulling or merging only rebuilds viewer data from rows already tracked in
 `changetrail/db`. Ordinary commits from people who have not installed the package
 stay invisible. Hooks never backfill them.
 
@@ -145,16 +141,17 @@ later runs, so teams can review configuration changes in Git.
 | --- | --- | --- |
 | `provider` | Generates change summaries. Supported values are `raw`, `claude`, `codex`/`openai`, and `llama`. | `openai` |
 | `model` | Overrides the selected provider's model. Use `null` to accept the provider default. | `gpt-5.4-mini` |
-| `dir` | Repository-relative directory for the row database, viewer, generated data, and local config. | `changetrail` |
+| `dir` | Repository-relative directory for the row database, generated data, and local config. | `changetrail` |
 | `limit` | Maximum recent row-adding commits considered by `backfill` and entries compiled into the viewer. | `200` |
 | `maxDiffBytes` | Maximum diff bytes supplied to a summary provider for each change. | `80000` |
 | `timeoutMs` | Provider request timeout in milliseconds before falling back to raw commit data. | `20000` |
 | `projects` | Maps viewer project names to repository path prefixes; a change can match more than one project. | `{}` |
 
-With the default `dir`, tracked rows live under `changetrail/db` and the viewer
-is `changetrail/changetrail.html`. Set `dir` to a different repository-relative
-path to move those generated assets. Files that match no `projects` prefix
-appear under `Repo` in the viewer.
+With the default `dir`, tracked rows live under `changetrail/db` and generated
+viewer data is written to `changetrail/data.js`. Set `dir` to a different
+repository-relative path to move those files. The viewer template always comes
+from the installed package. Files that match no `projects` prefix appear under
+`Repo` in the viewer.
 
 `limit` bounds both the recent commits considered by `backfill` and the number
 of recent entries compiled into the local viewer. The tracked row store keeps
