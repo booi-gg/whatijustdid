@@ -19,7 +19,7 @@
     "url": "https://github.com/booi-gg/changelog/issues"
   },
   "bin": {
-    "changereceipt": "./bin/changereceipt.mjs"
+    "changereceipt": "./bin/cli.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",
