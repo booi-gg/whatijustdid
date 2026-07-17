@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { chmodSync, existsSync, mkdirSync } from "node:fs";
 import { dirname } from "node:path";
+import { TITLE_NAME } from "./brand.mjs";
 
 // Node 22.13+ exposes node:sqlite without a flag, while some supported Node
 // releases still emit a process-wide experimental notice on first import.
@@ -46,7 +47,7 @@ export class LocalSummaryStore {
   #migrate() {
     const version = Number(this.database.prepare("PRAGMA user_version").get().user_version);
     if (version > STORE_SCHEMA_VERSION) {
-      throw new Error(`Summary database schema ${version} is newer than this Changetrail build`);
+      throw new Error(`Summary database schema ${version} is newer than this ${TITLE_NAME} build`);
     }
     if (version < 1) {
       this.database.exec(`
