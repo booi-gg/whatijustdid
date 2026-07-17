@@ -58,7 +58,7 @@ npx changetrail unhook
 
 `unhook` removes only Changetrail's marked blocks. It preserves unrelated hook
 commands and leaves the package, configuration, tracked rows, and generated
-viewer data in place. Run `npx changetrail install` to attach the hooks again.
+viewer data in place. Run `npx changetrail hook` to attach the hooks again.
 Git hooks are clone-local and normally shared by linked worktrees, so unhooking
 one worktree also unhooks the others in that clone.
 
@@ -237,6 +237,7 @@ type-changed a row—not only the final diff.
 ```text
 changetrail init       Scaffold files, install hooks, and build viewer data
 changetrail install    Alias of init; useful once per clone
+changetrail hook       Install or refresh Changetrail's local Git hooks
 changetrail unhook     Remove Changetrail from local Git hooks
 changetrail record     Generate and stage a row for staged source changes
 changetrail build      Compile recent db/**/*.json rows into data.js
