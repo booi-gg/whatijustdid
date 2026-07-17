@@ -1,0 +1,45 @@
+{
+  "name": "@bm/changelog",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Git-native changelog tracking with merge-safe rows, owned edits, and a standalone viewer.",
+  "keywords": [
+    "changelog",
+    "git",
+    "git-hooks",
+    "release-notes",
+    "cli"
+  ],
+  "homepage": "https://github.com/booi-gg/changelog#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/booi-gg/changelog.git"
+  },
+  "bugs": {
+    "url": "https://github.com/booi-gg/changelog/issues"
+  },
+  "bin": {
+    "changelog": "./bin/changelog.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "node --test",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "assets",
+    "bin",
+    "src",
+    "changelog.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
