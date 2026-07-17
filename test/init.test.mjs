@@ -7,28 +7,20 @@ import test from "node:test";
 import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
-test("initializes private SQLite without copying or tracking data assets", () => {
+test("creates only whatijustdid.json in the repository", () => {
   const root = repository("changetrail-init-");
   try {
-    writeFileSync(
-      join(root, ".gitignore"),
-      "node_modules/\n\n" +
-        "# >>> changetrail >>>\n" +
-        "/changetrail/data.js\n" +
-        "/changetrail/changetrail.local.json\n" +
-        "# <<< changetrail <<<\n",
-    );
+    writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = loadConfig({ root, env: {} });
     const first = initializeProject(config);
 
-    assert.deepEqual(first.created, ["changetrail.json"]);
-    assert.deepEqual(first.updated, [".gitignore"]);
+    assert.deepEqual(first.created, ["whatijustdid.json"]);
+    assert.deepEqual(first.updated, []);
     assert.deepEqual(
-      JSON.parse(readFileSync(join(root, "changetrail.json"), "utf8")),
+      JSON.parse(readFileSync(join(root, "whatijustdid.json"), "utf8")),
       {
         agent: "codex",
         model: null,
-        dir: "changetrail",
         viewerLimit: 200,
         generationLimit: 50,
         maxDiffBytes: 80000,
@@ -37,19 +29,10 @@ test("initializes private SQLite without copying or tracking data assets", () =>
       },
     );
     assert.equal(config.dbFile, join(realpathSync(root), ".git", "changetrail", "summaries.sqlite"));
+    assert.equal(config.dataFile, join(realpathSync(root), ".git", "changetrail", "data.js"));
     assert.equal(existsSync(config.dbFile), true);
-    assert.equal(existsSync(join(root, "changetrail", "db", ".gitkeep")), false);
-    assert.equal(existsSync(join(root, "changetrail", "changetrail.html")), false);
-    assert.equal(
-      readFileSync(join(root, ".gitignore"), "utf8"),
-      "node_modules/\n\n" +
-        "# >>> changetrail >>>\n" +
-        "/changetrail/data.js\n" +
-        "/changetrail/changetrail.html\n" +
-        "/changetrail/changetrail.local.json\n" +
-        "/changetrail/db/\n" +
-        "# <<< changetrail <<<\n",
-    );
+    assert.equal(existsSync(join(root, "changetrail")), false);
+    assert.equal(readFileSync(join(root, ".gitignore"), "utf8"), "node_modules/\n");
 
     const second = initializeProject(config);
     assert.equal(second.created.length, 0);
@@ -59,18 +42,16 @@ test("initializes private SQLite without copying or tracking data assets", () =>
   }
 });
 
-test("uses the configured viewer directory while keeping SQLite private", () => {
-  const root = repository("changetrail-custom-dir-");
+test("does not read or preserve changetrail.json", () => {
+  const root = repository("changetrail-removed-config-");
   try {
-    writeFileSync(join(root, "changetrail.json"), '{"dir":"docs/changes"}\n');
+    writeFileSync(join(root, "changetrail.json"), '{"agent":"claude"}\n');
     const config = loadConfig({ root, env: {} });
     initializeProject(config);
 
-    const ignore = readFileSync(join(root, ".gitignore"), "utf8");
-    assert.match(ignore, /\/docs\/changes\/data\.js/);
-    assert.match(ignore, /\/docs\/changes\/db\//);
+    assert.equal(config.agent, "codex");
     assert.equal(config.dbFile, join(realpathSync(root), ".git", "changetrail", "summaries.sqlite"));
-    assert.equal(readFileSync(join(root, "changetrail.json"), "utf8"), '{"dir":"docs/changes"}\n');
+    assert.equal(existsSync(join(root, "whatijustdid.json")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
@@ -79,7 +60,7 @@ test("uses the configured viewer directory while keeping SQLite private", () => 
 test("migrates provider to agent, retires raw, and respects injected env", () => {
   const root = repository("changetrail-config-");
   try {
-    const path = join(root, "changetrail.json");
+    const path = join(root, "whatijustdid.json");
     writeFileSync(path, '{"provider":"claude"}\n');
     assert.equal(loadConfig({ root, env: {} }).agent, "claude");
 
@@ -112,6 +93,8 @@ test("linked worktrees share the clone-private database", () => {
     const secondary = loadConfig({ root: linked, env: {} });
     assert.equal(primary.dbFile, secondary.dbFile);
     assert.equal(primary.dbFile, join(realpathSync(root), ".git", "changetrail", "summaries.sqlite"));
+    assert.notEqual(primary.dataFile, secondary.dataFile);
+    assert.match(secondary.dataFile, /\.git\/worktrees\/.*\/changetrail\/data\.js$/);
   } finally {
     try {
       git(["worktree", "remove", "--force", linked], root);

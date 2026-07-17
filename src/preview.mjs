@@ -1,7 +1,7 @@
 import { spawn } from "node:child_process";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_PORT = 4173;
@@ -17,10 +17,11 @@ const LIVE_RELOAD_CLIENT = `<script>
 /** Serve the package-owned viewer and reload connected browsers when it changes. */
 export async function startPreview(config, options = {}) {
   const viewerFile = VIEWER_FILE;
-  const dataFile = config.dataFile ?? join(config.root, config.dir, "data.js");
+  const dataFile = config.dataFile;
   if (!existsSync(viewerFile)) {
     throw new Error(`Bundled viewer not found at ${viewerFile}; reinstall changetrail`);
   }
+  if (!dataFile) throw new Error("Private viewer data path is not configured");
 
   const host = options.host ?? "127.0.0.1";
   const port = previewPort(options.port);

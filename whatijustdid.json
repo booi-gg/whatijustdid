@@ -1,7 +1,6 @@
 {
   "agent": "codex",
   "model": null,
-  "dir": "changetrail",
   "viewerLimit": 200,
   "generationLimit": 50,
   "maxDiffBytes": 80000,

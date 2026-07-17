@@ -1,10 +1,10 @@
 import { readFileSync, existsSync } from "node:fs";
-import { dirname, isAbsolute, join, normalize, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { gitCommonDir, repoRoot } from "./git.mjs";
+import { gitCommonDir, gitDir, repoRoot } from "./git.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "changetrail.json");
+const defaultConfigPath = join(packageDir, "whatijustdid.json");
 
 /**
  * Resolve shared presentation settings and local AI settings. Summary data is
@@ -14,35 +14,22 @@ export function loadConfig(options = {}) {
   const root = options.root ?? repoRoot();
   const env = options.env ?? process.env;
   const defaults = normalizeLegacyConfig(JSON.parse(readFileSync(defaultConfigPath, "utf8")));
-  const sharedCandidates = [
-    join(root, "changetrail.json"),
-    join(root, "changetrail", "config.json"),
-    join(root, "changelog", "changetrail.json"),
-    join(root, "ctrail", "config.json"),
-    join(root, "changelog", "ctrail.json"),
-    join(root, "ctrail.json"),
-    join(root, "changelog", "changelog.json"),
-    join(root, "changelog.json"),
-  ];
+  const sharedCandidates = [join(root, "whatijustdid.json")];
   const configPath = sharedCandidates.find(existsSync);
   const shared = configPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(configPath, "utf8")))
     : {};
 
   const initial = mergeAgentConfig(defaults, shared);
-  const configuredDir = initial.dir ?? "changetrail";
+  const privateDir = join(gitCommonDir(root), "changetrail");
   const localCandidates = [
-    join(root, configuredDir, "changetrail.local.json"),
-    join(root, "changetrail.local.json"),
-    join(root, configuredDir, "changelog.local.json"),
-    join(root, "changelog.local.json"),
+    join(privateDir, "whatijustdid.local.json"),
   ];
   const localConfigPath = localCandidates.find(existsSync);
   const local = localConfigPath
     ? normalizeLegacyConfig(JSON.parse(readFileSync(localConfigPath, "utf8")))
     : {};
   const config = mergeAgentConfig(initial, local);
-  const dir = repositoryDirectory(env.CHANGETRAIL_DIR ?? env.CHANGELOG_DIR ?? config.dir ?? configuredDir);
   const configuredAgent = config.agent ?? "codex";
   const agent =
     env.CHANGETRAIL_AGENT ??
@@ -53,13 +40,13 @@ export function loadConfig(options = {}) {
   const model = environmentModel ?? (sameAgent(agent, configuredAgent) ? config.model : null);
   const viewerLimit = positiveInteger(config.viewerLimit ?? config.limit, 200);
   const generationLimit = positiveInteger(config.generationLimit, 50);
-  const privateDir = join(gitCommonDir(root), "changetrail");
   const dbFile = resolvePrivateDbFile(
     env.CHANGETRAIL_DB_PATH ?? env.CHANGELOG_DB_PATH,
     root,
     privateDir,
   );
-  const legacyDbDir = join(root, dir, "db");
+  const legacyDbDir = join(root, "changetrail", "db");
+  const viewerDir = join(gitDir(root), "changetrail");
 
   return {
     agent,
@@ -71,13 +58,13 @@ export function loadConfig(options = {}) {
     maxDiffBytes: positiveInteger(config.maxDiffBytes, 80_000),
     timeoutMs: positiveInteger(config.timeoutMs, 20_000),
     projects: config.projects ?? {},
-    dir,
     root,
     privateDir,
+    viewerDir,
     dbFile,
     legacyDbDir,
     dbDir: legacyDbDir,
-    dataFile: join(root, dir, "data.js"),
+    dataFile: join(viewerDir, "data.js"),
     configPath: configPath ?? defaultConfigPath,
     isDefaultConfig: !configPath,
     localConfigPath: localConfigPath ?? null,
@@ -121,17 +108,6 @@ function agentFamily(agent) {
 
 function positiveInteger(value, fallback) {
   return Number.isInteger(value) && value > 0 ? value : fallback;
-}
-
-function repositoryDirectory(value) {
-  if (typeof value !== "string" || !value.trim()) {
-    throw new Error("Changelog dir must be a non-empty repository-relative path");
-  }
-  const dir = normalize(value.trim());
-  if (isAbsolute(dir) || dir === ".." || dir.startsWith(`..${sep}`)) {
-    throw new Error(`Changelog dir must stay inside the repository: ${value}`);
-  }
-  return dir;
 }
 
 function resolvePrivateDbFile(value, root, privateDir) {
