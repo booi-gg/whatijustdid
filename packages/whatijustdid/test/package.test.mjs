@@ -111,6 +111,10 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
         encoding: "utf8",
         env: {
           ...process.env,
+          CHANGELOG_AGENT: undefined,
+          WHATIJUSTDID_AGENT: undefined,
+          CHANGELOG_PROVIDER: undefined,
+          CHANGELOG_MODEL: undefined,
           OPENAI_API_KEY: "test-key",
           OPENAI_BASE_URL: mockAgent.url,
         },
@@ -260,6 +264,10 @@ function run(command, args, cwd, environment = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
+      CHANGELOG_AGENT: undefined,
+      WHATIJUSTDID_AGENT: undefined,
+      CHANGELOG_PROVIDER: undefined,
+      CHANGELOG_MODEL: undefined,
       npm_config_update_notifier: "false",
       ...environment,
     },
