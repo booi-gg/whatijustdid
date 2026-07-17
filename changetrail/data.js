@@ -3,33 +3,9 @@ window.__CHANGELOG_PROJECTS__ = [];
 window.__CHANGELOG__ = [
   {
     "kind": "commit",
-    "ref": "9fe588b",
-    "author": "Booi",
-    "date": "2026-07-17T18:01:26+05:30",
-    "projects": [],
-    "link": null,
-    "entries": [
-      {
-        "letter": "(a)",
-        "tags": [
-          "other"
-        ],
-        "description": "fix(init)!: align generated file paths"
-      },
-      {
-        "letter": "(b)",
-        "tags": [
-          "other"
-        ],
-        "description": "chore: track generated viewer data"
-      }
-    ]
-  },
-  {
-    "kind": "commit",
-    "ref": "0816b1c",
+    "ref": "11fb3d2",
     "author": "booi-dev",
-    "date": "2026-07-17T18:02:06+05:30",
+    "date": "2026-07-17T18:02:30+05:30",
     "projects": [],
     "link": null,
     "entries": [
@@ -44,18 +20,25 @@ window.__CHANGELOG__ = [
   },
   {
     "kind": "commit",
-    "ref": "fc9b9d0",
-    "author": "booi-dev",
-    "date": "2026-07-17T18:34:36+05:30",
+    "ref": "3d0bb4a",
+    "author": "Booi",
+    "date": "2026-07-17T18:36:42+05:30",
     "projects": [],
     "link": null,
     "entries": [
       {
         "letter": "(a)",
         "tags": [
-          "feat"
+          "other"
         ],
-        "description": "improve defaults and changelog viewer"
+        "description": "feat: improve defaults and changelog viewer"
+      },
+      {
+        "letter": "(b)",
+        "tags": [
+          "other"
+        ],
+        "description": "chore: refresh changetrail data"
       }
     ]
   }
