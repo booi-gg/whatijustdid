@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -8,7 +15,7 @@ import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
 test("creates only whatijustdid.json in the repository", () => {
-  const root = repository("changetrail-init-");
+  const root = repository("changereceipt-init-");
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = loadConfig({ root, env: {} });
@@ -28,11 +35,20 @@ test("creates only whatijustdid.json in the repository", () => {
         projects: {},
       },
     );
-    assert.equal(config.dbFile, join(realpathSync(root), ".git", "changetrail", "summaries.sqlite"));
-    assert.equal(config.dataFile, join(realpathSync(root), ".git", "changetrail", "data.js"));
+    assert.equal(
+      config.dbFile,
+      join(realpathSync(root), ".git", "changereceipt", "summaries.sqlite"),
+    );
+    assert.equal(
+      config.dataFile,
+      join(realpathSync(root), ".git", "changereceipt", "data.js"),
+    );
     assert.equal(existsSync(config.dbFile), true);
-    assert.equal(existsSync(join(root, "changetrail")), false);
-    assert.equal(readFileSync(join(root, ".gitignore"), "utf8"), "node_modules/\n");
+    assert.equal(existsSync(join(root, "changereceipt")), false);
+    assert.equal(
+      readFileSync(join(root, ".gitignore"), "utf8"),
+      "node_modules/\n",
+    );
 
     const second = initializeProject(config);
     assert.equal(second.created.length, 0);
@@ -42,15 +58,18 @@ test("creates only whatijustdid.json in the repository", () => {
   }
 });
 
-test("does not read or preserve changetrail.json", () => {
-  const root = repository("changetrail-removed-config-");
+test("does not read or preserve changereceipt.json", () => {
+  const root = repository("changereceipt-removed-config-");
   try {
-    writeFileSync(join(root, "changetrail.json"), '{"agent":"claude"}\n');
+    writeFileSync(join(root, "changereceipt.json"), '{"agent":"claude"}\n');
     const config = loadConfig({ root, env: {} });
     initializeProject(config);
 
     assert.equal(config.agent, "codex");
-    assert.equal(config.dbFile, join(realpathSync(root), ".git", "changetrail", "summaries.sqlite"));
+    assert.equal(
+      config.dbFile,
+      join(realpathSync(root), ".git", "changereceipt", "summaries.sqlite"),
+    );
     assert.equal(existsSync(join(root, "whatijustdid.json")), true);
   } finally {
     rmSync(root, { recursive: true, force: true });
@@ -58,7 +77,7 @@ test("does not read or preserve changetrail.json", () => {
 });
 
 test("migrates provider to agent, retires raw, and respects injected env", () => {
-  const root = repository("changetrail-config-");
+  const root = repository("changereceipt-config-");
   try {
     const path = join(root, "whatijustdid.json");
     writeFileSync(path, '{"provider":"claude"}\n');
@@ -81,7 +100,7 @@ test("migrates provider to agent, retires raw, and respects injected env", () =>
 });
 
 test("linked worktrees share the clone-private database", () => {
-  const root = repository("changetrail-worktrees-");
+  const root = repository("changereceipt-worktrees-");
   const linked = `${root}-linked`;
   try {
     writeFileSync(join(root, "README.md"), "worktree test\n");
@@ -92,9 +111,15 @@ test("linked worktrees share the clone-private database", () => {
     const primary = loadConfig({ root, env: {} });
     const secondary = loadConfig({ root: linked, env: {} });
     assert.equal(primary.dbFile, secondary.dbFile);
-    assert.equal(primary.dbFile, join(realpathSync(root), ".git", "changetrail", "summaries.sqlite"));
+    assert.equal(
+      primary.dbFile,
+      join(realpathSync(root), ".git", "changereceipt", "summaries.sqlite"),
+    );
     assert.notEqual(primary.dataFile, secondary.dataFile);
-    assert.match(secondary.dataFile, /\.git\/worktrees\/.*\/changetrail\/data\.js$/);
+    assert.match(
+      secondary.dataFile,
+      /\.git\/worktrees\/.*\/changereceipt\/data\.js$/,
+    );
   } finally {
     try {
       git(["worktree", "remove", "--force", linked], root);
