@@ -89,6 +89,13 @@ async function main() {
       log(`changetrail: built initial viewer data (${total} entries)`);
       break;
     }
+    case "hook": {
+      const installed = installHooks(repoRoot());
+      log(installed.length
+        ? `changetrail: installed/updated hooks: ${installed.join(", ")}`
+        : "changetrail: hooks already current");
+      break;
+    }
     case "unhook": {
       const removed = uninstallHooks(repoRoot());
       log(removed.length
@@ -102,6 +109,7 @@ async function main() {
 Usage:
   changetrail init       Create project files, install hooks, and build viewer data
   changetrail install    Refresh hooks and missing project files (alias: init)
+  changetrail hook       Install or refresh Changetrail's local Git hooks
   changetrail unhook     Remove Changetrail from local Git hooks
   changetrail record     Create + stage a DB row for currently staged source changes
   changetrail backfill   Create DB rows for recent history (alias: generate)
