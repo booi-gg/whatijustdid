@@ -116,6 +116,16 @@ test("packed package installs and initializes a working consumer repository", { 
     for (const name of ["pre-commit", "post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
       assert.equal(existsSync(join(consumer, ".git", "hooks", name)), false);
     }
+
+    const hookOutput = run(cli, ["hook"], consumer);
+    assert.match(hookOutput, /installed\/updated hooks/);
+    for (const name of ["pre-commit", "post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
+      assert.match(
+        readFileSync(join(consumer, ".git", "hooks", name), "utf8"),
+        /# >>> changetrail >>>/,
+      );
+    }
+    assert.match(run(cli, ["hook"], consumer), /hooks already current/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
