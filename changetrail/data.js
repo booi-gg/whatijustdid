@@ -65,5 +65,22 @@ window.__CHANGELOG__ = [
         "description": "chore: refresh changetrail data"
       }
     ]
+  },
+  {
+    "kind": "commit",
+    "ref": "bf2640a",
+    "author": "booi-dev",
+    "date": "2026-07-17T18:57:43+05:30",
+    "projects": [],
+    "link": null,
+    "entries": [
+      {
+        "letter": "(a)",
+        "tags": [
+          "feat"
+        ],
+        "description": "serve bundled changetrail viewer"
+      }
+    ]
   }
 ];
