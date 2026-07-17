@@ -4,6 +4,8 @@ import { generate, planGeneration } from "../src/generate.mjs";
 import { build } from "../src/build.mjs";
 import { installHooks, uninstallHooks } from "../src/hooks.mjs";
 import { initializeProject } from "../src/init.mjs";
+import { dirname } from "node:path";
+import { execSync } from "node:child_process";
 import { repoRoot } from "../src/git.mjs";
 import { recordCommittedChange } from "../src/record.mjs";
 import { editEntry } from "../src/edit.mjs";
@@ -102,6 +104,12 @@ async function main() {
     }
     case "sync":
       throw new Error("Cloud sync is not available yet; no local history was generated or uploaded");
+    case "db": {
+      const config = loadConfig();
+      log(`changetrail: ${config.dbFile}`);
+      try { execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" }); } catch { /* no-op */ }
+      break;
+    }
     case "init":
     case "install": {
       const config = loadConfig();
@@ -165,6 +173,7 @@ Usage:
   changetrail build                   Rebuild the private viewer cache
   changetrail preview                 Open the bundled viewer with live reload
   changetrail edit SHA                Edit a local summary
+  changetrail db                      Show and open the SQLite database location
   changetrail sync                    Reserved for hosted multi-device sync
 
 Config: whatijustdid.json
