@@ -1,10 +1,7 @@
 #!/usr/bin/env node
-<<<<<<< HEAD
 import { execSync } from "node:child_process";
 import { dirname } from "node:path";
-=======
 import pc from "picocolors";
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
 import { CLI_NAME, TITLE_NAME } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
 import { loadConfig } from "../src/config.mjs";
@@ -52,17 +49,9 @@ async function main() {
         );
       }
       const total = build(config);
-<<<<<<< HEAD
-      log(
-        result.created
-          ? `${CLI_NAME}: saved an AI summary for ${result.entry.commitSha.slice(0, 12)}; viewer now has ${formatEntries(total)}`
-          : `${CLI_NAME}: ${recordSkipMessage(result.reason)}; viewer now has ${formatEntries(total)}`,
-      );
-=======
       log(result.created
         ? `${P} saved an AI summary for ${sha(result.entry.commitSha)}; viewer now has ${bold(formatEntries(total))}`
         : `${P} ${dim(recordSkipMessage(result.reason))}; viewer now has ${bold(formatEntries(total))}`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       break;
     }
     case "generate":
@@ -81,20 +70,9 @@ async function main() {
       const force = rest.includes("--force");
 
       if (!all && limit === null) {
-<<<<<<< HEAD
-        const preview = planGeneration(config, {
-          limit: config.generationLimit,
-          force,
-        });
-        log(`${CLI_NAME}: no AI calls made. ${formatPlan(preview)}`);
-        log(
-          `${CLI_NAME}: choose a scope: --limit ${config.generationLimit}, or --all --yes`,
-        );
-=======
         const preview = planGeneration(config, { limit: config.generationLimit, force });
         log(`${P} no AI calls made. ${formatPlan(preview)}`);
         log(`${P} choose a scope: --limit ${bold(config.generationLimit)}, or --all --yes`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
         break;
       }
       if (all && limit !== null)
@@ -116,13 +94,8 @@ async function main() {
       const result = await generate(config, { ...options, plan });
       const total = build(config);
       log(
-<<<<<<< HEAD
-        `${CLI_NAME}: generated ${result.generated}, skipped ${result.skipped}, ` +
-          `viewer now has ${formatEntries(total)}`,
-=======
         `${P} generated ${green(result.generated)}, skipped ${yellow(result.skipped)}, ` +
         `viewer now has ${bold(formatEntries(total))}`,
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       );
       break;
     }
@@ -149,13 +122,7 @@ async function main() {
       const result = editEntry(config, id);
       if (result.changed) {
         build(config);
-<<<<<<< HEAD
-        log(
-          `${CLI_NAME}: edited local summary for ${result.entry.commitSha.slice(0, 12)}`,
-        );
-=======
         log(`${P} edited local summary for ${sha(result.entry.commitSha)}`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       } else {
         log(`${P} ${dim("no changes made")}`);
       }
@@ -167,17 +134,8 @@ async function main() {
       );
     case "db": {
       const config = loadConfig();
-<<<<<<< HEAD
-      log(`${CLI_NAME}: ${config.dbFile}`);
-      try {
-        execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" });
-      } catch {
-        /* no-op */
-      }
-=======
       log(`${P} ${path(config.dbFile)}`);
       try { execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" }); } catch { /* no-op */ }
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       break;
     }
     case "init":
@@ -188,26 +146,6 @@ async function main() {
       const installed = installHooks(config.root);
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
-<<<<<<< HEAD
-      log(
-        changed.length
-          ? `${CLI_NAME}: initialized ${changed.join(", ")}`
-          : `${CLI_NAME}: project files already initialized`,
-      );
-      if (migration.scanned) {
-        log(
-          `${CLI_NAME}: imported ${migration.imported} legacy AI summaries; ` +
-            `${migration.pending} commits still need generation`,
-        );
-      }
-      log(`${CLI_NAME}: private database ${config.dbFile}`);
-      log(
-        installed.length
-          ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
-          : `${CLI_NAME}: hooks already current`,
-      );
-      log(`${CLI_NAME}: built initial viewer data (${formatEntries(total)})`);
-=======
       log(changed.length
         ? `${P} initialized ${green(changed.join(", "))}`
         : `${P} ${dim("project files already initialized")}`);
@@ -222,50 +160,28 @@ async function main() {
         ? `${P} installed/updated hooks: ${green(installed.join(", "))}`
         : `${P} ${dim("hooks already current")}`);
       log(`${P} built initial viewer data (${bold(formatEntries(total))})`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       if (!rest.includes("--no-preview")) {
         const { url: previewUrl } = await startPreview(config, {
           port: optionValue(rest, "--port") ?? process.env.CONDUCTOR_PORT,
           open: !rest.includes("--no-open"),
         });
-<<<<<<< HEAD
-        log(`${CLI_NAME}: previewing the bundled viewer at ${url}`);
-        log(`${CLI_NAME}: watching for new commits (Ctrl+C to stop)`);
-=======
         log(`${P} previewing the bundled viewer at ${url(previewUrl)}`);
-      log(`${P} watching for new commits (Ctrl+C to stop)`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
+        log(`${P} watching for new commits (Ctrl+C to stop)`);
       }
       break;
     }
     case "hook": {
       const installed = installHooks(repoRoot());
-<<<<<<< HEAD
-      log(
-        installed.length
-          ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
-          : `${CLI_NAME}: hooks already current`,
-      );
-=======
       log(installed.length
         ? `${P} installed/updated hooks: ${green(installed.join(", "))}`
         : `${P} ${dim("hooks already current")}`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       break;
     }
     case "unhook": {
       const removed = uninstallHooks(repoRoot());
-<<<<<<< HEAD
-      log(
-        removed.length
-          ? `${CLI_NAME}: removed hooks: ${removed.join(", ")}`
-          : `${CLI_NAME}: hooks already removed`,
-      );
-=======
       log(removed.length
         ? `${P} removed hooks: ${yellow(removed.join(", "))}`
         : `${P} ${dim("hooks already removed")}`);
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
       break;
     }
     default:
@@ -314,17 +230,9 @@ function positiveInteger(value, name) {
 }
 
 function formatPlan(plan) {
-<<<<<<< HEAD
-  return (
-    `${plan.commitsToGenerate} of ${plan.selectedCommits} selected commits need summaries; ` +
-    `worst-case input ≈ ${formatNumber(plan.estimatedInputTokens)} tokens ` +
-    `(${formatBytes(plan.worstCaseInputBytes)})`
-  );
-=======
   return `${bold(plan.commitsToGenerate)} of ${bold(plan.selectedCommits)} selected commits need summaries; ` +
     `worst-case input \u2248 ${bold(formatNumber(plan.estimatedInputTokens))} tokens ` +
     `(${formatBytes(plan.worstCaseInputBytes)})`;
->>>>>>> 5242eab4388a870be8b29842c82177246a052eac
 }
 
 function formatNumber(value) {
