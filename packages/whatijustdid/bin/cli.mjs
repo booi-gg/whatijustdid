@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 import { execSync } from "node:child_process";
-import { dirname } from "node:path";
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import pc from "picocolors";
 import { validateAgentConfig } from "../src/agents/index.mjs";
 import { CLI_NAME, ENV_PREFIX, TITLE_NAME } from "../src/brand.mjs";
@@ -28,6 +30,13 @@ const yellow = (s) => pc.yellow(s);
 const [cmd, ...rest] = process.argv.slice(2);
 const silent = rest.includes("--silent");
 const log = (message) => silent || console.log(message);
+
+if (["-v", "--version", "-version"].includes(cmd)) {
+  const pkgDir = dirname(dirname(fileURLToPath(import.meta.url)));
+  const pkg = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"));
+  console.log(pkg.version);
+  process.exit(0);
+}
 
 async function main() {
   switch (cmd) {
