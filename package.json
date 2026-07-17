@@ -1,5 +1,5 @@
 {
-  "name": "ctrail",
+  "name": "changetrail",
   "version": "0.1.0",
   "type": "module",
   "description": "Change View and Logs: Git-native changelog tracking with merge-safe rows, owned edits, and a standalone viewer.",
@@ -19,7 +19,7 @@
     "url": "https://github.com/booi-gg/changelog/issues"
   },
   "bin": {
-    "ctrail": "./bin/ctrail.mjs"
+    "changetrail": "./bin/changetrail.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",
@@ -36,7 +36,7 @@
     "assets",
     "bin",
     "src",
-    "ctrail/config.json",
+    "changetrail/config.json",
     "README.md"
   ],
   "publishConfig": {

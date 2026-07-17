@@ -6,7 +6,7 @@ import test from "node:test";
 import { initializeProject } from "../src/init.mjs";
 
 test("initializes consumer files without overwriting user-owned assets", () => {
-  const root = mkdtempSync(join(tmpdir(), "ctrail-init-"));
+  const root = mkdtempSync(join(tmpdir(), "changetrail-init-"));
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = consumerConfig(root);
@@ -15,17 +15,17 @@ test("initializes consumer files without overwriting user-owned assets", () => {
     assert.deepEqual(first.created.sort(), [
       "changelog/changelog.html",
       "changelog/db/.gitkeep",
-      "ctrail/config.json",
+      "changetrail/config.json",
     ]);
     assert.deepEqual(first.updated, [".gitignore"]);
     assert.match(readFileSync(join(root, "changelog", "changelog.html"), "utf8"), /Change,<br>recorded\./);
     assert.equal(
       readFileSync(join(root, ".gitignore"), "utf8"),
       "node_modules/\n\n" +
-        "# >>> ctrail >>>\n" +
+        "# >>> changetrail >>>\n" +
         "/changelog/changelog.data.js\n" +
         "/changelog/changelog.local.json\n" +
-        "# <<< ctrail <<<\n",
+        "# <<< changetrail <<<\n",
     );
 
     writeFileSync(join(root, "changelog", "changelog.html"), "custom viewer\n");
@@ -43,10 +43,10 @@ test("initializes consumer files without overwriting user-owned assets", () => {
 });
 
 test("uses the configured directory in generated ignore rules", () => {
-  const root = mkdtempSync(join(tmpdir(), "ctrail-custom-dir-"));
+  const root = mkdtempSync(join(tmpdir(), "changetrail-custom-dir-"));
   try {
-    const configPath = join(root, "ctrail", "config.json");
-    mkdirSync(join(root, "ctrail"));
+    const configPath = join(root, "changetrail", "config.json");
+    mkdirSync(join(root, "changetrail"));
     writeFileSync(configPath, "{}\n");
     initializeProject({
       ...consumerConfig(root),
