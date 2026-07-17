@@ -2,6 +2,7 @@ import * as claude from "./claude.mjs";
 import * as codex from "./codex.mjs";
 import * as deepseek from "./deepseek.mjs";
 import * as llama from "./llama.mjs";
+import { ENV_PREFIX } from "../brand.mjs";
 
 const AGENTS = { codex, openai: codex, claude, deepseek, llama };
 
@@ -32,11 +33,15 @@ export function validateAgentConfig(agent, env = process.env) {
     };
   }
   const key = AGENT_KEY[agent];
-  if (key && !env[key]) {
+  if (key && !env[key] && !env[`${ENV_PREFIX}_AGENT_API_KEY`]) {
     return {
       valid: false,
       agent,
-      error: `${key} environment variable is not set`,
+      error:
+        `${key} environment variable is not set. ` +
+        `Add it to a .env file in your repo root: ${ENV_PREFIX}_AGENT_API_KEY=<your-api-key> ` +
+        `(works for any agent; or use ${key}=<your-api-key> for this agent specifically), ` +
+        `or export it in your shell instead`,
     };
   }
   return { valid: true, agent };
