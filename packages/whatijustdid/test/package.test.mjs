@@ -111,6 +111,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
         encoding: "utf8",
         env: {
           ...process.env,
+          NO_COLOR: "1",
           [`${ENV_PREFIX}_AGENT`]: undefined,
           [`${ENV_PREFIX}_MODEL`]: undefined,
           [`${ENV_PREFIX}_AGENT_API_KEY`]: undefined,
@@ -156,6 +157,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
         encoding: "utf8",
         env: {
           ...process.env,
+          NO_COLOR: "1",
           [`${ENV_PREFIX}_AGENT`]: undefined,
           [`${ENV_PREFIX}_MODEL`]: undefined,
           [`${ENV_PREFIX}_AGENT_API_KEY`]: undefined,
@@ -174,7 +176,11 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     assert.match(scopePreview, /no AI calls made/);
     assert.match(scopePreview, /choose a scope/);
 
-    const sync = spawnSync(cli, ["sync"], { cwd: consumer, encoding: "utf8" });
+    const sync = spawnSync(cli, ["sync"], {
+      cwd: consumer,
+      encoding: "utf8",
+      env: { ...process.env, NO_COLOR: "1" },
+    });
     assert.equal(sync.status, 1);
     assert.match(sync.stderr, /Cloud sync is not available yet/);
 
@@ -196,7 +202,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
 
     const initWithPreview = spawn(cli, ["init", "--no-open", "--port", "0"], {
       cwd: consumer,
-      env: process.env,
+      env: { ...process.env, NO_COLOR: "1" },
       stdio: ["ignore", "pipe", "pipe"],
     });
     const previewOutput = await waitForOutput(initWithPreview, /previewing the bundled viewer at/);
@@ -270,6 +276,7 @@ function run(command, args, cwd, environment = {}) {
     encoding: "utf8",
     env: {
       ...process.env,
+      NO_COLOR: "1",
       [`${ENV_PREFIX}_AGENT`]: undefined,
       [`${ENV_PREFIX}_MODEL`]: undefined,
       [`${ENV_PREFIX}_AGENT_API_KEY`]: undefined,
