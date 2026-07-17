@@ -17,20 +17,20 @@ async function main() {
     case "record": {
       const config = loadConfig();
       const { created } = await recordStagedChange(config);
-      log(created ? `changelog: staged one DB row (provider: ${config.provider})` : "changelog: row already staged or no source changes");
+      log(created ? `cvl: staged one DB row (provider: ${config.provider})` : "cvl: row already staged or no source changes");
       break;
     }
     case "generate":
     case "backfill": {
       const config = loadConfig();
       const n = await generate(config);
-      log(`changelog: generated ${n} new ${n === 1 ? "entry" : "entries"} (provider: ${config.provider})`);
+      log(`cvl: generated ${n} new ${n === 1 ? "entry" : "entries"} (provider: ${config.provider})`);
       break;
     }
     case "build": {
       const config = loadConfig();
       const n = build(config);
-      log(`changelog: built ${config.dataFile} (${n} entries)`);
+      log(`cvl: built ${config.dataFile} (${n} entries)`);
       break;
     }
     case "edit": {
@@ -39,9 +39,9 @@ async function main() {
       const result = editEntry(config, id);
       if (result.changed) {
         build(config);
-        log(`changelog: edited + staged ${result.entry.id}`);
+        log(`cvl: edited + staged ${result.entry.id}`);
       } else {
-        log("changelog: no changes made");
+        log("cvl: no changes made");
       }
       break;
     }
@@ -51,7 +51,7 @@ async function main() {
         base: optionValue(rest, "--base"),
         head: optionValue(rest, "--head"),
       });
-      log(`changelog: ownership verified (${result.checked} existing rows checked)`);
+      log(`cvl: ownership verified (${result.checked} existing rows checked)`);
       break;
     }
     case "sync": {
@@ -59,7 +59,7 @@ async function main() {
       const config = loadConfig();
       const created = await generate(config);
       const total = build(config);
-      log(`changelog: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
+      log(`cvl: +${created} new, ${total} total → ${config.dir}/changelog.data.js`);
       break;
     }
     case "init":
@@ -70,25 +70,25 @@ async function main() {
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(changed.length
-        ? `changelog: initialized ${changed.join(", ")}`
-        : "changelog: project files already initialized");
-      log(installed.length ? `changelog: installed/updated hooks: ${installed.join(", ")}` : "changelog: hooks already current");
-      log(`changelog: built initial viewer data (${total} entries)`);
+        ? `cvl: initialized ${changed.join(", ")}`
+        : "cvl: project files already initialized");
+      log(installed.length ? `cvl: installed/updated hooks: ${installed.join(", ")}` : "cvl: hooks already current");
+      log(`cvl: built initial viewer data (${total} entries)`);
       break;
     }
     default:
-      console.log(`changelog — git-derived change-log tracker
+      console.log(`cvl — Change View and Logs
 
 Usage:
-  changelog init       Create project files, install hooks, and build the viewer
-  changelog install    Refresh hooks and missing project files (alias: init)
-  changelog record     Create + stage a DB row for currently staged source changes
-  changelog backfill   Create DB rows for recent history (alias: generate)
-  changelog sync       Backfill history, then rebuild viewer data
-  changelog build      Compile db/*.json → changelog.data.js
-  changelog edit ID    Edit + stage an entry (creator/author/committer only)
-  changelog verify-ownership --base SHA --head SHA
-                       Verify row ownership across a commit range
+  cvl init       Create project files, install hooks, and build the viewer
+  cvl install    Refresh hooks and missing project files (alias: init)
+  cvl record     Create + stage a DB row for currently staged source changes
+  cvl backfill   Create DB rows for recent history (alias: generate)
+  cvl sync       Backfill history, then rebuild viewer data
+  cvl build      Compile recent db/**/*.json rows → changelog.data.js
+  cvl edit ID    Edit + stage an entry (creator/author/committer only)
+  cvl verify-ownership --base SHA --head SHA
+                 Verify row ownership across a commit range
 
 Config: changelog/changelog.json
 Providers: raw | claude | codex/openai | llama`);
@@ -97,7 +97,7 @@ Providers: raw | claude | codex/openai | llama`);
 }
 
 main().catch((err) => {
-  console.error(`changelog: ${err.message}`);
+  console.error(`cvl: ${err.message}`);
   process.exit(1);
 });
 

@@ -1,8 +1,8 @@
 {
-  "name": "@bm/changelog",
+  "name": "cvl",
   "version": "0.1.0",
   "type": "module",
-  "description": "Git-native changelog tracking with merge-safe rows, owned edits, and a standalone viewer.",
+  "description": "Change View and Logs: Git-native changelog tracking with merge-safe rows, owned edits, and a standalone viewer.",
   "keywords": [
     "changelog",
     "git",
@@ -19,7 +19,7 @@
     "url": "https://github.com/booi-gg/changelog/issues"
   },
   "bin": {
-    "changelog": "./bin/changelog.mjs"
+    "cvl": "./bin/cvl.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",

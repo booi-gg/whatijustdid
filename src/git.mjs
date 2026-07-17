@@ -104,14 +104,29 @@ export function gitAuthor(cwd = process.cwd()) {
  * Resolve DB row paths to commits that introduced them. One git process for
  * every row would make post-commit hooks increasingly slow; parse one log.
  */
-export function commitIndexForDirectory(root, directory, revision = "HEAD") {
+export function commitIndexForDirectory(root, directory, revision = "HEAD", maxCount) {
   const directoryPath = toGitPath(relative(root, directory));
   const format = `%x1e%H%x1f%h%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%aI%x1f%s%x1f%b%x1d`;
+  const count = Number.isInteger(maxCount) && maxCount > 0 ? [`-n${maxCount}`] : [];
   const out = tryGit(
-    ["log", `--format=${format}`, "--name-only", "--diff-filter=A", revision, "--", directoryPath],
+    ["log", ...count, `--format=${format}`, "--name-only", "--diff-filter=A", revision, "--", directoryPath],
     { cwd: root },
   );
   return parseCommitIndexLog(out);
+}
+
+/** Resolve one row's adding commit without indexing the database's full history. */
+export function commitForAddedPath(root, path, revision = "HEAD") {
+  const format = `%x1e%H%x1f%h%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%aI%x1f%s%x1f%b%x1d`;
+  const out = tryGit(
+    ["log", "-n1", `--format=${format}`, "--diff-filter=A", revision, "--", path],
+    { cwd: root },
+  );
+  for (const chunk of out.split(RECORD)) {
+    const meta = parseIndexedCommit(chunk);
+    if (meta) return meta;
+  }
+  return {};
 }
 
 export function parseCommitIndexLog(out) {
@@ -119,32 +134,9 @@ export function parseCommitIndexLog(out) {
   const index = new Map();
 
   for (const chunk of out.split(RECORD)) {
+    const meta = parseIndexedCommit(chunk);
+    if (!meta) continue;
     const metaEnd = chunk.indexOf(END);
-    if (metaEnd < 0) continue;
-    const [
-      sha,
-      shortSha,
-      author,
-      authorEmail,
-      committer,
-      committerEmail,
-      date,
-      subject,
-      body = "",
-    ] = chunk
-      .slice(0, metaEnd)
-      .split(FIELD);
-    const meta = {
-      sha,
-      shortSha,
-      author,
-      authorEmail,
-      committer,
-      committerEmail,
-      date,
-      subject,
-      body,
-    };
     const paths = chunk
       .slice(metaEnd + END.length)
       .split("\n")
@@ -156,6 +148,34 @@ export function parseCommitIndexLog(out) {
   }
 
   return index;
+}
+
+function parseIndexedCommit(chunk) {
+  const END = "\x1d";
+  const metaEnd = chunk.indexOf(END);
+  if (metaEnd < 0) return null;
+  const [
+    sha,
+    shortSha,
+    author,
+    authorEmail,
+    committer,
+    committerEmail,
+    date,
+    subject,
+    body = "",
+  ] = chunk.slice(0, metaEnd).split(FIELD);
+  return {
+    sha,
+    shortSha,
+    author,
+    authorEmail,
+    committer,
+    committerEmail,
+    date,
+    subject,
+    body,
+  };
 }
 
 export function toGitPath(path) {

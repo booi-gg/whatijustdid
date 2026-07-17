@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import test from "node:test";
 import { build } from "../src/build.mjs";
-import { parseCommitIndexLog } from "../src/git.mjs";
+import { parseCommitIndexLog, toGitPath } from "../src/git.mjs";
 import { applyEntryEdit, editEntry } from "../src/edit.mjs";
 import {
   assertEntryOwner,
@@ -15,6 +15,36 @@ import {
 import { projectsForFiles } from "../src/projects.mjs";
 import { bulletLines, parseSubject } from "../src/providers/raw.mjs";
 import { CHANGELOG_SCHEMA, coerceModelJson } from "../src/providers/shared.mjs";
+import {
+  entryPathForId,
+  findEntryPath,
+  readEntryRecords,
+  writeEntry,
+} from "../src/store.mjs";
+
+test("hash-shards new rows and reads legacy flat rows recursively", () => {
+  const root = mkdtempSync(join(tmpdir(), "bm-changelog-store-"));
+  try {
+    const dbDir = join(root, "changelog", "db");
+    const id = "abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789";
+    const path = writeEntry(dbDir, { id, createdAt: "2026-07-17T10:00:00.000Z" });
+    mkdirSync(dbDir, { recursive: true });
+    writeFileSync(join(dbDir, "legacy-row.json"), JSON.stringify({ id: "legacy-row" }));
+
+    assert.equal(
+      toGitPath(relative(dbDir, path)),
+      `ab/cd/${id}.json`,
+    );
+    assert.equal(entryPathForId(dbDir, id), path);
+    assert.equal(findEntryPath(dbDir, id.slice(0, 12)), path);
+    assert.deepEqual(
+      readEntryRecords(dbDir).map(({ entry }) => entry.id).sort(),
+      [id, "legacy-row"].sort(),
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
 
 test("parses conventional subjects and body bullets", () => {
   assert.deepEqual(parseSubject("feat(ui): add project tabs"), {
@@ -301,6 +331,50 @@ test("build emits configured projects and gives human commit bullets precedence"
     assert.match(output, /Added project tabs/);
     assert.match(output, /Fixed project badges/);
     assert.doesNotMatch(output, /AI summary/);
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("bounded builds read only recent indexed rows", () => {
+  const root = mkdtempSync(join(tmpdir(), "bm-changelog-bounded-build-"));
+  try {
+    const dbDir = join(root, "changelog", "db");
+    const dataFile = join(root, "changelog", "changelog.data.js");
+    const commitIndex = new Map();
+    const rows = [
+      ["1111111111111111111111111111111111111111", "2026-07-16T10:00:00.000Z", "Older selected"],
+      ["2222222222222222222222222222222222222222", "2026-07-17T10:00:00.000Z", "Newest selected"],
+    ];
+    for (const [id, date, summary] of rows) {
+      const path = writeEntry(dbDir, {
+        id,
+        createdAt: date,
+        type: "feat",
+        projects: [],
+        changes: [{ type: "feat", summary }],
+      });
+      commitIndex.set(toGitPath(relative(root, path)), {
+        shortSha: id.slice(0, 7),
+        author: "Alice",
+        date,
+        subject: `feat: ${summary}`,
+      });
+    }
+    // A malformed historical row proves the bounded path does not scan the DB tail.
+    writeFileSync(join(dbDir, "historical-invalid.json"), "not json\n");
+
+    assert.equal(
+      build(
+        { root, dbDir, dataFile, limit: 2, projects: {} },
+        { commitIndex },
+      ),
+      2,
+    );
+    const output = readFileSync(dataFile, "utf8");
+    assert.match(output, /Older selected/);
+    assert.match(output, /Newest selected/);
+    assert.doesNotMatch(output, /historical-invalid/);
   } finally {
     rmSync(root, { recursive: true, force: true });
   }

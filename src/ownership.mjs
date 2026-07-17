@@ -1,7 +1,7 @@
 import {
+  commitForAddedPath,
   commitMeta,
   commitActorsBetween,
-  commitIndexForDirectory,
   fileAtIndex,
   fileAtRevision,
   fileModeAtIndex,
@@ -56,14 +56,12 @@ export function assertStagedOwnership(config, dependencies = {}) {
   const readRevision = dependencies.fileAtRevision ?? fileAtRevision;
   const readIndex = dependencies.fileAtIndex ?? fileAtIndex;
   const indexMode = dependencies.fileModeAtIndex ?? fileModeAtIndex;
-  const indexDirectory = dependencies.commitIndexForDirectory ?? commitIndexForDirectory;
   const currentAuthor = dependencies.gitAuthor ?? gitAuthor;
 
   const paths = staged(config.root, config.dbDir).filter(isRowPath);
   if (!paths.length) return 0;
 
   const actor = currentAuthor(config.root).email;
-  const commitIndex = indexDirectory(config.root, config.dbDir, "HEAD");
   for (const path of paths) {
     const originalText = readRevision(config.root, "HEAD", path);
     const stagedText = readIndex(config.root, path);
@@ -79,7 +77,7 @@ export function assertStagedOwnership(config, dependencies = {}) {
       original,
       config.root,
       dependencies,
-      commitIndex.get(path) ?? {},
+      addedCommitForPath(config, path, "HEAD", dependencies),
     );
     assertEntryOwner(original, commit, actor, path);
     if (stagedEntry) assertImmutableFields(original, stagedEntry, path);
@@ -95,14 +93,12 @@ export function verifyOwnershipRange(config, { base, head }, dependencies = {}) 
   const changed = dependencies.modifiedPathsBetween ?? modifiedPathsBetween;
   const readRevision = dependencies.fileAtRevision ?? fileAtRevision;
   const revisionMode = dependencies.fileModeAtRevision ?? fileModeAtRevision;
-  const indexDirectory = dependencies.commitIndexForDirectory ?? commitIndexForDirectory;
   const actorsBetween = dependencies.commitActorsBetween ?? commitActorsBetween;
   const firstAddition = dependencies.firstAddedCommitBetween ?? firstAddedCommitBetween;
   const readCommit = dependencies.commitMeta ?? commitMeta;
 
   const common = resolveMergeBase(config.root, base, head);
   const paths = changed(config.root, config.dbDir, common, head).filter(isRowPath);
-  const commitIndex = indexDirectory(config.root, config.dbDir, common);
   const failures = [];
 
   for (const path of paths) {
@@ -129,7 +125,7 @@ export function verifyOwnershipRange(config, { base, head }, dependencies = {}) 
           entry,
           config.root,
           dependencies,
-          commitIndex.get(path) ?? {},
+          addedCommitForPath(config, path, common, dependencies),
         );
       }
 
@@ -192,6 +188,17 @@ function entrySourceCommit(entry, root, dependencies, fallback = {}) {
   if (!entry.commit?.sha) return fallback;
   const readCommit = dependencies.commitMeta ?? commitMeta;
   return readCommit(entry.commit.sha, root);
+}
+
+function addedCommitForPath(config, path, revision, dependencies) {
+  if (dependencies.commitForAddedPath) {
+    return dependencies.commitForAddedPath(config.root, path, revision);
+  }
+  // Preserve the dependency seam used by API consumers and older tests.
+  if (dependencies.commitIndexForDirectory) {
+    return dependencies.commitIndexForDirectory(config.root, config.dbDir, revision).get(path) ?? {};
+  }
+  return commitForAddedPath(config.root, path, revision);
 }
 
 function parseRegularEntry(text, mode, path) {
