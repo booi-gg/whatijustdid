@@ -30,15 +30,28 @@ Hosted account/team sync is intentionally reserved for a later paid cloud servic
 
 Codex/OpenAI is the default. `raw` is not an agent and there is no commit-message fallback.
 
+Choose an agent and export its API key:
+
 ```bash
-export OPENAI_API_KEY=...
+# Codex / OpenAI (default)
+export OPENAI_API_KEY=sk-...
+
+# DeepSeek
+export WHATIJUSTDID_AGENT=deepseek
+export DEEPSEEK_API_KEY=sk-...
+
+# Claude
+export WHATIJUSTDID_AGENT=claude
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Local Ollama (no API key needed)
+export WHATIJUSTDID_AGENT=llama
 ```
 
-DeepSeek, Claude, and local Ollama are also supported. To use DeepSeek:
+To override the default model per agent:
 
 ```bash
-export WHATIJUSTDID_AGENT=deepseek
-export DEEPSEEK_API_KEY=...
+export CHANGETRAIL_MODEL=gpt-5.4-flash   # or deepseek-v4-pro, claude-sonnet-4-20250514, etc.
 ```
 
 ## Install
