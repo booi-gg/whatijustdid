@@ -120,6 +120,7 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 {
   "agent": "codex",
   "model": null,
+  "verbosity": "normal",
   "viewerLimit": 200,
   "generationLimit": 50,
   "maxDiffBytes": 80000,
@@ -131,7 +132,7 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 }
 ```
 
-`model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini` and DeepSeek resolves to `deepseek-v4-flash`; the resolved model is saved with the summary.
+`model: null` lets the selected agent use its package default. `verbosity` controls summary detail: `"concise"` (600 tokens, 140 chars/change), `"normal"` (1200, 280), to `"detailed"` (2400, 560).
 
 Put personal overrides in Git-private `.git/whatijustdid/whatijustdid.local.json`. Environment variables take precedence:
 
