@@ -136,7 +136,6 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 Put personal overrides in Git-private `.git/changetrail/whatijustdid.local.json`. Environment variables take precedence:
 
 - `WHATIJUSTDID_AGENT` (legacy: `CHANGETRAIL_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
-- `CHANGETRAIL_MODEL` (legacy: `CHANGELOG_MODEL`)
 - `CHANGETRAIL_DB_PATH` for an advanced local database-path override
 
 Agent-specific variables:
