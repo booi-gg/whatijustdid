@@ -2,6 +2,7 @@
   "agent": "deepseek",
   "model": "deepseek-v4-pro",
   "verbosity": "detailed",
+  "showTokens": false,
   "viewerLimit": 200,
   "generationLimit": 50,
   "maxDiffBytes": 80000,
