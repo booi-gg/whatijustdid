@@ -1,6 +1,6 @@
-# ctrial
+# ctrail
 
-`ctrial` is a zero-dependency Node CLI that records opted-in commits in a Git-owned
+`ctrail` is a zero-dependency Node CLI that records opted-in commits in a Git-owned
 changelog and renders them in a standalone HTML viewer.
 
 Each participating commit adds its own JSON row. Parallel branches therefore
@@ -19,13 +19,13 @@ still read automatically; no migration is required.
 Install the package in the repository that should own the changelog:
 
 ```sh
-npm install --save-dev ctrial
-npx ctrial init
+npm install --save-dev ctrail
+npx ctrail init
 ```
 
 `init` is safe to rerun. It:
 
-- creates `changelog/changelog.json`
+- creates `ctrail/config.json`
 - creates the dependency-free `changelog/changelog.html` viewer
 - creates `changelog/db/.gitkeep`
 - ignores only `changelog.data.js` and `changelog.local.json`
@@ -33,22 +33,22 @@ npx ctrial init
 - builds the initial viewer data
 
 Commit the package lockfile and the new repository files. Every developer must
-run `npm install` and `npx ctrial install` once per clone because Git hooks
+run `npm install` and `npx ctrail install` once per clone because Git hooks
 are local. A package script makes that easy:
 
 ```json
 {
   "scripts": {
-    "changelog:install": "ctrial install",
-    "changelog:build": "ctrial build"
+    "changelog:install": "ctrail install",
+    "changelog:build": "ctrail build"
   }
 }
 ```
 
-`ctrial install` is an alias of `ctrial init`. Missing assets are
+`ctrail install` is an alias of `ctrail init`. Missing assets are
 restored, but existing config and viewer files are preserved. Run
-`ctrial init --force` to refresh only the viewer from the bundled template.
-Rerunning either command refreshes one marked `ctrial` block in each
+`ctrail init --force` to refresh only the viewer from the bundled template.
+Rerunning either command refreshes one marked `ctrail` block in each
 hook instead of adding duplicates; everything outside that block stays intact.
 
 ## Normal use
@@ -94,7 +94,7 @@ Copy the row filename without `.json` from anywhere under `changelog/db`, then
 run:
 
 ```sh
-npx ctrial edit <id-or-unique-prefix>
+npx ctrail edit <id-or-unique-prefix>
 ```
 
 The command opens `$VISUAL`, then `$EDITOR`, then `vi`. Only `type`, `projects`,
@@ -111,7 +111,7 @@ when hostile-user enforcement matters.
 
 ## Configuration
 
-Shared config lives at `changelog/changelog.json`:
+Shared config lives at `ctrail/config.json`:
 
 ```json
 {
@@ -129,8 +129,7 @@ Shared config lives at `changelog/changelog.json`:
 }
 ```
 
-For a custom changelog directory, put the shared config at the repository root
-as `changelog.json` and set `dir` there.
+To use a custom changelog directory, set `dir` in `ctrail/config.json`.
 
 `limit` bounds both the recent commits considered by `backfill` and the number
 of recent entries compiled into the local viewer. The tracked row store keeps
@@ -172,7 +171,7 @@ commit.
 Run the same range check in pull-request CI after installing dependencies:
 
 ```sh
-npx --no-install ctrial verify-ownership \
+npx --no-install ctrail verify-ownership \
   --base "$BASE_SHA" \
   --head "$HEAD_SHA"
 ```
@@ -184,14 +183,14 @@ type-changed a row—not only the final diff.
 ## Commands
 
 ```text
-ctrial init       Scaffold files, install hooks, and build viewer data
-ctrial install    Alias of init; useful once per clone
-ctrial record     Generate and stage a row for staged source changes
-ctrial build      Compile recent db/**/*.json rows into changelog.data.js
-ctrial backfill   Import + stage recent Git history explicitly
-ctrial sync       Backfill, then build
-ctrial edit ID    Edit and stage an owned row
-ctrial verify-ownership --base SHA --head SHA
+ctrail init       Scaffold files, install hooks, and build viewer data
+ctrail install    Alias of init; useful once per clone
+ctrail record     Generate and stage a row for staged source changes
+ctrail build      Compile recent db/**/*.json rows into changelog.data.js
+ctrail backfill   Import + stage recent Git history explicitly
+ctrail sync       Backfill, then build
+ctrail edit ID    Edit and stage an owned row
+ctrail verify-ownership --base SHA --head SHA
                Verify ownership across a commit range
 ```
 
@@ -209,7 +208,7 @@ import {
   initializeProject,
   loadConfig,
   recordStagedChange,
-} from "ctrial";
+} from "ctrail";
 ```
 
 ## Package development
@@ -223,6 +222,6 @@ To test the exact tarball in another repository:
 
 ```sh
 npm pack
-npm install --save-dev ./ctrial-0.1.0.tgz
-npx ctrial init
+npm install --save-dev ./ctrail-0.1.0.tgz
+npx ctrail init
 ```

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { initializeProject } from "../src/init.mjs";
 
 test("initializes consumer files without overwriting user-owned assets", () => {
-  const root = mkdtempSync(join(tmpdir(), "ctrial-init-"));
+  const root = mkdtempSync(join(tmpdir(), "ctrail-init-"));
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = consumerConfig(root);
@@ -14,18 +14,18 @@ test("initializes consumer files without overwriting user-owned assets", () => {
 
     assert.deepEqual(first.created.sort(), [
       "changelog/changelog.html",
-      "changelog/changelog.json",
       "changelog/db/.gitkeep",
+      "ctrail/config.json",
     ]);
     assert.deepEqual(first.updated, [".gitignore"]);
     assert.match(readFileSync(join(root, "changelog", "changelog.html"), "utf8"), /Change,<br>recorded\./);
     assert.equal(
       readFileSync(join(root, ".gitignore"), "utf8"),
       "node_modules/\n\n" +
-        "# >>> ctrial >>>\n" +
+        "# >>> ctrail >>>\n" +
         "/changelog/changelog.data.js\n" +
         "/changelog/changelog.local.json\n" +
-        "# <<< ctrial <<<\n",
+        "# <<< ctrail <<<\n",
     );
 
     writeFileSync(join(root, "changelog", "changelog.html"), "custom viewer\n");
@@ -43,9 +43,10 @@ test("initializes consumer files without overwriting user-owned assets", () => {
 });
 
 test("uses the configured directory in generated ignore rules", () => {
-  const root = mkdtempSync(join(tmpdir(), "ctrial-custom-dir-"));
+  const root = mkdtempSync(join(tmpdir(), "ctrail-custom-dir-"));
   try {
-    const configPath = join(root, "changelog.json");
+    const configPath = join(root, "ctrail", "config.json");
+    mkdirSync(join(root, "ctrail"));
     writeFileSync(configPath, "{}\n");
     initializeProject({
       ...consumerConfig(root),
