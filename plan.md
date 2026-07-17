@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-# changereceipt Product Plan -
-=======
 # whatijustdid Product Plan
->>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c
 
 ## Product decision
 
