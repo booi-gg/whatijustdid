@@ -6,11 +6,10 @@ import {
   mkdirSync,
   rmSync,
 } from "node:fs";
-import { join, dirname, isAbsolute } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join, isAbsolute } from "node:path";
 import { execFileSync } from "node:child_process";
+import { BINARY_PATH, CLI_NAME, HOOK_MARKER, HOOK_END_MARKER } from "./brand.mjs";
 
-const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const HOOKS = {
   "post-commit": ["record"],
   "post-merge": ["record --merge-only"],
@@ -18,16 +17,19 @@ const HOOKS = {
   "post-rewrite": ["build"],
 };
 const MANAGED_HOOKS = ["pre-commit", ...Object.keys(HOOKS)];
-const MARKER = "# >>> changetrail >>>";
-const END_MARKER = "# <<< changetrail <<<";
-const BLOCK = /# >>> (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) <<<(?:\r?\n|$)/g;
+const BLOCK = new RegExp(
+  `# >>> (?:@bm\\/changelog|cvl|ctrial|ctrail|${CLI_NAME}) >>>` +
+    `[\\s\\S]*?` +
+    `# <<< (?:@bm\\/changelog|cvl|ctrial|ctrail|${CLI_NAME}) <<<(?:\\r?\\n|$)`,
+  "g",
+);
 
 /** Install post-commit generation while preserving all user-owned hook logic. */
 export function installHooks(root) {
   const absHooksDir = hooksDirectory(root);
   mkdirSync(absHooksDir, { recursive: true });
 
-  const runner = join(packageDir, "bin", "changetrail.mjs").replace(/\\/g, "/");
+  const runner = BINARY_PATH.replace(/\\/g, "/");
   // Upgrades must actively remove the old token-spending pre-commit hook.
   stripManagedBlock(join(absHooksDir, "pre-commit"));
 
@@ -39,7 +41,7 @@ export function installHooks(root) {
     const commandLines = commands
       .map((command) => `node --no-warnings ${shellQuote(runner)} ${command} || true`)
       .join("\n");
-    const block = `${MARKER}\n${commandLines}\n${END_MARKER}\n`;
+    const block = `${HOOK_MARKER}\n${commandLines}\n${HOOK_END_MARKER}\n`;
     const base = content.replace(BLOCK, "").trimEnd();
     const next = `${base}\n\n${block}`;
     if (next === content) continue;
@@ -50,7 +52,7 @@ export function installHooks(root) {
   return installed;
 }
 
-/** Remove only Changetrail-owned hook blocks, preserving all other hook logic. */
+/** Remove only the tool's hook blocks while preserving all other hook logic. */
 export function uninstallHooks(root) {
   const absHooksDir = hooksDirectory(root);
   const removed = [];

@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
+import { CLI_NAME } from "./brand.mjs";
 import { CHANGE_TYPES } from "./agents/shared.mjs";
 import { openSummaryStore } from "./store.mjs";
 
@@ -47,7 +48,7 @@ export function applyEntryEdit(entry, editable) {
 }
 
 function editWithConfiguredEditor(draft) {
-  const directory = mkdtempSync(join(tmpdir(), "changetrail-edit-"));
+  const directory = mkdtempSync(join(tmpdir(), `${CLI_NAME}-edit-`));
   const path = join(directory, `${randomUUID()}.json`);
   try {
     writeFileSync(path, `${JSON.stringify(draft, null, 2)}\n`, { mode: 0o600 });

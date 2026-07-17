@@ -2,24 +2,22 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
-import { fileURLToPath } from "node:url";
+import { CLI_NAME, VIEWER_FILENAME, VIEWER_FILE_PATH, SSE_PATH } from "./brand.mjs";
 
 const DEFAULT_PORT = 4173;
-const VIEWER_FILE = fileURLToPath(new URL("../assets/changetrail.html", import.meta.url));
-const LIVE_RELOAD_PATH = "/__changetrail_live";
 const LIVE_RELOAD_CLIENT = `<script>
   (() => {
-    const source = new EventSource("${LIVE_RELOAD_PATH}");
+    const source = new EventSource("${SSE_PATH}");
     source.addEventListener("reload", () => window.location.reload());
   })();
 </script>`;
 
 /** Serve the package-owned viewer and reload connected browsers when it changes. */
 export async function startPreview(config, options = {}) {
-  const viewerFile = VIEWER_FILE;
+  const viewerFile = VIEWER_FILE_PATH;
   const dataFile = config.dataFile;
   if (!existsSync(viewerFile)) {
-    throw new Error(`Bundled viewer not found at ${viewerFile}; reinstall changetrail`);
+    throw new Error(`Bundled viewer not found at ${viewerFile}; reinstall ${CLI_NAME}`);
   }
   if (!dataFile) throw new Error("Private viewer data path is not configured");
 
@@ -31,7 +29,7 @@ export async function startPreview(config, options = {}) {
       serveRequest(request, response, { viewerFile, dataFile, clients });
     } catch (error) {
       response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
-      response.end(`changetrail preview: ${error.message}\n`);
+      response.end(`${CLI_NAME} preview: ${error.message}\n`);
     }
   });
 
@@ -68,11 +66,11 @@ function serveRequest(request, response, files) {
 
   const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
   if (pathname === "/") {
-    response.writeHead(302, { Location: "/changetrail.html" });
+    response.writeHead(302, { Location: `/${VIEWER_FILENAME}` });
     response.end();
     return;
   }
-  if (pathname === LIVE_RELOAD_PATH) {
+  if (pathname === SSE_PATH) {
     response.writeHead(200, {
       "Cache-Control": "no-cache",
       Connection: "keep-alive",
@@ -83,7 +81,7 @@ function serveRequest(request, response, files) {
     request.on("close", () => files.clients.delete(response));
     return;
   }
-  if (pathname === "/changetrail.html") {
+  if (pathname === `/${VIEWER_FILENAME}`) {
     const html = readFileSync(files.viewerFile, "utf8");
     const body = html.includes("</body>")
       ? html.replace("</body>", `${LIVE_RELOAD_CLIENT}\n</body>`)

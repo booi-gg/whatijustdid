@@ -1,6 +1,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CLI_NAME, ENV_PREFIX } from "./brand.mjs";
 import { gitCommonDir, gitDir, repoRoot } from "./git.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
@@ -21,7 +22,7 @@ export function loadConfig(options = {}) {
     : {};
 
   const initial = mergeAgentConfig(defaults, shared);
-  const privateDir = join(gitCommonDir(root), "changetrail");
+  const privateDir = join(gitCommonDir(root), CLI_NAME);
   const localCandidates = [
     join(privateDir, "whatijustdid.local.json"),
   ];
@@ -33,21 +34,21 @@ export function loadConfig(options = {}) {
   const configuredAgent = config.agent ?? "codex";
   const agent =
     env.WHATIJUSTDID_AGENT ??
-    env.CHANGETRAIL_AGENT ??
+    env[`${ENV_PREFIX}_AGENT`] ??
     env.CHANGELOG_AGENT ??
     legacyAgent(env.CHANGELOG_PROVIDER) ??
     configuredAgent;
-  const environmentModel = env.CHANGETRAIL_MODEL ?? env.CHANGELOG_MODEL;
+  const environmentModel = env[`${ENV_PREFIX}_MODEL`] ?? env.CHANGELOG_MODEL;
   const model = environmentModel ?? (sameAgent(agent, configuredAgent) ? config.model : null);
   const viewerLimit = positiveInteger(config.viewerLimit ?? config.limit, 200);
   const generationLimit = positiveInteger(config.generationLimit, 50);
   const dbFile = resolvePrivateDbFile(
-    env.CHANGETRAIL_DB_PATH ?? env.CHANGELOG_DB_PATH,
+    env[`${ENV_PREFIX}_DB_PATH`] ?? env.CHANGELOG_DB_PATH,
     root,
     privateDir,
   );
-  const legacyDbDir = join(root, "changetrail", "db");
-  const viewerDir = join(gitDir(root), "changetrail");
+  const legacyDbDir = join(root, CLI_NAME, "db");
+  const viewerDir = join(gitDir(root), CLI_NAME);
 
   return {
     agent,
