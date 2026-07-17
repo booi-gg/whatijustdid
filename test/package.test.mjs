@@ -40,6 +40,8 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     assert.ok(paths.includes("assets/changetrail.html"));
     assert.ok(paths.includes("bin/changetrail.mjs"));
     assert.ok(paths.includes("src/store.mjs"));
+    assert.ok(paths.includes("whatijustdid.json"));
+    assert.equal(paths.includes("changetrail.json"), false);
     assert.equal(paths.some((path) => path.startsWith("test/")), false);
 
     run("git", ["init", "--quiet"], consumer);
@@ -58,21 +60,20 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       tarball,
     ], consumer, npmEnvironment);
     const cli = join(consumer, "node_modules", ".bin", "changetrail");
-    const initOutput = run(cli, ["init"], consumer);
+    const initOutput = run(cli, ["init", "--no-preview"], consumer);
     assert.match(initOutput, /private database/);
     assert.equal(existsSync(join(consumer, ".git", "hooks", "pre-commit")), false);
     assert.match(
       readFileSync(join(consumer, ".git", "hooks", "post-commit"), "utf8"),
-      /record --silent \|\| true[\s\S]*build --silent \|\| true/,
+      /record \|\| true/,
     );
-    assert.equal(existsSync(join(consumer, "changetrail", "changetrail.html")), false);
+    assert.equal(existsSync(join(consumer, "changetrail")), false);
     assert.equal(existsSync(join(consumer, ".git", "changetrail", "summaries.sqlite")), true);
     assert.deepEqual(
-      JSON.parse(readFileSync(join(consumer, "changetrail.json"), "utf8")),
+      JSON.parse(readFileSync(join(consumer, "whatijustdid.json"), "utf8")),
       {
         agent: "codex",
         model: null,
-        dir: "changetrail",
         viewerLimit: 200,
         generationLimit: 50,
         maxDiffBytes: 80000,
@@ -88,8 +89,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     const preview = await startPreview(
       {
         root: consumer,
-        dir: "changetrail",
-        dataFile: join(consumer, "changetrail", "data.js"),
+        dataFile: join(consumer, ".git", "changetrail", "data.js"),
       },
       { open: false, port: 0 },
     );
@@ -103,12 +103,22 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
 
     mockAgent = await startMockOpenAi();
     run("git", ["add", "."], consumer);
-    run(
+    const successfulCommit = spawnSync(
       "git",
       ["commit", "--quiet", "-m", "THIS MESSAGE MUST NOT BECOME THE SUMMARY"],
-      consumer,
-      { OPENAI_API_KEY: "test-key", OPENAI_BASE_URL: mockAgent.url },
+      {
+        cwd: consumer,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          OPENAI_API_KEY: "test-key",
+          OPENAI_BASE_URL: mockAgent.url,
+        },
+      },
     );
+    assert.equal(successfulCommit.status, 0);
+    assert.match(successfulCommit.stderr, /saved an AI summary/);
+    assert.match(successfulCommit.stderr, /viewer now has 1 entry/);
 
     const sha = run("git", ["rev-parse", "HEAD"], consumer).trim();
     const database = new DatabaseSync(join(consumer, ".git", "changetrail", "summaries.sqlite"));
@@ -127,11 +137,28 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       database.close();
     }
 
-    const viewerData = readFileSync(join(consumer, "changetrail", "data.js"), "utf8");
+    let viewerData = readFileSync(join(consumer, ".git", "changetrail", "data.js"), "utf8");
     assert.match(viewerData, /Initialized Changetrail from the committed code/);
     assert.doesNotMatch(viewerData, /THIS MESSAGE MUST NOT BECOME THE SUMMARY/);
-    assert.equal(run("git", ["ls-files", "changetrail"], consumer).trim(), "");
+    assert.equal(existsSync(join(consumer, "changetrail")), false);
     assert.equal(run("git", ["status", "--short"], consumer).trim(), "");
+
+    writeFileSync(join(consumer, "failed.js"), "export const failed = true;\n");
+    run("git", ["add", "failed.js"], consumer);
+    const failedCommit = spawnSync(
+      "git",
+      ["commit", "--quiet", "-m", "failure remains visible"],
+      {
+        cwd: consumer,
+        encoding: "utf8",
+        env: { ...process.env, OPENAI_API_KEY: "", OPENAI_BASE_URL: "" },
+      },
+    );
+    assert.equal(failedCommit.status, 0);
+    assert.match(failedCommit.stderr, /OPENAI_API_KEY not set/);
+    viewerData = readFileSync(join(consumer, ".git", "changetrail", "data.js"), "utf8");
+    assert.match(viewerData, /Summary failed:.*OPENAI_API_KEY not set/);
+    assert.doesNotMatch(viewerData, /failure remains visible/);
 
     const scopePreview = run(cli, ["backfill"], consumer);
     assert.match(scopePreview, /no AI calls made/);
@@ -156,11 +183,49 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       );
     }
     assert.match(run(cli, ["hook"], consumer), /hooks already current/);
+
+    const initWithPreview = spawn(cli, ["init", "--no-open", "--port", "0"], {
+      cwd: consumer,
+      env: process.env,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const previewOutput = await waitForOutput(initWithPreview, /previewing the bundled viewer at/);
+    assert.match(previewOutput, /previewing the bundled viewer at http:\/\/127\.0\.0\.1:\d+/);
+    initWithPreview.kill();
+    await once(initWithPreview, "exit");
   } finally {
     mockAgent?.process.kill();
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+async function waitForOutput(child, pattern, timeoutMs = 5_000) {
+  let output = "";
+  let timeout;
+  const onData = (chunk) => {
+    output += String(chunk);
+  };
+  child.stdout.on("data", onData);
+  child.stderr.on("data", onData);
+  try {
+    return await Promise.race([
+      (async () => {
+        while (!pattern.test(output)) await once(child.stdout, "data");
+        return output;
+      })(),
+      new Promise((_, reject) => {
+        timeout = setTimeout(
+          () => reject(new Error(`Timed out waiting for preview output: ${output}`)),
+          timeoutMs,
+        );
+      }),
+    ]);
+  } finally {
+    clearTimeout(timeout);
+    child.stdout.off("data", onData);
+    child.stderr.off("data", onData);
+  }
+}
 
 async function startMockOpenAi() {
   const script = `

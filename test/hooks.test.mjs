@@ -42,13 +42,15 @@ test("uninstalls Changetrail hooks while preserving unrelated hook logic", () =>
     }
     assert.equal(readFileSync(preCommit, "utf8"), "#!/bin/sh\necho user-hook\n");
     const postCommit = readFileSync(join(hooksDir, "post-commit"), "utf8");
-    assert.match(postCommit, /record --silent \|\| true[\s\S]*build --silent \|\| true/);
+    assert.match(postCommit, /record \|\| true/);
+    assert.doesNotMatch(postCommit, /--silent| build/);
     assert.match(
       readFileSync(join(hooksDir, "post-merge"), "utf8"),
-      /record --merge-only --silent \|\| true[\s\S]*build --silent \|\| true/,
+      /record --merge-only \|\| true/,
     );
     for (const name of ["post-checkout", "post-rewrite"]) {
-      assert.doesNotMatch(readFileSync(join(hooksDir, name), "utf8"), /record --silent/);
+      assert.match(readFileSync(join(hooksDir, name), "utf8"), /build \|\| true/);
+      assert.doesNotMatch(readFileSync(join(hooksDir, name), "utf8"), /--silent|record/);
     }
 
     assert.deepEqual(uninstallHooks(root), hookNames);

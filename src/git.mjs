@@ -22,6 +22,13 @@ export function repoRoot(cwd = process.cwd()) {
   return git(["rev-parse", "--show-toplevel"], { cwd });
 }
 
+/** Git-private directory for this specific worktree. */
+export function gitDir(cwd = process.cwd()) {
+  const root = repoRoot(cwd);
+  const directory = git(["rev-parse", "--git-dir"], { cwd: root });
+  return isAbsolute(directory) ? directory : resolve(root, directory);
+}
+
 /** Git-private directory shared by every worktree in this clone. */
 export function gitCommonDir(cwd = process.cwd()) {
   const root = repoRoot(cwd);

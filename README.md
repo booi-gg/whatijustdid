@@ -4,13 +4,13 @@ Changetrail turns committed code diffs into persistent AI summaries. It shows wh
 
 ## Storage model
 
-Git remains the commit ledger. Changetrail keeps only compact generation state and AI summaries in a local SQLite database:
+Git remains the commit ledger. Changetrail keeps compact generation state and AI summaries in local SQLite. It does not create a `changetrail/` directory in the repository:
 
 ```text
-repository files          Git common directory (private to this clone)
-├── changetrail.json      └── changetrail/summaries.sqlite
-└── changetrail/data.js      ├── commit SHA + generation status
-    ignored viewer cache     └── type, projects, and AI summary
+repository                 Git-private metadata
+└── whatijustdid.json       └── changetrail/
+                               ├── summaries.sqlite
+                               └── data.js (rebuildable viewer cache)
 ```
 
 Raw diffs, commit messages, and full commit metadata are not copied into SQLite. They are read from Git when needed. The database lives under `git rev-parse --git-common-dir`, so it:
@@ -43,9 +43,9 @@ npm install --save-dev changetrail
 npx changetrail init
 ```
 
-Initialization creates shared `changetrail.json`, initializes private SQLite, updates the local ignore block, installs Git hooks, and builds the viewer cache. The bundled viewer remains package-owned; it is not copied into the repository.
+Initialization creates shared `whatijustdid.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx changetrail init --no-preview` when a script must initialize and exit.
 
-After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds `changetrail/data.js`. Agent failures never block the Git commit. A failed summary remains resumable in SQLite.
+After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
 
 To install or refresh only the local hooks:
 
@@ -96,13 +96,12 @@ npx changetrail edit <commit-sha-or-prefix>
 
 ## Configuration
 
-The tracked `changetrail.json` contains safe shared defaults:
+The tracked `whatijustdid.json` contains safe shared defaults:
 
 ```json
 {
   "agent": "codex",
   "model": null,
-  "dir": "changetrail",
   "viewerLimit": 200,
   "generationLimit": 50,
   "maxDiffBytes": 80000,
@@ -116,11 +115,10 @@ The tracked `changetrail.json` contains safe shared defaults:
 
 `model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini`; the resolved model is saved with the summary.
 
-Put personal overrides in ignored `changetrail/changetrail.local.json`. Environment variables take precedence:
+Put personal overrides in Git-private `.git/changetrail/whatijustdid.local.json`. Environment variables take precedence:
 
 - `CHANGETRAIL_AGENT` (legacy: `CHANGELOG_AGENT` or `CHANGELOG_PROVIDER`)
 - `CHANGETRAIL_MODEL` (legacy: `CHANGELOG_MODEL`)
-- `CHANGETRAIL_DIR` (legacy: `CHANGELOG_DIR`)
 - `CHANGETRAIL_DB_PATH` for an advanced local database-path override
 
 Agent-specific variables:
@@ -128,15 +126,3 @@ Agent-specific variables:
 - Codex/OpenAI: `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`
 - Claude: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`
 - Llama: `LLAMA_BASE_URL`, optional `LLAMA_API_KEY`
-
-## Migrating tracked JSON rows
-
-`changetrail init` performs a one-time import from legacy `changetrail/db/**/*.json` rows. Valid AI summaries become local SQLite summaries. Empty or `provider: "raw"` rows become pending and never import commit-message text.
-
-The migration deliberately does not stage or delete repository files. After verifying the imported summaries with `changetrail preview`, remove the old tracked artifacts in a normal repository change:
-
-```bash
-git rm -r changetrail/db changetrail/data.js
-```
-
-The ignore block prevents those local artifacts from being re-added.

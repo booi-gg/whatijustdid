@@ -5,7 +5,7 @@ import { openSummaryStore } from "./store.mjs";
 
 const abc = "abcdefghijklmnopqrstuvwxyz";
 
-/** Read ready summaries for recent, still-reachable Git commits. */
+/** Read local generation records for recent, still-reachable Git commits. */
 export function readEntries(config, options = {}) {
   const limit = Number.isInteger(config.viewerLimit) && config.viewerLimit > 0
     ? config.viewerLimit
@@ -17,7 +17,7 @@ export function readEntries(config, options = {}) {
     const records = store.listByShas(commits.map((commit) => commit.sha));
     return commits
       .map((commit) => ({ commit, summary: records.get(commit.sha) }))
-      .filter(({ summary }) => summary?.status === "ready" && summary.changes?.length);
+      .filter(({ summary }) => summary);
   } finally {
     if (ownsStore) store.close();
   }
@@ -25,6 +25,7 @@ export function readEntries(config, options = {}) {
 
 /** Map one stored AI result to the shape the bundled viewer renders. */
 function toGroup(summary, commit) {
+  const ready = summary.status === "ready" && summary.changes?.length;
   return {
     kind: "commit",
     ref: commit.shortSha ?? commit.sha.slice(0, 7),
@@ -32,15 +33,29 @@ function toGroup(summary, commit) {
     date: commit.date ?? new Date(0).toISOString(),
     projects: summary.projects,
     link: null,
-    entries: summary.changes.map((change, index) => ({
-      letter: `(${abc[index] ?? "+"})`,
-      tags: [change.type ?? summary.type ?? "other"],
-      description: change.summary,
-    })),
+    entries: ready
+      ? summary.changes.map((change, index) => ({
+        letter: `(${abc[index] ?? "+"})`,
+        tags: [change.type ?? summary.type ?? "other"],
+        description: change.summary,
+      }))
+      : [{
+        letter: "(!)",
+        tags: ["other"],
+        description: statusMessage(summary),
+      }],
   };
 }
 
-/** Compile private SQLite summaries into an ignored, rebuildable viewer cache. */
+function statusMessage(summary) {
+  if (summary.status === "failed") {
+    return `Summary failed: ${summary.lastError ?? "unknown error"}`;
+  }
+  if (summary.status === "generating") return "Summary is being generated.";
+  return "Summary is waiting to be generated.";
+}
+
+/** Compile private SQLite records into a Git-private, rebuildable viewer cache. */
 export function build(config, options = {}) {
   const groups = readEntries(config, options)
     .map(({ commit, summary }) => toGroup(summary, commit))
