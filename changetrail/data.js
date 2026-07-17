@@ -24,5 +24,22 @@ window.__CHANGELOG__ = [
         "description": "chore: track generated viewer data"
       }
     ]
+  },
+  {
+    "kind": "commit",
+    "ref": "0816b1c",
+    "author": "booi-dev",
+    "date": "2026-07-17T18:02:06+05:30",
+    "projects": [],
+    "link": null,
+    "entries": [
+      {
+        "letter": "(a)",
+        "tags": [
+          "other"
+        ],
+        "description": "update: fix naming"
+      }
+    ]
   }
 ];
