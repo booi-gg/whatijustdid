@@ -12,8 +12,8 @@ import { execFileSync } from "node:child_process";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const HOOKS = {
-  "post-commit": ["record", "build"],
-  "post-merge": ["record --merge-only", "build"],
+  "post-commit": ["record"],
+  "post-merge": ["record --merge-only"],
   "post-checkout": ["build"],
   "post-rewrite": ["build"],
 };
@@ -37,7 +37,7 @@ export function installHooks(root) {
     let content = existsSync(path) ? readFileSync(path, "utf8") : "#!/bin/sh\n";
     if (!content.startsWith("#!")) content = "#!/bin/sh\n" + content;
     const commandLines = commands
-      .map((command) => `node --no-warnings ${shellQuote(runner)} ${command} --silent || true`)
+      .map((command) => `node --no-warnings ${shellQuote(runner)} ${command} || true`)
       .join("\n");
     const block = `${MARKER}\n${commandLines}\n${END_MARKER}\n`;
     const base = content.replace(BLOCK, "").trimEnd();

@@ -18,12 +18,19 @@ async function main() {
   switch (cmd) {
     case "record": {
       const config = loadConfig();
-      const result = await recordCommittedChange(config, {}, {
-        mergeOnly: rest.includes("--merge-only"),
-      });
+      let result;
+      try {
+        result = await recordCommittedChange(config, {}, {
+          mergeOnly: rest.includes("--merge-only"),
+        });
+      } catch (error) {
+        const total = build(config);
+        throw new Error(`${error.message}; viewer now has ${formatEntries(total)}`, { cause: error });
+      }
+      const total = build(config);
       log(result.created
-        ? `changetrail: saved an AI summary for ${result.entry.commitSha.slice(0, 12)} in private SQLite`
-        : `changetrail: ${recordSkipMessage(result.reason)}`);
+        ? `changetrail: saved an AI summary for ${result.entry.commitSha.slice(0, 12)}; viewer now has ${formatEntries(total)}`
+        : `changetrail: ${recordSkipMessage(result.reason)}; viewer now has ${formatEntries(total)}`);
       break;
     }
     case "generate":
@@ -60,14 +67,14 @@ async function main() {
       const total = build(config);
       log(
         `changetrail: generated ${result.generated}, skipped ${result.skipped}, ` +
-        `viewer now has ${total} ${total === 1 ? "summary" : "summaries"}`,
+        `viewer now has ${formatEntries(total)}`,
       );
       break;
     }
     case "build": {
       const config = loadConfig();
       const total = build(config);
-      log(`changetrail: built ${config.dataFile} (${total} summaries)`);
+      log(`changetrail: built private viewer data (${formatEntries(total)})`);
       break;
     }
     case "preview": {
@@ -78,7 +85,7 @@ async function main() {
         open: !rest.includes("--no-open"),
       });
       log(`changetrail: previewing the bundled viewer at ${url}`);
-      log(`changetrail: watching ${config.dir}/data.js (Ctrl+C to stop)`);
+      log("changetrail: watching for new commits (Ctrl+C to stop)");
       break;
     }
     case "edit": {
@@ -116,7 +123,15 @@ async function main() {
       log(installed.length
         ? `changetrail: installed/updated hooks: ${installed.join(", ")}`
         : "changetrail: hooks already current");
-      log(`changetrail: built initial viewer data (${total} summaries)`);
+      log(`changetrail: built initial viewer data (${formatEntries(total)})`);
+      if (!rest.includes("--no-preview")) {
+        const { url } = await startPreview(config, {
+          port: optionValue(rest, "--port") ?? process.env.CONDUCTOR_PORT,
+          open: !rest.includes("--no-open"),
+        });
+        log(`changetrail: previewing the bundled viewer at ${url}`);
+        log("changetrail: watching for new commits (Ctrl+C to stop)");
+      }
       break;
     }
     case "hook": {
@@ -137,8 +152,9 @@ async function main() {
       console.log(`changetrail — AI summaries for committed code
 
 Usage:
-  changetrail init                    Initialize private SQLite and install hooks
-  changetrail install                 Refresh hooks and project files (alias: init)
+  changetrail init                    Initialize, install hooks, and open the preview
+  changetrail init --no-preview       Initialize without starting the preview
+  changetrail install                 Alias for init
   changetrail hook                    Install or refresh local Git hooks
   changetrail unhook                  Remove Changetrail from local Git hooks
   changetrail record                  Summarize the current HEAD commit
@@ -146,12 +162,12 @@ Usage:
   changetrail backfill --limit N      Generate at most N recent commits
   changetrail backfill --all --yes    Generate every reachable commit
   changetrail refresh ...             Alias for backfill
-  changetrail build                   Rebuild the ignored viewer cache
+  changetrail build                   Rebuild the private viewer cache
   changetrail preview                 Open the bundled viewer with live reload
   changetrail edit SHA                Edit a local summary
   changetrail sync                    Reserved for hosted multi-device sync
 
-Config: changetrail.json
+Config: whatijustdid.json
 Agents: codex/openai (default) | claude | llama`);
       if (cmd && cmd !== "help") process.exitCode = 1;
   }
@@ -196,4 +212,8 @@ function recordSkipMessage(reason) {
   if (reason === "no-code-changes") return "current commit has no code diff to summarize";
   if (reason === "not-a-merge") return "fast-forward merge needs no automatic history generation";
   return "summary already exists or another process is generating it";
+}
+
+function formatEntries(total) {
+  return `${total} ${total === 1 ? "entry" : "entries"}`;
 }

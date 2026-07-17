@@ -157,7 +157,7 @@ test("history generation requires an explicit scope and resumes ready commits", 
   }
 });
 
-test("build displays only ready AI summaries and never commit-message text", () => {
+test("build displays ready and pending records without commit-message text", () => {
   const root = mkdtempSync(join(tmpdir(), "changetrail-build-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
@@ -186,9 +186,10 @@ test("build displays only ready AI summaries and never commit-message text", () 
         body: "- Must also never appear",
       },
     ];
-    assert.equal(build(config, { store, commits }), 1);
+    assert.equal(build(config, { store, commits }), 2);
     const output = readFileSync(config.dataFile, "utf8");
     assert.match(output, /AI summary from the code diff/);
+    assert.match(output, /Summary is waiting to be generated/);
     assert.doesNotMatch(output, /must never appear/i);
     assert.match(output, /window\.__CHANGELOG_PROJECTS__ = \[\s+"web"/);
   } finally {

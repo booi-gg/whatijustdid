@@ -1,6 +1,1 @@
-# >>> changetrail >>>
-/changetrail/data.js
-/changetrail/changetrail.html
-/changetrail/changetrail.local.json
-/changetrail/db/
-# <<< changetrail <<<
+node_modules/
