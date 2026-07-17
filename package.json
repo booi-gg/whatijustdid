@@ -1,0 +1,25 @@
+{
+  "name": "@funroll/changelog",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Git-derived change-log tracker. Reads commits, materializes a merge-safe file DB, renders a standalone HTML viewer. Zero dependencies.",
+  "bin": {
+    "changelog": "./bin/changelog.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "hooks",
+    "changelog.config.json",
+    "README.md"
+  ]
+}

@@ -1,0 +1,3 @@
+#!/bin/sh
+# Pull/merge brings teammates' DB rows; rebuild local browser data.
+node "$(git rev-parse --show-toplevel)/packages/changelog/bin/changelog.mjs" build --silent || true

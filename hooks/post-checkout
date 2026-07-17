@@ -1,0 +1,3 @@
+#!/bin/sh
+# Branch switches may change available DB rows; rebuild local browser data.
+node "$(git rev-parse --show-toplevel)/packages/changelog/bin/changelog.mjs" build --silent || true
