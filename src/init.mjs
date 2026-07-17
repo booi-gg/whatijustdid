@@ -7,6 +7,7 @@ import {
 } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { openSummaryStore } from "./store.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const defaultConfigPath = join(packageDir, "changetrail.json");
@@ -14,8 +15,8 @@ const MARKER = "# >>> changetrail >>>";
 const END_MARKER = "# <<< changetrail <<<";
 const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) <<<(?:\n|$)/g;
 
-/** Scaffold the tracked consumer files without replacing user-owned config. */
-export function initializeProject(config) {
+/** Scaffold shared config and initialize the clone-private SQLite store. */
+export function initializeProject(config, dependencies = {}) {
   const created = [];
   const updated = [];
   const unchanged = [];
@@ -25,20 +26,18 @@ export function initializeProject(config) {
       ? updated.push(repositoryPath(config.root, path))
       : unchanged.push(repositoryPath(config.root, path));
 
-  mkdirSync(config.dbDir, { recursive: true });
-
   const configTarget = config.isDefaultConfig
     ? join(config.root, "changetrail.json")
     : config.configPath;
   record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
 
-  const keepTarget = join(config.dbDir, ".gitkeep");
-  record(writeText(keepTarget, "", false), keepTarget);
-
   const ignoreTarget = join(config.root, ".gitignore");
   record(updateGitignore(ignoreTarget, config.root, config.dir), ignoreTarget);
 
-  return { created, updated, unchanged };
+  const store = dependencies.store ?? openSummaryStore(config);
+  if (!dependencies.store) store.close();
+
+  return { created, updated, unchanged, dbFile: config.dbFile };
 }
 
 function copyAsset(source, target, overwrite) {
@@ -46,14 +45,6 @@ function copyAsset(source, target, overwrite) {
   if (existsSync(target) && !overwrite) return "unchanged";
   const status = existsSync(target) ? "updated" : "created";
   copyFileSync(source, target);
-  return status;
-}
-
-function writeText(target, content, overwrite) {
-  mkdirSync(dirname(target), { recursive: true });
-  if (existsSync(target) && !overwrite) return "unchanged";
-  const status = existsSync(target) ? "updated" : "created";
-  writeFileSync(target, content);
   return status;
 }
 
@@ -66,6 +57,7 @@ function updateGitignore(path, root, dir) {
     `${prefix}data.js`,
     `${prefix}changetrail.html`,
     `${prefix}changetrail.local.json`,
+    `${prefix}db/`,
     END_MARKER,
   ].join("\n");
   const withoutBlock = current.replace(BLOCK, "\n").trimEnd();

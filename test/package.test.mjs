@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import {
   existsSync,
   mkdtempSync,
   mkdirSync,
-  readdirSync,
   readFileSync,
   rmSync,
   writeFileSync,
@@ -12,12 +12,14 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-test("packed package installs and initializes a working consumer repository", { timeout: 30_000 }, async () => {
+test("packed package keeps AI summaries private and persistent", { timeout: 30_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "changetrail-package-"));
+  let mockAgent = null;
   try {
     const packDirectory = join(root, "pack");
     const consumer = join(root, "consumer");
@@ -37,10 +39,8 @@ test("packed package installs and initializes a working consumer repository", { 
     const paths = manifest.files.map((file) => file.path);
     assert.ok(paths.includes("assets/changetrail.html"));
     assert.ok(paths.includes("bin/changetrail.mjs"));
-    assert.ok(paths.includes("changetrail.json"));
-    assert.ok(paths.includes("src/init.mjs"));
+    assert.ok(paths.includes("src/store.mjs"));
     assert.equal(paths.some((path) => path.startsWith("test/")), false);
-    assert.equal(paths.some((path) => path.startsWith("hooks/")), false);
 
     run("git", ["init", "--quiet"], consumer);
     run("git", ["config", "user.name", "Package Test"], consumer);
@@ -58,28 +58,28 @@ test("packed package installs and initializes a working consumer repository", { 
       tarball,
     ], consumer, npmEnvironment);
     const cli = join(consumer, "node_modules", ".bin", "changetrail");
-    assert.equal(existsSync(cli), true);
     const initOutput = run(cli, ["init"], consumer);
-    assert.match(initOutput, /initialized/);
-    assert.match(initOutput, /installed\/updated hooks/);
-    assert.match(readFileSync(join(consumer, ".git", "hooks", "pre-commit"), "utf8"), /# >>> changetrail >>>/);
-    assert.equal(existsSync(join(consumer, "changetrail", "changetrail.html")), false);
-    const viewer = readFileSync(
-      join(consumer, "node_modules", "changetrail", "assets", "changetrail.html"),
-      "utf8",
-    );
-    assert.match(viewer, /Repository ledger/);
-    assert.match(viewer, /<script src="\.\/data\.js"><\/script>/);
+    assert.match(initOutput, /private database/);
+    assert.equal(existsSync(join(consumer, ".git", "hooks", "pre-commit")), false);
     assert.match(
-      readFileSync(join(consumer, ".gitignore"), "utf8"),
-      /\/changetrail\/changetrail\.html/,
+      readFileSync(join(consumer, ".git", "hooks", "post-commit"), "utf8"),
+      /record --silent \|\| true[\s\S]*build --silent \|\| true/,
     );
-    assert.equal(existsSync(join(consumer, "changetrail.json")), true);
-    assert.equal(existsSync(join(consumer, "changetrail", "config.json")), false);
-    assert.equal(existsSync(join(consumer, "ctrail", "config.json")), false);
-    assert.equal(existsSync(join(consumer, "changelog", "changetrail.json")), false);
-    assert.equal(existsSync(join(consumer, "changelog", "ctrail.json")), false);
-    assert.equal(existsSync(join(consumer, "changelog", "changelog.json")), false);
+    assert.equal(existsSync(join(consumer, "changetrail", "changetrail.html")), false);
+    assert.equal(existsSync(join(consumer, ".git", "changetrail", "summaries.sqlite")), true);
+    assert.deepEqual(
+      JSON.parse(readFileSync(join(consumer, "changetrail.json"), "utf8")),
+      {
+        agent: "codex",
+        model: null,
+        dir: "changetrail",
+        viewerLimit: 200,
+        generationLimit: 50,
+        maxDiffBytes: 80000,
+        timeoutMs: 20000,
+        projects: {},
+      },
+    );
 
     const previewModule = pathToFileURL(
       join(consumer, "node_modules", "changetrail", "src", "preview.mjs"),
@@ -101,25 +101,55 @@ test("packed package installs and initializes a working consumer repository", { 
       await preview.close();
     }
 
+    mockAgent = await startMockOpenAi();
     run("git", ["add", "."], consumer);
-    run("git", ["commit", "--quiet", "-m", "chore: initialize changelog"], consumer);
-    const rows = jsonFiles(join(consumer, "changetrail", "db"));
-    assert.equal(rows.length, 1);
-    assert.match(rows[0], /[/\\][0-9a-f]{2}[/\\][0-9a-f]{2}[/\\][0-9a-f]{64}\.json$/);
-    assert.match(
-      readFileSync(join(consumer, "changetrail", "data.js"), "utf8"),
-      /initialize changelog/,
+    run(
+      "git",
+      ["commit", "--quiet", "-m", "THIS MESSAGE MUST NOT BECOME THE SUMMARY"],
+      consumer,
+      { OPENAI_API_KEY: "test-key", OPENAI_BASE_URL: mockAgent.url },
     );
+
+    const sha = run("git", ["rev-parse", "HEAD"], consumer).trim();
+    const database = new DatabaseSync(join(consumer, ".git", "changetrail", "summaries.sqlite"));
+    try {
+      const row = database.prepare(
+        "SELECT status, agent, model, changes_json FROM commit_summaries WHERE commit_sha = ?",
+      ).get(sha);
+      assert.equal(row.status, "ready");
+      assert.equal(row.agent, "codex");
+      assert.equal(row.model, "gpt-5.4-mini");
+      assert.equal(
+        JSON.parse(row.changes_json)[0].summary,
+        "Initialized Changetrail from the committed code",
+      );
+    } finally {
+      database.close();
+    }
+
+    const viewerData = readFileSync(join(consumer, "changetrail", "data.js"), "utf8");
+    assert.match(viewerData, /Initialized Changetrail from the committed code/);
+    assert.doesNotMatch(viewerData, /THIS MESSAGE MUST NOT BECOME THE SUMMARY/);
+    assert.equal(run("git", ["ls-files", "changetrail"], consumer).trim(), "");
+    assert.equal(run("git", ["status", "--short"], consumer).trim(), "");
+
+    const scopePreview = run(cli, ["backfill"], consumer);
+    assert.match(scopePreview, /no AI calls made/);
+    assert.match(scopePreview, /choose a scope/);
+
+    const sync = spawnSync(cli, ["sync"], { cwd: consumer, encoding: "utf8" });
+    assert.equal(sync.status, 1);
+    assert.match(sync.stderr, /Cloud sync is not available yet/);
 
     const unhookOutput = run(cli, ["unhook"], consumer);
     assert.match(unhookOutput, /removed hooks/);
-    for (const name of ["pre-commit", "post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
+    for (const name of ["post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
       assert.equal(existsSync(join(consumer, ".git", "hooks", name)), false);
     }
 
     const hookOutput = run(cli, ["hook"], consumer);
     assert.match(hookOutput, /installed\/updated hooks/);
-    for (const name of ["pre-commit", "post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
+    for (const name of ["post-commit", "post-merge", "post-checkout", "post-rewrite"]) {
       assert.match(
         readFileSync(join(consumer, ".git", "hooks", name), "utf8"),
         /# >>> changetrail >>>/,
@@ -127,22 +157,36 @@ test("packed package installs and initializes a working consumer repository", { 
     }
     assert.match(run(cli, ["hook"], consumer), /hooks already current/);
   } finally {
+    mockAgent?.process.kill();
     rmSync(root, { recursive: true, force: true });
   }
 });
 
-function jsonFiles(root) {
-  const files = [];
-  const pending = [root];
-  while (pending.length) {
-    const directory = pending.pop();
-    for (const item of readdirSync(directory, { withFileTypes: true })) {
-      const path = join(directory, item.name);
-      if (item.isDirectory()) pending.push(path);
-      else if (item.isFile() && item.name.endsWith(".json")) files.push(path);
-    }
-  }
-  return files;
+async function startMockOpenAi() {
+  const script = `
+    const { createServer } = require("node:http");
+    const output = JSON.stringify({
+      type: "chore",
+      changes: [{
+        type: "chore",
+        summary: "Initialized Changetrail from the committed code",
+      }],
+    });
+    const server = createServer((_request, response) => {
+      response.writeHead(200, { "content-type": "application/json" });
+      response.end(JSON.stringify({ output_text: output }));
+    });
+    server.listen(0, "127.0.0.1", () => {
+      process.stdout.write(String(server.address().port) + "\\n");
+    });
+    process.on("SIGTERM", () => server.close(() => process.exit(0)));
+  `;
+  const child = spawn(process.execPath, ["-e", script], {
+    stdio: ["ignore", "pipe", "inherit"],
+  });
+  const [chunk] = await once(child.stdout, "data");
+  const port = String(chunk).trim();
+  return { process: child, url: `http://127.0.0.1:${port}` };
 }
 
 function run(command, args, cwd, environment = {}) {

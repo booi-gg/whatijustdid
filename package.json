@@ -2,7 +2,7 @@
   "name": "changetrail",
   "version": "0.1.0",
   "type": "module",
-  "description": "Change View and Logs: Git-native changelog tracking with merge-safe rows, owned edits, and a standalone viewer.",
+  "description": "Private, persistent AI summaries for every committed code change.",
   "keywords": [
     "changelog",
     "git",
@@ -30,7 +30,7 @@
     "prepublishOnly": "npm test"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "files": [
     "assets",

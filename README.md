@@ -1,282 +1,142 @@
-# changetrail
+# Changetrail
 
-`changetrail` is a zero-dependency Node CLI that records opted-in commits in a Git-owned
-changelog and renders them with a bundled HTML viewer.
+Changetrail turns committed code diffs into persistent AI summaries. It shows what each commit changed; it does not reuse commit messages as descriptions.
 
-Each participating commit adds its own JSON row. Parallel branches therefore
-add different files instead of competing over one SQLite database, and every
-change stays readable in Git and reviewable in a pull request.
+## Storage model
 
-Rows are content-addressed and stored in two hash-shard directories, for
-example `changetrail/db/4a/7f/<id>.json`. Even very large histories avoid a
-single directory with millions of files. Viewer builds query only the latest
-`limit` row-adding commits, so hook time and generated browser data stay
-bounded as the repository grows. Existing flat `changetrail/db/*.json` rows are
-still read automatically; no migration is required.
+Git remains the commit ledger. Changetrail keeps only compact generation state and AI summaries in a local SQLite database:
+
+```text
+repository files          Git common directory (private to this clone)
+├── changetrail.json      └── changetrail/summaries.sqlite
+└── changetrail/data.js      ├── commit SHA + generation status
+    ignored viewer cache     └── type, projects, and AI summary
+```
+
+Raw diffs, commit messages, and full commit metadata are not copied into SQLite. They are read from Git when needed. The database lives under `git rev-parse --git-common-dir`, so it:
+
+- never appears in `git status` or repository history;
+- persists across checkouts and is shared by linked worktrees in the same clone;
+- stays local to one clone, laptop, and OS account;
+- uses SQLite WAL plus generation leases so concurrent worktrees do not make duplicate AI calls.
+
+Hosted account/team sync is intentionally reserved for a later paid cloud service. Changetrail will sync records through that service rather than commit databases or summaries to Git.
+
+## Requirements
+
+- Git
+- Node.js 22.13 or newer
+- credentials for one supported AI agent
+
+Codex/OpenAI is the default. `raw` is not an agent and there is no commit-message fallback.
+
+```bash
+export OPENAI_API_KEY=...
+```
+
+Claude and a local OpenAI-compatible Llama endpoint are also supported.
 
 ## Install
 
-Install the package in the repository that should own the changelog:
-
-```sh
+```bash
 npm install --save-dev changetrail
 npx changetrail init
 ```
 
-`init` is safe to rerun. It:
+Initialization creates shared `changetrail.json`, initializes private SQLite, updates the local ignore block, installs Git hooks, and builds the viewer cache. The bundled viewer remains package-owned; it is not copied into the repository.
 
-- creates `changetrail.json`
-- creates `changetrail/db/.gitkeep`
-- ignores the generated `data.js`, legacy viewer copies, and `changetrail.local.json`
-- adds its commands to Git hooks while preserving commands already there
-- builds the initial viewer data
+After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds `changetrail/data.js`. Agent failures never block the Git commit. A failed summary remains resumable in SQLite.
 
-Commit the package lockfile and the new repository files. Every developer must
-run `npm install` and `npx changetrail install` once per clone because Git hooks
-are local. A package script makes that easy:
+To install or refresh only the local hooks:
 
-```json
-{
-  "scripts": {
-    "changelog:install": "changetrail install",
-    "changelog:build": "changetrail build"
-  }
-}
+```bash
+npx changetrail hook
 ```
 
-`changetrail install` is an alias of `changetrail init`. The HTML/CSS template
-stays in the installed package at `node_modules/changetrail/assets/changetrail.html`;
-it is not copied into the consumer repository. Rerunning either command refreshes
-one marked `changetrail` block in each hook instead of adding duplicates;
-everything outside that block stays intact.
+To remove only Changetrail-owned hook blocks:
 
-To detach Changetrail from the repository's local Git hooks, run:
-
-```sh
+```bash
 npx changetrail unhook
 ```
 
-`unhook` removes only Changetrail's marked blocks. It preserves unrelated hook
-commands and leaves the package, configuration, tracked rows, and generated
-viewer data in place. Run `npx changetrail hook` to attach the hooks again.
-Git hooks are clone-local and normally shared by linked worktrees, so unhooking
-one worktree also unhooks the others in that clone.
+Existing hook logic is preserved. Git hooks are clone-local and normally shared by linked worktrees.
 
-## Normal use
+## Existing history and token control
 
-Work normally after the hook is installed:
+Changetrail never spends tokens across repository history without an explicit scope.
 
-```sh
-git add <files>
-git commit
+```bash
+# Preview the default bounded scope; makes zero AI calls
+npx changetrail backfill
+
+# Generate summaries for at most 25 recent commits
+npx changetrail backfill --limit 25
+
+# Preview all reachable commits; makes zero AI calls without --yes
+npx changetrail backfill --all
+
+# Explicitly approve full-history generation
+npx changetrail backfill --all --yes
 ```
 
-The pre-commit hook creates and stages one row in the same commit as the code.
-The other hooks rebuild the local viewer data after a commit, merge, checkout,
-rebase, or amend.
+Before generation, the CLI reports how many selected commits are missing summaries and a worst-case input-token estimate. Ready commits are skipped, so interrupted runs resume without regenerating completed work. Add `--force` only when intentionally replacing existing summaries.
 
-Open the bundled viewer with live reload:
+`changetrail sync` is reserved for hosted multi-device/team sync and currently uploads nothing.
 
-```sh
+## Viewer and editing
+
+```bash
 npx changetrail preview
+npx changetrail preview --port 4173
+npx changetrail build
+npx changetrail edit <commit-sha-or-prefix>
 ```
 
-Pass `--port 4000` to choose a port or `--no-open` to start the preview without
-opening a browser. The server is local and needs no framework or network
-connection.
-
-The merge-safe source data in `changetrail/db/**/*.json` stays tracked in Git.
-`changetrail/data.js` is only a rebuildable browser cache and remains ignored.
-Repositories that tracked a viewer created by an older release can remove that
-copy once with `git rm changetrail/changetrail.html`.
-
-Put explicit descriptions in the final commit body when desired:
-
-```text
-feat: add export
-
-- Added JPEG export
-- Fixed progress display
-```
-
-Those bullets become the viewer's `(a)`, `(b)` items and override an automatic
-summary.
-
-Pulling or merging only rebuilds viewer data from rows already tracked in
-`changetrail/db`. Ordinary commits from people who have not installed the package
-stay invisible. Hooks never backfill them.
-
-## Edit an entry
-
-Copy the row filename without `.json` from anywhere under `changetrail/db`, then
-run:
-
-```sh
-npx changetrail edit <id-or-unique-prefix>
-```
-
-The command opens `$VISUAL`, then `$EDITOR`, then `vi`. Only `type`, `projects`,
-and `changes` are editable. Saving rebuilds the viewer and stages the row; make
-a normal commit afterward.
-
-An entry can be changed only when the current Git `user.email` matches its
-creator, source commit author, or source commit committer. The local pre-commit
-gate also rejects identity-field changes and non-regular row files.
-
-Git email ownership prevents accidental or cooperative unauthorized edits; it
-is not cryptographic identity. Protect the main branch and require the CI check
-when hostile-user enforcement matters.
+`preview` serves the bundled viewer with live reload. `edit` changes the private SQLite summary and rebuilds no repository-owned database row.
 
 ## Configuration
 
-Shared, tracked config lives at `changetrail.json` in the repository root.
-`changetrail init` creates this file when it is missing and preserves it on
-later runs, so teams can review configuration changes in Git.
+The tracked `changetrail.json` contains safe shared defaults:
 
 ```json
 {
-  "provider": "openai",
-  "model": "gpt-5.4-mini",
+  "agent": "codex",
+  "model": null,
   "dir": "changetrail",
-  "limit": 200,
+  "viewerLimit": 200,
+  "generationLimit": 50,
   "maxDiffBytes": 80000,
   "timeoutMs": 20000,
   "projects": {
     "web": ["apps/web"],
-    "api": ["apps/api"],
-    "shared": ["packages/shared"]
+    "worker": ["apps/worker"]
   }
 }
 ```
 
-| Setting | Description | Default |
-| --- | --- | --- |
-| `provider` | Generates change summaries. Supported values are `raw`, `claude`, `codex`/`openai`, and `llama`. | `openai` |
-| `model` | Overrides the selected provider's model. Use `null` to accept the provider default. | `gpt-5.4-mini` |
-| `dir` | Repository-relative directory for the row database, generated data, and local config. | `changetrail` |
-| `limit` | Maximum recent row-adding commits considered by `backfill` and entries compiled into the viewer. | `200` |
-| `maxDiffBytes` | Maximum diff bytes supplied to a summary provider for each change. | `80000` |
-| `timeoutMs` | Provider request timeout in milliseconds before falling back to raw commit data. | `20000` |
-| `projects` | Maps viewer project names to repository path prefixes; a change can match more than one project. | `{}` |
+`model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini`; the resolved model is saved with the summary.
 
-With the default `dir`, tracked rows live under `changetrail/db` and generated
-viewer data is written to `changetrail/data.js`. Set `dir` to a different
-repository-relative path to move those files. The viewer template always comes
-from the installed package. Files that match no `projects` prefix appear under
-`Repo` in the viewer.
+Put personal overrides in ignored `changetrail/changetrail.local.json`. Environment variables take precedence:
 
-`limit` bounds both the recent commits considered by `backfill` and the number
-of recent entries compiled into the local viewer. The tracked row store keeps
-older history; raise the value when a larger viewer window is useful.
+- `CHANGETRAIL_AGENT` (legacy: `CHANGELOG_AGENT` or `CHANGELOG_PROVIDER`)
+- `CHANGETRAIL_MODEL` (legacy: `CHANGELOG_MODEL`)
+- `CHANGETRAIL_DIR` (legacy: `CHANGELOG_DIR`)
+- `CHANGETRAIL_DB_PATH` for an advanced local database-path override
 
-Each developer can override shared values without modifying tracked config.
-Create the ignored `changetrail/changetrail.local.json`:
+Agent-specific variables:
 
-```json
-{
-  "provider": "claude",
-  "model": "claude-sonnet-5"
-}
+- Codex/OpenAI: `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`
+- Claude: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`
+- Llama: `LLAMA_BASE_URL`, optional `LLAMA_API_KEY`
+
+## Migrating tracked JSON rows
+
+`changetrail init` performs a one-time import from legacy `changetrail/db/**/*.json` rows. Valid AI summaries become local SQLite summaries. Empty or `provider: "raw"` rows become pending and never import commit-message text.
+
+The migration deliberately does not stage or delete repository files. After verifying the imported summaries with `changetrail preview`, remove the old tracked artifacts in a normal repository change:
+
+```bash
+git rm -r changetrail/db changetrail/data.js
 ```
 
-Environment variables override both files. `CHANGELOG_PROVIDER` selects the
-provider, `CHANGELOG_MODEL` selects its model, and `CHANGELOG_DIR` overrides the
-asset directory. Changing only the provider uses that provider's package-default
-model:
-
-```sh
-CHANGELOG_PROVIDER=codex CHANGELOG_MODEL=gpt-5.4-mini git commit
-```
-
-| Provider | Runtime | Authentication | Package default |
-| --- | --- | --- | --- |
-| `raw` | Commit message | None | No model |
-| `claude` | Anthropic Messages API | `ANTHROPIC_API_KEY` | `claude-sonnet-5` |
-| `codex` / `openai` | OpenAI Responses API | `OPENAI_API_KEY` | `gpt-5.4-mini` |
-| `llama` | Local Ollama API | None | `llama3.2` |
-
-The OpenAI provider works with Responses API models that support structured
-outputs. Useful choices include:
-
-| Model | Best fit |
-| --- | --- |
-| `gpt-5.4-mini` | Default; strong quality, speed, and cost balance for frequent changelog summaries. |
-| `gpt-5.4-nano` | Lowest-cost option for simple, high-volume summaries. |
-| `gpt-5-mini` | Established low-cost option for well-defined prompts. |
-| `gpt-5.4` | Higher-quality option for larger or more complex diffs. |
-| `gpt-5.3-codex` | Coding-specialized option for repositories with complex implementation changes. |
-
-Model availability depends on the OpenAI API account and region. ChatGPT or
-Codex subscriptions do not provide API access; these models use
-`OPENAI_API_KEY` billing.
-
-Optional endpoint overrides are `ANTHROPIC_BASE_URL`, `OPENAI_BASE_URL`, and
-`OLLAMA_HOST`.
-
-Cloud providers receive changed filenames and the staged diff, capped by
-`maxDiffBytes`. Use `raw` or local `llama` when code must stay on the machine.
-Provider failure or timeout falls back to raw commit data and never blocks a
-commit.
-
-## Ownership in CI
-
-Run the same range check in pull-request CI after installing dependencies:
-
-```sh
-npx --no-install changetrail verify-ownership \
-  --base "$BASE_SHA" \
-  --head "$HEAD_SHA"
-```
-
-Give the job full Git history and make its status required in branch
-protection. The verifier checks every commit that added, edited, deleted, or
-type-changed a row—not only the final diff.
-
-## Commands
-
-```text
-changetrail init       Scaffold files, install hooks, and build viewer data
-changetrail install    Alias of init; useful once per clone
-changetrail hook       Install or refresh Changetrail's local Git hooks
-changetrail unhook     Remove Changetrail from local Git hooks
-changetrail record     Generate and stage a row for staged source changes
-changetrail build      Compile recent db/**/*.json rows into data.js
-changetrail backfill   Import + stage recent Git history explicitly
-changetrail sync       Backfill, then build
-changetrail edit ID    Edit and stage an owned row
-changetrail preview    Open the viewer with live reload
-changetrail verify-ownership --base SHA --head SHA
-                   Verify ownership across a commit range
-```
-
-`git commit --no-verify` bypasses `pre-commit`, so it also opts that commit out
-of the changelog. Use `backfill` or `sync` only when omitted history should be
-imported intentionally.
-
-## Programmatic API
-
-The package is ESM and requires Node 20 or newer:
-
-```js
-import {
-  build,
-  initializeProject,
-  loadConfig,
-  recordStagedChange,
-} from "changetrail";
-```
-
-## Package development
-
-```sh
-npm test
-npm pack --dry-run
-```
-
-To test the exact tarball in another repository:
-
-```sh
-npm pack
-npm install --save-dev ./changetrail-0.1.0.tgz
-npx changetrail init
-```
+The ignore block prevents those local artifacts from being re-added.

@@ -1,36 +1,35 @@
-import { parseSubject } from "./raw.mjs";
 import {
   CHANGELOG_SCHEMA,
   SYSTEM_PROMPT,
   apiUrl,
-  coerceModelJson,
-  formatProviderInput,
+  formatAgentInput,
+  parseAgentJson,
   postJson,
 } from "./shared.mjs";
 
-// Local Ollama. No API key, no cloud. Zero-dependency raw HTTP.
+// Local Ollama. No API key, no cloud, and no runtime dependency.
 const DEFAULT_MODEL = "llama3.2";
 
 export async function describe(input, { model, timeoutMs }) {
+  const selectedModel = model ?? DEFAULT_MODEL;
   const data = await postJson(
     apiUrl(process.env.OLLAMA_HOST ?? "http://localhost:11434", "api/chat"),
     {
-      label: "llama provider",
+      label: "Ollama API",
       timeoutMs,
       headers: {},
       body: {
-        model: model ?? DEFAULT_MODEL,
+        model: selectedModel,
         format: CHANGELOG_SCHEMA,
         stream: false,
         options: { temperature: 0 },
         messages: [
           { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: formatProviderInput(input) },
+          { role: "user", content: formatAgentInput(input) },
         ],
       },
     }
   );
 
-  const { type, title } = parseSubject(input.subject ?? "");
-  return coerceModelJson(data.message?.content ?? "", { type, summary: title });
+  return { ...parseAgentJson(data.message?.content ?? ""), model: selectedModel };
 }
