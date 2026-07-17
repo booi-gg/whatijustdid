@@ -30,11 +30,29 @@ Hosted account/team sync is intentionally reserved for a later paid cloud servic
 
 Codex/OpenAI is the default. `raw` is not an agent and there is no commit-message fallback.
 
+Choose an agent and export its API key:
+
 ```bash
-export OPENAI_API_KEY=...
+# Codex / OpenAI (default)
+export OPENAI_API_KEY=sk-...
+
+# DeepSeek
+export WHATIJUSTDID_AGENT=deepseek
+export DEEPSEEK_API_KEY=sk-...
+
+# Claude
+export WHATIJUSTDID_AGENT=claude
+export ANTHROPIC_API_KEY=sk-ant-...
+
+# Local Ollama (no API key needed)
+export WHATIJUSTDID_AGENT=llama
 ```
 
-Claude and a local OpenAI-compatible Llama endpoint are also supported.
+To override the default model per agent:
+
+```bash
+export CHANGETRAIL_MODEL=gpt-5.4-flash   # or deepseek-v4-pro, claude-sonnet-4-20250514, etc.
+```
 
 ## Install
 
@@ -113,16 +131,17 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 }
 ```
 
-`model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini`; the resolved model is saved with the summary.
+`model: null` lets the selected agent use its package default. Codex/OpenAI currently resolves to `gpt-5.4-mini` and DeepSeek resolves to `deepseek-v4-flash`; the resolved model is saved with the summary.
 
 Put personal overrides in Git-private `.git/changetrail/whatijustdid.local.json`. Environment variables take precedence:
 
-- `CHANGETRAIL_AGENT` (legacy: `CHANGELOG_AGENT` or `CHANGELOG_PROVIDER`)
+- `WHATIJUSTDID_AGENT` (legacy: `CHANGETRAIL_AGENT`, `CHANGELOG_AGENT`, or `CHANGELOG_PROVIDER`)
 - `CHANGETRAIL_MODEL` (legacy: `CHANGELOG_MODEL`)
 - `CHANGETRAIL_DB_PATH` for an advanced local database-path override
 
 Agent-specific variables:
 
 - Codex/OpenAI: `OPENAI_API_KEY`, optional `OPENAI_BASE_URL`
+- DeepSeek: `DEEPSEEK_API_KEY`, optional `DEEPSEEK_BASE_URL`
 - Claude: `ANTHROPIC_API_KEY`, optional `ANTHROPIC_BASE_URL`
-- Llama: `LLAMA_BASE_URL`, optional `LLAMA_API_KEY`
+- Llama/Ollama: optional `OLLAMA_HOST`
