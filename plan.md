@@ -1,12 +1,16 @@
+<<<<<<< HEAD
 # changereceipt Product Plan -
+=======
+# whatijustdid Product Plan
+>>>>>>> 443f132b3b4a75f2dea8054f500ce651e7eecb4c
 
 ## Product decision
 
-changereceipt will be a VS Code-compatible extension for people who build software with AI but do not understand code.
+whatijustdid will be a VS Code-compatible extension for people who build software with AI but do not understand code.
 
 Its promise is:
 
-> After AI changes your app, changereceipt explains what happened in simple language.
+> After AI changes your app, whatijustdid explains what happened in simple language.
 
 The extension is the product users interact with. The existing CLI and npm package remain the engine underneath it. A hosted website and cloud service come later for sharing, multi-project history, and paid team features.
 
@@ -34,7 +38,7 @@ AI coding tools usually report that they edited files, added components, or chan
 
 ## Product position
 
-changereceipt is not primarily a changelog generator, release tool, Git client, or AI commit-message generator.
+whatijustdid is not primarily a changelog generator, release tool, Git client, or AI commit-message generator.
 
 It is a plain-English activity receipt for AI-built software.
 
@@ -123,7 +127,7 @@ The extension should call the shared core APIs rather than duplicate this logic.
 
 ### 3. Local browser viewer — universal fallback
 
-Keep `changereceipt preview` for users and integrations outside VS Code-compatible editors. Redesign it to use the same receipt interface as the extension.
+Keep `whatijustdid preview` for users and integrations outside VS Code-compatible editors. Redesign it to use the same receipt interface as the extension.
 
 ### 4. Website and cloud — later product
 
@@ -142,18 +146,18 @@ The website initially provides marketing, documentation, and installation instru
 2. The extension recognizes the open Git project.
 3. The user asks their AI coding tool to make a change.
 4. The user selects **Explain my changes**.
-5. changereceipt compares the current work with the previous checkpoint.
+5. whatijustdid compares the current work with the previous checkpoint.
 6. It combines the change with any available task context and test results.
 7. It generates a plain-English receipt.
 8. The extension opens the receipt panel.
 9. The user can mark it helpful, simplify it, or correct it.
-10. When the work is committed, changereceipt saves a small shared receipt in Git.
+10. When the work is committed, whatijustdid saves a small shared receipt in Git.
 
-The first version must work even when changereceipt cannot access the original AI conversation. Agent-specific integrations can add that context later.
+The first version must work even when whatijustdid cannot access the original AI conversation. Agent-specific integrations can add that context later.
 
 ## Receipt inputs
 
-Receipt quality improves when changereceipt can use:
+Receipt quality improves when whatijustdid can use:
 
 - The original user request.
 - The code difference from the previous checkpoint.
@@ -202,7 +206,7 @@ Keep the current package as the core and add an extension package around it.
 Suggested structure:
 
 ```text
-src/                  Existing reusable changereceipt core
+src/                  Existing reusable whatijustdid core
 bin/                  Existing CLI
 assets/               Shared receipt viewer
 extension/            VS Code-compatible extension

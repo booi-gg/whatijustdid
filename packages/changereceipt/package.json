@@ -1,5 +1,5 @@
 {
-  "name": "@changetrail/cli",
+  "name": "@whatijustdid/cli",
   "version": "0.1.0",
   "type": "module",
   "description": "Private, persistent AI summaries for every committed code change.",
@@ -19,7 +19,7 @@
     "url": "https://github.com/booi-gg/changelog/issues"
   },
   "bin": {
-    "changereceipt": "./bin/cli.mjs"
+    "whatijustdid": "./bin/cli.mjs"
   },
   "exports": {
     ".": "./src/index.mjs",
