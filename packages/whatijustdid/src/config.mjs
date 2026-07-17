@@ -67,6 +67,7 @@ export function loadConfig(options = {}) {
     limit: viewerLimit,
     maxDiffBytes: positiveInteger(config.maxDiffBytes, 80_000),
     timeoutMs: positiveInteger(config.timeoutMs, 20_000),
+    showTokens: Boolean(config.showTokens),
     projects: config.projects ?? {},
     root,
     privateDir,

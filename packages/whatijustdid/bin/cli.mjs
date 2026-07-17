@@ -33,11 +33,15 @@ async function main() {
   switch (cmd) {
     case "record": {
       if (process.env[`${ENV_PREFIX}_SKIP`]) {
-        log(`${P} ${dim(`skipped summary generation (${ENV_PREFIX}_SKIP is set)`)}`);
+        log(
+          `${P} ${dim(`skipped summary generation (${ENV_PREFIX}_SKIP is set)`)}`,
+        );
         break;
       }
       if (commitMessageContainsSkip()) {
-        log(`${P} ${dim("skipped summary generation ([skip wijd] in commit message)")}`);
+        log(
+          `${P} ${dim("skipped summary generation ([skip wijd] in commit message)")}`,
+        );
         break;
       }
       const config = loadConfig();
@@ -162,6 +166,10 @@ async function main() {
     case "install": {
       const config = loadConfig();
       const initialized = initializeProject(config);
+      const migration = importLegacyRows(config);
+      uninstallHooks(config.root);
+      const installed = installHooks(config.root);
+      const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(
         changed.length
