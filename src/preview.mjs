@@ -26,7 +26,7 @@ export async function startPreview(config, options = {}) {
   const clients = new Set();
   const server = createServer((request, response) => {
     try {
-      serveRequest(request, response, { viewerFile, dataFile, clients });
+      serveRequest(request, response, { viewerFile, dataFile, clients }, url);
     } catch (error) {
       response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
       response.end(`${CLI_NAME} preview: ${error.message}\n`);
@@ -56,7 +56,7 @@ export async function startPreview(config, options = {}) {
   return { close, server, url };
 }
 
-function serveRequest(request, response, files) {
+function serveRequest(request, response, files, url) {
   const method = request.method ?? "GET";
   if (method !== "GET" && method !== "HEAD") {
     response.writeHead(405, { Allow: "GET, HEAD" });
@@ -82,11 +82,14 @@ function serveRequest(request, response, files) {
     return;
   }
   if (pathname === `/${VIEWER_FILENAME}`) {
-    const html = readFileSync(files.viewerFile, "utf8");
-    const body = html.includes("</body>")
-      ? html.replace("</body>", `${LIVE_RELOAD_CLIENT}\n</body>`)
-      : `${html}\n${LIVE_RELOAD_CLIENT}\n`;
-    send(response, method, 200, "text/html; charset=utf-8", body);
+    let html = readFileSync(files.viewerFile, "utf8");
+    if (html.includes("</body>")) {
+      html = html.replace("</body>", `${LIVE_RELOAD_CLIENT}\n</body>`);
+    } else {
+      html = `${html}\n${LIVE_RELOAD_CLIENT}\n`;
+    }
+    html = html.replaceAll("__PREVIEW_URL__", url);
+    send(response, method, 200, "text/html; charset=utf-8", html);
     return;
   }
   if (pathname === "/data.js" && existsSync(files.dataFile)) {

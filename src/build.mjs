@@ -36,7 +36,7 @@ function toGroup(summary, commit) {
     link: null,
     entries: ready
       ? summary.changes.map((change, index) => ({
-        letter: `(${abc[index] ?? "+"})`,
+        letter: summary.changes.length > 1 ? `(${abc[index] ?? "+"})` : "",
         tags: [change.type ?? summary.type ?? "other"],
         description: change.summary,
       }))
