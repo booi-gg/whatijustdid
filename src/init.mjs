@@ -9,11 +9,11 @@ import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
-const defaultConfigPath = join(packageDir, "ctrail", "config.json");
+const defaultConfigPath = join(packageDir, "changetrail", "config.json");
 const viewerTemplatePath = join(packageDir, "assets", "changelog.html");
-const MARKER = "# >>> ctrail >>>";
-const END_MARKER = "# <<< ctrail <<<";
-const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail) <<<(?:\n|$)/g;
+const MARKER = "# >>> changetrail >>>";
+const END_MARKER = "# <<< changetrail <<<";
+const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) <<<(?:\n|$)/g;
 
 /** Scaffold the tracked consumer files without replacing user-owned config. */
 export function initializeProject(config, options = {}) {
@@ -30,7 +30,7 @@ export function initializeProject(config, options = {}) {
   mkdirSync(config.dbDir, { recursive: true });
 
   const configTarget = config.isDefaultConfig
-    ? join(config.root, "ctrail", "config.json")
+    ? join(config.root, "changetrail", "config.json")
     : config.configPath;
   record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
 

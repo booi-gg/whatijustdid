@@ -11,9 +11,9 @@ const HOOKS = {
   "post-checkout": "build",
   "post-rewrite": "build",
 };
-const MARKER = "# >>> ctrail >>>";
-const END_MARKER = "# <<< ctrail <<<";
-const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail) <<<(?:\n|$)/g;
+const MARKER = "# >>> changetrail >>>";
+const END_MARKER = "# <<< changetrail <<<";
+const BLOCK = /\n?# >>> (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) >>>[\s\S]*?# <<< (?:@bm\/changelog|cvl|ctrial|ctrail|changetrail) <<<(?:\n|$)/g;
 
 /**
  * pre-commit stages the merge-safe DB row into the same commit as the code.
@@ -27,7 +27,7 @@ export function installHooks(root) {
   const absHooksDir = isAbsolute(hooksDir) ? hooksDir : join(root, hooksDir);
   mkdirSync(absHooksDir, { recursive: true });
 
-  const runner = join(packageDir, "bin", "ctrail.mjs").replace(/\\/g, "/");
+  const runner = join(packageDir, "bin", "changetrail.mjs").replace(/\\/g, "/");
 
   const installed = [];
   for (const [name, command] of Object.entries(HOOKS)) {
