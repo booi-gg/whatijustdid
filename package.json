@@ -1,45 +1,19 @@
 {
-  "name": "changereceipt",
-  "version": "0.1.0",
-  "type": "module",
-  "description": "Private, persistent AI summaries for every committed code change.",
-  "keywords": [
-    "changelog",
-    "git",
-    "git-hooks",
-    "release-notes",
-    "cli"
-  ],
-  "homepage": "https://github.com/booi-gg/changelog#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/booi-gg/changelog.git"
-  },
-  "bugs": {
-    "url": "https://github.com/booi-gg/changelog/issues"
-  },
-  "bin": {
-    "changetrail": "./bin/changetrail.mjs"
-  },
-  "exports": {
-    ".": "./src/index.mjs",
-    "./package.json": "./package.json"
-  },
+  "name": "changetrail",
+  "private": true,
   "scripts": {
-    "test": "node --test",
-    "prepublishOnly": "npm test"
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "lint": "turbo run lint",
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\""
   },
+  "devDependencies": {
+    "prettier": "^3.3.0",
+    "turbo": "^2.3.0"
+  },
+  "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=22.13.0"
-  },
-  "files": [
-    "assets",
-    "bin",
-    "src",
-    "whatijustdid.json",
-    "README.md"
-  ],
-  "publishConfig": {
-    "access": "public"
   }
 }

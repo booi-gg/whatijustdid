@@ -36,7 +36,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       packDirectory,
     ], packageRoot, npmEnvironment));
     const manifest = packed[0];
-    assert.equal(manifest.name, CLI_NAME);
+    assert.equal(manifest.name, "@changetrail/cli");
     const paths = manifest.files.map((file) => file.path);
     assert.ok(paths.includes("assets/changetrail.html"));
     assert.ok(paths.includes("bin/changetrail.mjs"));
@@ -84,7 +84,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     );
 
     const previewModule = pathToFileURL(
-      join(consumer, "node_modules", "changetrail", "src", "preview.mjs"),
+      join(consumer, "node_modules", manifest.name, "src", "preview.mjs"),
     ).href;
     const { startPreview } = await import(previewModule);
     const preview = await startPreview(

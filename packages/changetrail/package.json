@@ -1,0 +1,46 @@
+{
+  "name": "@changetrail/cli",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Private, persistent AI summaries for every committed code change.",
+  "keywords": [
+    "changelog",
+    "git",
+    "git-hooks",
+    "release-notes",
+    "cli"
+  ],
+  "homepage": "https://github.com/booi-gg/changelog#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/booi-gg/changelog.git"
+  },
+  "bugs": {
+    "url": "https://github.com/booi-gg/changelog/issues"
+  },
+  "bin": {
+    "changetrail": "./bin/changetrail.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs",
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "echo 'no build'",
+    "test": "node --test",
+    "prepublishOnly": "npm test"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "files": [
+    "assets",
+    "bin",
+    "src",
+    "whatijustdid.json",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
