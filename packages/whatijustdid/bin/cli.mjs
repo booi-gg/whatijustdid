@@ -2,6 +2,7 @@
 import { execSync } from "node:child_process";
 import { dirname } from "node:path";
 import pc from "picocolors";
+import { validateAgentConfig } from "../src/agents/index.mjs";
 import { CLI_NAME, TITLE_NAME } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
 import { loadConfig } from "../src/config.mjs";
@@ -49,9 +50,11 @@ async function main() {
         );
       }
       const total = build(config);
-      log(result.created
-        ? `${P} saved an AI summary for ${sha(result.entry.commitSha)}; viewer now has ${bold(formatEntries(total))}`
-        : `${P} ${dim(recordSkipMessage(result.reason))}; viewer now has ${bold(formatEntries(total))}`);
+      log(
+        result.created
+          ? `${P} saved an AI summary for ${sha(result.entry.commitSha)}; viewer now has ${bold(formatEntries(total))}`
+          : `${P} ${dim(recordSkipMessage(result.reason))}; viewer now has ${bold(formatEntries(total))}`,
+      );
       break;
     }
     case "generate":
@@ -70,9 +73,14 @@ async function main() {
       const force = rest.includes("--force");
 
       if (!all && limit === null) {
-        const preview = planGeneration(config, { limit: config.generationLimit, force });
+        const preview = planGeneration(config, {
+          limit: config.generationLimit,
+          force,
+        });
         log(`${P} no AI calls made. ${formatPlan(preview)}`);
-        log(`${P} choose a scope: --limit ${bold(config.generationLimit)}, or --all --yes`);
+        log(
+          `${P} choose a scope: --limit ${bold(config.generationLimit)}, or --all --yes`,
+        );
         break;
       }
       if (all && limit !== null)
@@ -95,7 +103,7 @@ async function main() {
       const total = build(config);
       log(
         `${P} generated ${green(result.generated)}, skipped ${yellow(result.skipped)}, ` +
-        `viewer now has ${bold(formatEntries(total))}`,
+          `viewer now has ${bold(formatEntries(total))}`,
       );
       break;
     }
@@ -135,30 +143,43 @@ async function main() {
     case "db": {
       const config = loadConfig();
       log(`${P} ${path(config.dbFile)}`);
-      try { execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" }); } catch { /* no-op */ }
+      try {
+        execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" });
+      } catch {
+        /* no-op */
+      }
       break;
     }
     case "init":
     case "install": {
       const config = loadConfig();
+      const validation = validateAgentConfig(config.agent);
+      if (!validation.valid) {
+        log(`${Perr} ${validation.error}`);
+        if (!rest.includes("--no-preview")) process.exitCode = 1;
+      }
       const initialized = initializeProject(config);
       const migration = importLegacyRows(config);
       const installed = installHooks(config.root);
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
-      log(changed.length
-        ? `${P} initialized ${green(changed.join(", "))}`
-        : `${P} ${dim("project files already initialized")}`);
+      log(
+        changed.length
+          ? `${P} initialized ${green(changed.join(", "))}`
+          : `${P} ${dim("project files already initialized")}`,
+      );
       if (migration.scanned) {
         log(
           `${P} imported ${bold(migration.imported)} legacy AI summaries; ` +
-          `${bold(migration.pending)} commits still need generation`,
+            `${bold(migration.pending)} commits still need generation`,
         );
       }
       log(`${P} private database ${path(config.dbFile)}`);
-      log(installed.length
-        ? `${P} installed/updated hooks: ${green(installed.join(", "))}`
-        : `${P} ${dim("hooks already current")}`);
+      log(
+        installed.length
+          ? `${P} installed/updated hooks: ${green(installed.join(", "))}`
+          : `${P} ${dim("hooks already current")}`,
+      );
       log(`${P} built initial viewer data (${bold(formatEntries(total))})`);
       if (!rest.includes("--no-preview")) {
         const { url: previewUrl } = await startPreview(config, {
@@ -172,16 +193,20 @@ async function main() {
     }
     case "hook": {
       const installed = installHooks(repoRoot());
-      log(installed.length
-        ? `${P} installed/updated hooks: ${green(installed.join(", "))}`
-        : `${P} ${dim("hooks already current")}`);
+      log(
+        installed.length
+          ? `${P} installed/updated hooks: ${green(installed.join(", "))}`
+          : `${P} ${dim("hooks already current")}`,
+      );
       break;
     }
     case "unhook": {
       const removed = uninstallHooks(repoRoot());
-      log(removed.length
-        ? `${P} removed hooks: ${yellow(removed.join(", "))}`
-        : `${P} ${dim("hooks already removed")}`);
+      log(
+        removed.length
+          ? `${P} removed hooks: ${yellow(removed.join(", "))}`
+          : `${P} ${dim("hooks already removed")}`,
+      );
       break;
     }
     default:
@@ -230,9 +255,11 @@ function positiveInteger(value, name) {
 }
 
 function formatPlan(plan) {
-  return `${bold(plan.commitsToGenerate)} of ${bold(plan.selectedCommits)} selected commits need summaries; ` +
+  return (
+    `${bold(plan.commitsToGenerate)} of ${bold(plan.selectedCommits)} selected commits need summaries; ` +
     `worst-case input \u2248 ${bold(formatNumber(plan.estimatedInputTokens))} tokens ` +
-    `(${formatBytes(plan.worstCaseInputBytes)})`;
+    `(${formatBytes(plan.worstCaseInputBytes)})`
+  );
 }
 
 function formatNumber(value) {
