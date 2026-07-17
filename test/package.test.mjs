@@ -12,6 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { CLI_NAME, HOOK_MARKER, VIEWER_FILENAME } from "../src/brand.mjs";
 import { DatabaseSync } from "node:sqlite";
 import test from "node:test";
 
@@ -35,7 +36,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       packDirectory,
     ], packageRoot, npmEnvironment));
     const manifest = packed[0];
-    assert.equal(manifest.name, "changetrail");
+    assert.equal(manifest.name, CLI_NAME);
     const paths = manifest.files.map((file) => file.path);
     assert.ok(paths.includes("assets/changetrail.html"));
     assert.ok(paths.includes("bin/changetrail.mjs"));

@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { CLI_NAME, TITLE_NAME } from "../src/brand.mjs";
 import { loadConfig } from "../src/config.mjs";
 import { generate, planGeneration } from "../src/generate.mjs";
 import { build } from "../src/build.mjs";
@@ -31,8 +32,8 @@ async function main() {
       }
       const total = build(config);
       log(result.created
-        ? `changetrail: saved an AI summary for ${result.entry.commitSha.slice(0, 12)}; viewer now has ${formatEntries(total)}`
-        : `changetrail: ${recordSkipMessage(result.reason)}; viewer now has ${formatEntries(total)}`);
+        ? `${CLI_NAME}: saved an AI summary for ${result.entry.commitSha.slice(0, 12)}; viewer now has ${formatEntries(total)}`
+        : `${CLI_NAME}: ${recordSkipMessage(result.reason)}; viewer now has ${formatEntries(total)}`);
       break;
     }
     case "generate":
@@ -48,8 +49,8 @@ async function main() {
 
       if (!all && limit === null) {
         const preview = planGeneration(config, { limit: config.generationLimit, force });
-        log(`changetrail: no AI calls made. ${formatPlan(preview)}`);
-        log(`changetrail: choose a scope: --limit ${config.generationLimit}, or --all --yes`);
+        log(`${CLI_NAME}: no AI calls made. ${formatPlan(preview)}`);
+        log(`${CLI_NAME}: choose a scope: --limit ${config.generationLimit}, or --all --yes`);
         break;
       }
       if (all && limit !== null) throw new Error("Choose either --limit N or --all, not both");
@@ -61,14 +62,14 @@ async function main() {
         force,
       };
       const plan = planGeneration(config, options);
-      log(`changetrail: ${formatPlan(plan)}`);
+      log(`${CLI_NAME}: ${formatPlan(plan)}`);
       if (all && !options.confirmAll) {
         throw new Error("No AI calls made. Re-run with --all --yes to approve full-history generation");
       }
       const result = await generate(config, { ...options, plan });
       const total = build(config);
       log(
-        `changetrail: generated ${result.generated}, skipped ${result.skipped}, ` +
+        `${CLI_NAME}: generated ${result.generated}, skipped ${result.skipped}, ` +
         `viewer now has ${formatEntries(total)}`,
       );
       break;
@@ -76,7 +77,7 @@ async function main() {
     case "build": {
       const config = loadConfig();
       const total = build(config);
-      log(`changetrail: built private viewer data (${formatEntries(total)})`);
+      log(`${CLI_NAME}: built private viewer data (${formatEntries(total)})`);
       break;
     }
     case "preview": {
@@ -86,8 +87,8 @@ async function main() {
         port: optionValue(rest, "--port") ?? process.env.CONDUCTOR_PORT,
         open: !rest.includes("--no-open"),
       });
-      log(`changetrail: previewing the bundled viewer at ${url}`);
-      log("changetrail: watching for new commits (Ctrl+C to stop)");
+      log(`${CLI_NAME}: previewing the bundled viewer at ${url}`);
+      log(`${CLI_NAME}: watching for new commits (Ctrl+C to stop)`);
       break;
     }
     case "edit": {
@@ -96,9 +97,9 @@ async function main() {
       const result = editEntry(config, id);
       if (result.changed) {
         build(config);
-        log(`changetrail: edited local summary for ${result.entry.commitSha.slice(0, 12)}`);
+        log(`${CLI_NAME}: edited local summary for ${result.entry.commitSha.slice(0, 12)}`);
       } else {
-        log("changetrail: no changes made");
+        log(`${CLI_NAME}: no changes made`);
       }
       break;
     }
@@ -106,7 +107,7 @@ async function main() {
       throw new Error("Cloud sync is not available yet; no local history was generated or uploaded");
     case "db": {
       const config = loadConfig();
-      log(`changetrail: ${config.dbFile}`);
+      log(`${CLI_NAME}: ${config.dbFile}`);
       try { execSync(`open "${dirname(config.dbFile)}"`, { stdio: "ignore" }); } catch { /* no-op */ }
       break;
     }
@@ -119,62 +120,62 @@ async function main() {
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(changed.length
-        ? `changetrail: initialized ${changed.join(", ")}`
-        : "changetrail: project files already initialized");
+        ? `${CLI_NAME}: initialized ${changed.join(", ")}`
+        : `${CLI_NAME}: project files already initialized`);
       if (migration.scanned) {
         log(
-          `changetrail: imported ${migration.imported} legacy AI summaries; ` +
+          `${CLI_NAME}: imported ${migration.imported} legacy AI summaries; ` +
           `${migration.pending} commits still need generation`,
         );
       }
-      log(`changetrail: private database ${config.dbFile}`);
+      log(`${CLI_NAME}: private database ${config.dbFile}`);
       log(installed.length
-        ? `changetrail: installed/updated hooks: ${installed.join(", ")}`
-        : "changetrail: hooks already current");
-      log(`changetrail: built initial viewer data (${formatEntries(total)})`);
+        ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
+        : `${CLI_NAME}: hooks already current`);
+      log(`${CLI_NAME}: built initial viewer data (${formatEntries(total)})`);
       if (!rest.includes("--no-preview")) {
         const { url } = await startPreview(config, {
           port: optionValue(rest, "--port") ?? process.env.CONDUCTOR_PORT,
           open: !rest.includes("--no-open"),
         });
-        log(`changetrail: previewing the bundled viewer at ${url}`);
-        log("changetrail: watching for new commits (Ctrl+C to stop)");
+        log(`${CLI_NAME}: previewing the bundled viewer at ${url}`);
+      log(`${CLI_NAME}: watching for new commits (Ctrl+C to stop)`);
       }
       break;
     }
     case "hook": {
       const installed = installHooks(repoRoot());
       log(installed.length
-        ? `changetrail: installed/updated hooks: ${installed.join(", ")}`
-        : "changetrail: hooks already current");
+        ? `${CLI_NAME}: installed/updated hooks: ${installed.join(", ")}`
+        : `${CLI_NAME}: hooks already current`);
       break;
     }
     case "unhook": {
       const removed = uninstallHooks(repoRoot());
       log(removed.length
-        ? `changetrail: removed hooks: ${removed.join(", ")}`
-        : "changetrail: hooks already removed");
+        ? `${CLI_NAME}: removed hooks: ${removed.join(", ")}`
+        : `${CLI_NAME}: hooks already removed`);
       break;
     }
     default:
-      console.log(`changetrail — AI summaries for committed code
+      console.log(`${CLI_NAME} \u2014 AI summaries for committed code
 
 Usage:
-  changetrail init                    Initialize, install hooks, and open the preview
-  changetrail init --no-preview       Initialize without starting the preview
-  changetrail install                 Alias for init
-  changetrail hook                    Install or refresh local Git hooks
-  changetrail unhook                  Remove Changetrail from local Git hooks
-  changetrail record                  Summarize the current HEAD commit
-  changetrail backfill                Preview the default bounded history scope
-  changetrail backfill --limit N      Generate at most N recent commits
-  changetrail backfill --all --yes    Generate every reachable commit
-  changetrail refresh ...             Alias for backfill
-  changetrail build                   Rebuild the private viewer cache
-  changetrail preview                 Open the bundled viewer with live reload
-  changetrail edit SHA                Edit a local summary
-  changetrail db                      Show and open the SQLite database location
-  changetrail sync                    Reserved for hosted multi-device sync
+  ${CLI_NAME} init                    Initialize, install hooks, and open the preview
+  ${CLI_NAME} init --no-preview       Initialize without starting the preview
+  ${CLI_NAME} install                 Alias for init
+  ${CLI_NAME} hook                    Install or refresh local Git hooks
+  ${CLI_NAME} unhook                  Remove ${TITLE_NAME} from local Git hooks
+  ${CLI_NAME} record                  Summarize the current HEAD commit
+  ${CLI_NAME} backfill                Preview the default bounded history scope
+  ${CLI_NAME} backfill --limit N      Generate at most N recent commits
+  ${CLI_NAME} backfill --all --yes    Generate every reachable commit
+  ${CLI_NAME} refresh ...             Alias for backfill
+  ${CLI_NAME} build                   Rebuild the private viewer cache
+  ${CLI_NAME} preview                 Open the bundled viewer with live reload
+  ${CLI_NAME} edit SHA                Edit a local summary
+  ${CLI_NAME} db                      Show and open the SQLite database location
+  ${CLI_NAME} sync                    Reserved for hosted multi-device sync
 
 Config: whatijustdid.json
 Agents: codex/openai (default) | claude | llama`);
@@ -183,7 +184,7 @@ Agents: codex/openai (default) | claude | llama`);
 }
 
 main().catch((error) => {
-  console.error(`changetrail: ${error.message}`);
+  console.error(`${CLI_NAME}: ${error.message}`);
   process.exitCode = 1;
 });
 
