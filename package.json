@@ -6,7 +6,12 @@
     "dev": "turbo run dev",
     "test": "turbo run test",
     "lint": "turbo run lint",
-    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\""
+    "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
+    "release": "pnpm --filter whatijustdid publish",
+    "release:dry": "pnpm --filter whatijustdid publish --dry-run --no-git-checks",
+    "release:patch": "pnpm --filter whatijustdid exec npm version patch --no-git-tag-version && pnpm release",
+    "release:minor": "pnpm --filter whatijustdid exec npm version minor && pnpm release",
+    "release:major": "pnpm --filter whatijustdid exec npm version major && pnpm release"
   },
   "devDependencies": {
     "prettier": "^3.3.0",
