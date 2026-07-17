@@ -19,14 +19,12 @@ export const CHANGELOG_SCHEMA = {
     type: { type: "string", enum: CHANGE_TYPES },
     changes: {
       type: "array",
-      minItems: 1,
-      maxItems: 12,
       items: {
         type: "object",
         additionalProperties: false,
         properties: {
           type: { type: "string", enum: CHANGE_TYPES },
-          summary: { type: "string", minLength: 1, maxLength: 280 },
+          summary: { type: "string" },
         },
         required: ["type", "summary"],
       },

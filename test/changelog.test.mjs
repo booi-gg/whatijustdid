@@ -14,7 +14,7 @@ import {
 } from "../src/ownership.mjs";
 import { projectsForFiles } from "../src/projects.mjs";
 import { bulletLines, parseSubject } from "../src/providers/raw.mjs";
-import { coerceModelJson } from "../src/providers/shared.mjs";
+import { CHANGELOG_SCHEMA, coerceModelJson } from "../src/providers/shared.mjs";
 
 test("parses conventional subjects and body bullets", () => {
   assert.deepEqual(parseSubject("feat(ui): add project tabs"), {
@@ -49,6 +49,16 @@ test("normalizes model JSON and rejects unknown types", () => {
     type: "fix",
     changes: [{ type: "fix", summary: "Fixed the retry loop." }],
   });
+});
+
+test("uses a strict-provider-compatible structured output schema", () => {
+  const changes = CHANGELOG_SCHEMA.properties.changes;
+  const summary = changes.items.properties.summary;
+
+  assert.equal(changes.minItems, undefined);
+  assert.equal(changes.maxItems, undefined);
+  assert.equal(summary.minLength, undefined);
+  assert.equal(summary.maxLength, undefined);
 });
 
 test("maps DB paths to the commits that introduced them", () => {
