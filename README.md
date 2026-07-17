@@ -50,6 +50,18 @@ it is not copied into the consumer repository. Rerunning either command refreshe
 one marked `changetrail` block in each hook instead of adding duplicates;
 everything outside that block stays intact.
 
+To detach Changetrail from the repository's local Git hooks, run:
+
+```sh
+npx changetrail unhook
+```
+
+`unhook` removes only Changetrail's marked blocks. It preserves unrelated hook
+commands and leaves the package, configuration, tracked rows, and generated
+viewer data in place. Run `npx changetrail hook` to attach the hooks again.
+Git hooks are clone-local and normally shared by linked worktrees, so unhooking
+one worktree also unhooks the others in that clone.
+
 ## Normal use
 
 Work normally after the hook is installed:
@@ -225,6 +237,8 @@ type-changed a row—not only the final diff.
 ```text
 changetrail init       Scaffold files, install hooks, and build viewer data
 changetrail install    Alias of init; useful once per clone
+changetrail hook       Install or refresh Changetrail's local Git hooks
+changetrail unhook     Remove Changetrail from local Git hooks
 changetrail record     Generate and stage a row for staged source changes
 changetrail build      Compile recent db/**/*.json rows into data.js
 changetrail backfill   Import + stage recent Git history explicitly
