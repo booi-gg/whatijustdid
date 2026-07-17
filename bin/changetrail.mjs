@@ -2,8 +2,9 @@
 import { loadConfig } from "../src/config.mjs";
 import { generate } from "../src/generate.mjs";
 import { build } from "../src/build.mjs";
-import { installHooks } from "../src/hooks.mjs";
+import { installHooks, uninstallHooks } from "../src/hooks.mjs";
 import { initializeProject } from "../src/init.mjs";
+import { repoRoot } from "../src/git.mjs";
 import { recordStagedChange } from "../src/record.mjs";
 import { editEntry } from "../src/edit.mjs";
 import { verifyOwnershipRange } from "../src/ownership.mjs";
@@ -88,12 +89,20 @@ async function main() {
       log(`changetrail: built initial viewer data (${total} entries)`);
       break;
     }
+    case "unhook": {
+      const removed = uninstallHooks(repoRoot());
+      log(removed.length
+        ? `changetrail: removed hooks: ${removed.join(", ")}`
+        : "changetrail: hooks already removed");
+      break;
+    }
     default:
       console.log(`changetrail — Change View and Logs
 
 Usage:
   changetrail init       Create project files, install hooks, and build viewer data
   changetrail install    Refresh hooks and missing project files (alias: init)
+  changetrail unhook     Remove Changetrail from local Git hooks
   changetrail record     Create + stage a DB row for currently staged source changes
   changetrail backfill   Create DB rows for recent history (alias: generate)
   changetrail sync       Backfill history, then rebuild viewer data
