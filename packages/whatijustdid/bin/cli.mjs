@@ -168,6 +168,7 @@ async function main() {
       }
       const initialized = initializeProject(config);
       const migration = importLegacyRows(config);
+      uninstallHooks(config.root);
       const installed = installHooks(config.root);
       const total = build(config);
       const changed = [...initialized.created, ...initialized.updated];
