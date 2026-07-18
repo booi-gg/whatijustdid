@@ -5,6 +5,8 @@
   "description": "Private, persistent AI summaries for every committed code change.",
   "keywords": [
     "changelog",
+    "whatijustdid",
+    "whathaveidone",
     "git",
     "git-hooks",
     "release-notes",

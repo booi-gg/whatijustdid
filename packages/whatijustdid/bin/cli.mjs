@@ -252,8 +252,19 @@ ${pc.bold("Usage:")}
   ${CLI_NAME} ${pc.green("db")}                      Show and open the SQLite database location
   ${CLI_NAME} ${pc.green("sync")}                    Reserved for hosted multi-device sync
 
-${pc.dim("Config:")} whatijustdid.json
-${pc.dim("Agents:")} codex/openai (default) | claude | llama`);
+${pc.bold("Config:")} whatijustdid.json ${pc.dim("(repo root, tracked)")}
+  ${pc.cyan("agent")}            codex ${pc.dim("(default)")} | openai | claude | deepseek | llama
+  ${pc.cyan("model")}            null ${pc.dim("(default, agent picks)")} | any model id string ${pc.dim('e.g. "gpt-5.2-mini"')}
+  ${pc.cyan("verbosity")}        concise | normal ${pc.dim("(default)")} | detailed
+  ${pc.cyan("viewerLimit")}      positive integer ${pc.dim("(default 200)")}    ${pc.dim("— max commits shown in the viewer")}
+  ${pc.cyan("generationLimit")}  positive integer ${pc.dim("(default 50)")}     ${pc.dim("— default backfill scope")}
+  ${pc.cyan("maxDiffBytes")}     positive integer ${pc.dim("(default 80000)")}  ${pc.dim("— max diff bytes sent to the agent")}
+  ${pc.cyan("timeoutMs")}        positive integer ${pc.dim("(default 20000)")}  ${pc.dim("— agent request timeout in ms")}
+  ${pc.cyan("showTokens")}       true | false ${pc.dim("(default)")}            ${pc.dim("— per-commit token badges in the viewer")}
+  ${pc.cyan("projects")}         {"name": ["path/prefix", ...]} ${pc.dim("(default {})")} ${pc.dim('e.g. {"web": ["apps/web"]}')}
+
+  ${pc.dim("Personal overrides:")} .git/${CLI_NAME}/whatijustdid.local.json ${pc.dim("(same keys, git-private)")}
+  ${pc.dim("Environment:")} ${ENV_PREFIX}_AGENT, ${ENV_PREFIX}_AGENT_API_KEY, ${ENV_PREFIX}_DB_PATH ${pc.dim("(or repo-root .env)")}`);
       if (cmd && cmd !== "help") process.exitCode = 1;
   }
 }
