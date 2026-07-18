@@ -8,7 +8,7 @@ Its promise is:
 
 > After AI changes your app, whatijustdid explains what happened in simple language.
 
-The extension is the product users interact with. The existing CLI and npm package remain the engine underneath it. A hosted website and cloud service come later for sharing, multi-project history, and paid team features.
+The extension is the product users interact with. The existing CLI and npm package remain the engine underneath it. A thin hosted service (accounts, free-trial metering, and AI proxying) exists from day one so users never handle API keys; the fuller cloud product for sharing, multi-project history, and team features comes later.
 
 ## Target user
 
@@ -127,19 +127,20 @@ Keep `whatijustdid preview` for users and integrations outside VS Code-compatibl
 
 ### 4. Website and cloud — later product
 
-The website initially provides marketing, documentation, and installation instructions. The later hosted product provides:
+The website initially provides marketing, documentation, installation instructions, account sign-up, and subscription billing. A thin API service backs the extension from day one: it authenticates users, meters trial and paid usage, and proxies AI generation to the underlying model (GPT or DeepSeek). Users never see or configure a model provider.
+
+The later hosted product adds:
 
 - Shareable receipt links.
 - History across multiple projects.
 - Search across all past work.
-- Central AI billing and provider configuration.
 - Team access and permissions.
 - GitHub integration and notifications.
 
 ## MVP user journey
 
-1. The user installs the extension.
-2. The extension recognizes the open Git project.
+1. The user installs the extension and signs in; the free trial starts automatically.
+2. The extension recognizes the open Git project. No API keys or configuration are required.
 3. The user asks their AI coding tool to make a change.
 4. The user selects **Explain my changes**.
 5. whatijustdid compares the current work with the previous checkpoint.
@@ -250,6 +251,7 @@ taskContext (optional)
 ### Milestone 2: Extension MVP
 
 - Scaffold the VS Code-compatible extension.
+- Add sign-in, trial activation, and usage metering against the hosted AI proxy.
 - Add **Explain my changes**.
 - Reuse the core package to inspect changes and generate a receipt.
 - Render the receipt in an extension panel.
@@ -287,7 +289,7 @@ taskContext (optional)
 - Ingest receipts using a GitHub App and webhooks.
 - Add shareable links and cross-project history.
 - Add hosted search and filters.
-- Add central AI usage and billing.
+- Add team-level AI budgets on top of the existing metering service.
 - Add team permissions and private projects.
 - Keep Git as the source of truth for shared receipt content.
 
@@ -312,7 +314,8 @@ Include:
 - Plain-English receipt panel.
 - Manual correction and simplification.
 - Local receipt history.
-- Existing OpenAI, Anthropic, local Ollama, and raw fallbacks where practical.
+- AI generation through the hosted whatijustdid service (GPT or DeepSeek behind the scenes); no user-supplied API keys.
+- Sign-in, free-trial metering, and paid subscription.
 - Git-backed shared receipt records.
 
 Do not include yet:
@@ -327,18 +330,20 @@ Do not include yet:
 
 ## Business model
 
-### Free local product
+There is no permanent free tier. Every user starts a free trial and converts to a paid plan or stops.
 
-- Extension and CLI.
-- Local receipt generation.
-- Git-backed history.
-- Local viewer.
-- User-provided AI key or supported local model.
+All AI generation runs through the hosted whatijustdid service, which wraps an inexpensive underlying model (GPT or DeepSeek). Users never provide their own API keys. Model choice is an internal cost decision and can change without users noticing.
+
+### Free trial
+
+- Full extension experience, time-boxed or capped at a set number of receipts.
+- Requires sign-in (which also limits repeat-trial abuse).
+- Managed AI included; zero configuration.
 
 ### Paid individual product
 
+- Everything in the trial, without limits.
 - Hosted history and shareable links.
-- Managed AI usage without API-key setup.
 - Multiple projects.
 - Search and longer history.
 - Automatic agent integrations and screenshots.
@@ -363,6 +368,7 @@ Measure product value rather than generated volume:
 - Weekly returning users.
 - Number of users who generate receipts across multiple sessions.
 - Percentage of pushed changes with a valid receipt.
+- Trial-to-paid conversion rate, and AI cost per receipt against subscription price.
 
 The primary MVP success signal is that non-technical users say they understand what changed without asking the coding agent another question.
 
@@ -395,9 +401,10 @@ The primary MVP success signal is that non-technical users say they understand w
 
 ### Privacy concerns
 
-- Explain when code is sent to an AI provider.
-- Keep raw and local-model options.
+- Disclose clearly that code excerpts pass through the whatijustdid service to the underlying model provider.
+- Publish which model providers are used; be prepared for buyers who object to specific providers (for example, DeepSeek for security-sensitive teams).
 - Allow users to exclude sensitive paths.
+- Do not retain repository contents on the service longer than needed to generate the receipt.
 - Do not upload repository contents merely to sync receipt text.
 
 ## Immediate next actions
@@ -405,7 +412,8 @@ The primary MVP success signal is that non-technical users say they understand w
 1. Finalize the receipt schema and example language.
 2. Update the core generation prompt and tests.
 3. Redesign the current viewer around receipt cards.
-4. Prototype the extension with **Explain my changes**.
-5. Test the prototype with five non-technical AI builders.
-6. Improve the content based on misunderstandings, not visual preferences.
-7. Only then add automatic detection, local SQLite, and cloud services.
+4. Stand up the minimal hosted AI proxy (auth, trial metering, one model behind it).
+5. Prototype the extension with **Explain my changes**.
+6. Test the prototype with five non-technical AI builders.
+7. Improve the content based on misunderstandings, not visual preferences.
+8. Only then add automatic detection, local SQLite, and the fuller cloud product.
