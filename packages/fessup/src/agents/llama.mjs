@@ -1,5 +1,5 @@
 import {
-  WHATIJUSTDID_SCHEMA,
+  FESSUP_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -25,7 +25,7 @@ export async function describe(
       headers: {},
       body: {
         model: selectedModel,
-        format: WHATIJUSTDID_SCHEMA,
+        format: FESSUP_SCHEMA,
         stream: false,
         options: { temperature: 0 },
         messages: [

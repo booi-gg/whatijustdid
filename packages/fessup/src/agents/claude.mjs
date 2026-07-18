@@ -1,5 +1,5 @@
 import {
-  WHATIJUSTDID_SCHEMA,
+  FESSUP_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -35,7 +35,7 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
         system: verbosityPrompt(verbosity),
         messages: [{ role: "user", content: formatAgentInput(input) }],
         output_config: {
-          format: { type: "json_schema", schema: WHATIJUSTDID_SCHEMA },
+              format: { type: "json_schema", schema: FESSUP_SCHEMA },
         },
       },
     },

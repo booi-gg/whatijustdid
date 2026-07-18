@@ -6,7 +6,7 @@ export default function Home() {
       <header className="border-b border-gray-200">
         <nav className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <Link href="/" className="text-xl font-bold tracking-tight">
-            WhatIJustDid
+            Fessup
           </Link>
           <div className="flex items-center gap-6 text-sm font-medium">
             <Link href="/pricing" className="hover:text-brand-600 transition-colors">
@@ -30,7 +30,7 @@ export default function Home() {
             <span className="text-brand-600">AI coder</span> just did
           </h1>
           <p className="mt-6 text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
-            WhatIJustDid turns every code change into a plain-English receipt.
+            Fessup turns every code change into a plain-English receipt.
             No jargon, no filenames, no commit messages — just a clear
             explanation of what your app can do now and how to try it.
           </p>
@@ -121,7 +121,7 @@ export default function Home() {
 
       <footer className="border-t border-gray-200 py-8 text-center text-sm text-gray-500">
         <div className="max-w-6xl mx-auto px-6">
-          WhatIJustDid &mdash; Built for vibe coders.
+          Fessup &mdash; Built for vibe coders.
         </div>
       </footer>
     </div>

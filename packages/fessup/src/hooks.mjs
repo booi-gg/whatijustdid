@@ -41,7 +41,7 @@ export function installHooks(root) {
     const commandLines = commands
       .map(
         (command) =>
-          `if [ -z "\${${ENV_PREFIX}_SKIP}" ] && ! git log -1 --pretty=%B | grep -q '\\[skip wijd\\]'; then node --no-warnings ${shellQuote(runner)} ${command} || true; fi`,
+          `if [ -z "\${${ENV_PREFIX}_SKIP}" ] && ! git log -1 --pretty=%B | grep -q '\\[skip fessup\\]'; then node --no-warnings ${shellQuote(runner)} ${command} || true; fi`,
       )
       .join("\n");
     const block = `${HOOK_MARKER}\n${commandLines}\n${HOOK_END_MARKER}\n`;

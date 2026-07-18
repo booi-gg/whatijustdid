@@ -1,5 +1,5 @@
 import {
-  WHATIJUSTDID_SCHEMA,
+  FESSUP_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -40,7 +40,7 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
             type: "json_schema",
             name: "changelog_entry",
             strict: true,
-            schema: WHATIJUSTDID_SCHEMA,
+            schema: FESSUP_SCHEMA,
           },
         },
       },

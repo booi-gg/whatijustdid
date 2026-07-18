@@ -15,17 +15,17 @@ import { ENV_PREFIX } from "../src/brand.mjs";
 import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
-test("creates only whatijustdid.json in the repository", () => {
-  const root = repository("whatijustdid-init-");
+test("creates only fessup.json in the repository", () => {
+  const root = repository("fessup-init-");
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = loadConfig({ root, env: {} });
     const first = initializeProject(config);
 
-    assert.deepEqual(first.created, ["whatijustdid.json"]);
+    assert.deepEqual(first.created, ["fessup.json"]);
     assert.deepEqual(first.updated, []);
     assert.deepEqual(
-      JSON.parse(readFileSync(join(root, "whatijustdid.json"), "utf8")),
+      JSON.parse(readFileSync(join(root, "fessup.json"), "utf8")),
       {
         agent: "codex",
         model: null,
@@ -40,14 +40,14 @@ test("creates only whatijustdid.json in the repository", () => {
     );
     assert.equal(
       config.dbFile,
-      join(realpathSync(root), ".git", "whatijustdid", "summaries.sqlite"),
+      join(realpathSync(root), ".git", "fessup", "summaries.sqlite"),
     );
     assert.equal(
       config.dataFile,
-      join(realpathSync(root), ".git", "whatijustdid", "data.js"),
+      join(realpathSync(root), ".git", "fessup", "data.js"),
     );
     assert.equal(existsSync(config.dbFile), true);
-    assert.equal(existsSync(join(root, "whatijustdid")), false);
+    assert.equal(existsSync(join(root, "fessup")), false);
     assert.equal(
       readFileSync(join(root, ".gitignore"), "utf8"),
       "node_modules/\n",
@@ -62,7 +62,7 @@ test("creates only whatijustdid.json in the repository", () => {
 });
 
 test("does not read or preserve changereceipt.json", () => {
-  const root = repository("whatijustdid-removed-config-");
+  const root = repository("fessup-removed-config-");
   try {
     writeFileSync(join(root, "changereceipt.json"), '{"agent":"claude"}\n');
     const config = loadConfig({ root, env: {} });
@@ -71,7 +71,7 @@ test("does not read or preserve changereceipt.json", () => {
     assert.equal(config.agent, "codex");
     assert.equal(
       config.dbFile,
-      join(realpathSync(root), ".git", "whatijustdid", "summaries.sqlite"),
+      join(realpathSync(root), ".git", "fessup", "summaries.sqlite"),
     );
     assert.equal(existsSync(join(root, "changereceipt.json")), true);
   } finally {
@@ -80,9 +80,9 @@ test("does not read or preserve changereceipt.json", () => {
 });
 
 test("migrates provider to agent, retires raw, and respects injected env", () => {
-  const root = repository("whatijustdid-config-");
+  const root = repository("fessup-config-");
   try {
-    const path = join(root, "whatijustdid.json");
+    const path = join(root, "fessup.json");
     writeFileSync(path, '{"provider":"claude"}\n');
     assert.equal(loadConfig({ root, env: {} }).agent, "claude");
 
@@ -106,7 +106,7 @@ test("migrates provider to agent, retires raw, and respects injected env", () =>
 });
 
 test("linked worktrees share the clone-private database", () => {
-  const root = repository("whatijustdid-worktrees-");
+  const root = repository("fessup-worktrees-");
   const linked = `${root}-linked`;
   try {
     writeFileSync(join(root, "README.md"), "worktree test\n");
@@ -119,12 +119,12 @@ test("linked worktrees share the clone-private database", () => {
     assert.equal(primary.dbFile, secondary.dbFile);
     assert.equal(
       primary.dbFile,
-      join(realpathSync(root), ".git", "whatijustdid", "summaries.sqlite"),
+      join(realpathSync(root), ".git", "fessup", "summaries.sqlite"),
     );
     assert.notEqual(primary.dataFile, secondary.dataFile);
     assert.match(
       secondary.dataFile,
-      /\.git\/worktrees\/.*\/whatijustdid\/data\.js$/,
+      /\.git\/worktrees\/.*\/fessup\/data\.js$/,
     );
   } finally {
     try {

@@ -1,12 +1,12 @@
-# whatijustdid
+# fessup
 
-whatijustdid turns committed code diffs into persistent AI summaries — plain-English receipts for AI-built software.
+fessup turns committed code diffs into persistent AI summaries — plain-English receipts for AI-built software.
 
 ## Structure
 
 ```
-packages/whatijustdid/   CLI and core library (npm package)
-apps/web/                Marketing site (Next.js)
+packages/fessup/   CLI and core library (npm package)
+apps/web/          Marketing site (Next.js)
 ```
 
 ## Quick start
@@ -31,4 +31,4 @@ pnpm run test
 
 ## Package
 
-See [`packages/whatijustdid/README.md`](packages/whatijustdid/README.md) for installation, usage, and configuration.
+See [`packages/fessup/README.md`](packages/fessup/README.md) for installation, usage, and configuration.

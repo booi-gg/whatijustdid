@@ -40,7 +40,7 @@ Use past tense. Base every claim on the code diff; never substitute a commit mes
 Return only data matching the supplied JSON schema.`;
 }
 
-export const WHATIJUSTDID_SCHEMA = {
+export const FESSUP_SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
@@ -226,7 +226,7 @@ export async function postJson(url, { headers, body, label, timeoutMs }) {
  * A single `${ENV_PREFIX}_AGENT_API_KEY` can hold the key for whichever agent
  * is currently configured, so switching agents doesn't require juggling
  * provider-specific env var names. It takes precedence because setting it
- * means "use this key for whatijustdid specifically"; the provider-specific
+ * means "use this key for fessup specifically"; the provider-specific
  * var is the fallback for a key already set for other tools.
  */
 export function resolveApiKey(providerEnvVar) {

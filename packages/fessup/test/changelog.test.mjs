@@ -6,7 +6,7 @@ import test from "node:test";
 import { describe as describeWithOpenAI } from "../src/agents/codex.mjs";
 import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
 import { getAgent } from "../src/agents/index.mjs";
-import { WHATIJUSTDID_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
+import { FESSUP_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
 import { ENV_PREFIX } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
 import { describeChange } from "../src/describe.mjs";
@@ -248,7 +248,7 @@ test("DeepSeek reports its missing credential clearly", async () => {
 });
 
 test("uses a strict-agent-compatible structured output schema", () => {
-  const changes = WHATIJUSTDID_SCHEMA.properties.changes;
+  const changes = FESSUP_SCHEMA.properties.changes;
   const summary = changes.items.properties.summary;
   assert.equal(changes.minItems, undefined);
   assert.equal(changes.maxItems, undefined);
@@ -257,7 +257,7 @@ test("uses a strict-agent-compatible structured output schema", () => {
 });
 
 test("history generation requires an explicit scope and resumes ready commits", async () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-generate-"));
+  const root = mkdtempSync(join(tmpdir(), "fessup-generate-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   let calls = 0;
@@ -310,7 +310,7 @@ test("history generation requires an explicit scope and resumes ready commits", 
 });
 
 test("build displays ready and pending records without commit-message text", () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-build-"));
+  const root = mkdtempSync(join(tmpdir(), "fessup-build-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   try {
@@ -343,7 +343,7 @@ test("build displays ready and pending records without commit-message text", () 
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
     assert.doesNotMatch(output, /must never appear/i);
-    assert.match(output, /window\.__WHATIJUSTDID_PROJECTS__ = \[\s+"web"/);
+    assert.match(output, /window\.__FESSUP_PROJECTS__ = \[\s+"web"/);
   } finally {
     store.close();
     rmSync(root, { recursive: true, force: true });
@@ -351,7 +351,7 @@ test("build displays ready and pending records without commit-message text", () 
 });
 
 test("editing updates private SQLite without changing commit identity", () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-edit-"));
+  const root = mkdtempSync(join(tmpdir(), "fessup-edit-"));
   const config = testConfig(root);
   const store = openSummaryStore(config);
   try {
@@ -398,8 +398,8 @@ test("editing updates private SQLite without changing commit identity", () => {
 function testConfig(root) {
   return {
     root,
-    dbFile: join(root, ".git", "whatijustdid", "summaries.sqlite"),
-    dataFile: join(root, "whatijustdid", "data.js"),
+    dbFile: join(root, ".git", "fessup", "summaries.sqlite"),
+    dataFile: join(root, "fessup", "data.js"),
     viewerLimit: 200,
     maxDiffBytes: 80_000,
     projects: { web: ["apps/web"], worker: ["apps/worker"] },

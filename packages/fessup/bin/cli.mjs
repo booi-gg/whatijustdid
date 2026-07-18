@@ -46,7 +46,7 @@ async function main() {
         break;
       }
       if (commitMessageContainsSkip()) {
-        log(`${P} ${dim("skipped summary generation ([skip wijd] in commit message)")}`);
+        log(`${P} ${dim("skipped summary generation ([skip fessup] in commit message)")}`);
         break;
       }
       const config = loadConfig();
@@ -247,7 +247,7 @@ ${pc.bold("Usage:")}
   ${CLI_NAME} ${pc.green("db")}                      Show and open the SQLite database location
   ${CLI_NAME} ${pc.green("sync")}                    Reserved for hosted multi-device sync
 
-${pc.dim("Config:")} whatijustdid.json
+${pc.dim("Config:")} fessup.json
 ${pc.dim("Agents:")} codex/openai (default) | claude | llama`);
       if (cmd && cmd !== "help") process.exitCode = 1;
   }
@@ -306,7 +306,7 @@ function formatEntries(total) {
 function commitMessageContainsSkip() {
   try {
     const message = execSync("git log -1 --pretty=%B", { encoding: "utf8" });
-    return message.includes("[skip wijd]");
+    return message.includes("[skip fessup]");
   } catch {
     return false;
   }

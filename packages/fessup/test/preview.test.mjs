@@ -6,38 +6,38 @@ import test from "node:test";
 import { startPreview } from "../src/preview.mjs";
 
 test("serves the bundled viewer with live reload", async () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-preview-"));
-  const directory = join(root, "whatijustdid");
+  const root = mkdtempSync(join(tmpdir(), "fessup-preview-"));
+  const directory = join(root, "fessup");
   const dataFile = join(directory, "data.js");
   mkdirSync(directory);
-  writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [];\n");
+  writeFileSync(dataFile, "window.__FESSUP__ = [];\n");
 
   const preview = await startPreview(
-    { root, dir: "whatijustdid", dataFile },
+    { root, dir: "fessup", dataFile },
     { open: false, port: 0 },
   );
   try {
     const redirect = await fetch(preview.url, { redirect: "manual" });
     assert.equal(redirect.status, 302);
-    assert.equal(redirect.headers.get("location"), "/whatijustdid.html");
+    assert.equal(redirect.headers.get("location"), "/fessup.html");
 
-    const html = await fetch(`${preview.url}/whatijustdid.html`);
+    const html = await fetch(`${preview.url}/fessup.html`);
     assert.equal(html.status, 200);
     const htmlBody = await html.text();
-    assert.match(htmlBody, /<title>whatijustdid · Changelog<\/title>/);
-    assert.match(htmlBody, /new EventSource\("\/__whatijustdid_live"\)/);
+    assert.match(htmlBody, /<title>fessup · Changelog<\/title>/);
+    assert.match(htmlBody, /new EventSource\("\/__fessup_live"\)/);
 
     const data = await fetch(`${preview.url}/data.js`);
     assert.equal(data.status, 200);
-    assert.equal(await data.text(), "window.__WHATIJUSTDID__ = [];\n");
+    assert.equal(await data.text(), "window.__FESSUP__ = [];\n");
 
     const events = new AbortController();
-    const stream = await fetch(`${preview.url}/__whatijustdid_live`, {
+    const stream = await fetch(`${preview.url}/__fessup_live`, {
       signal: events.signal,
     });
     const reader = stream.body.getReader();
     await reader.read();
-    writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [1];\n");
+    writeFileSync(dataFile, "window.__FESSUP__ = [1];\n");
     const message = await readUntil(reader, /event: reload/, 5_000);
     assert.match(message, /event: reload/);
     events.abort();

@@ -1,5 +1,5 @@
 import {
-  WHATIJUSTDID_SCHEMA,
+  FESSUP_SCHEMA,
   apiUrl,
   formatAgentInput,
   parseAgentJson,
@@ -19,7 +19,7 @@ export async function describe(input, { model, timeoutMs, verbosity = "normal" }
   const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
   const systemPrompt = `${verbosityPrompt(verbosity)}
 The required JSON schema is:
-${JSON.stringify(WHATIJUSTDID_SCHEMA)}
+${JSON.stringify(FESSUP_SCHEMA)}
 Example JSON output:
 {"type":"feat","changes":[{"type":"feat","summary":"Added a new user-facing capability."}]}`;
 

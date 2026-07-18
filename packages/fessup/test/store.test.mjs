@@ -15,7 +15,7 @@ import { openSummaryStore } from "../src/store.mjs";
 const SHA = "a".repeat(40);
 
 test("persists one compact ready summary and coordinates concurrent writers", () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-store-"));
+  const root = mkdtempSync(join(tmpdir(), "fessup-store-"));
   const dbFile = join(root, "private", "summaries.sqlite");
   const first = openSummaryStore(dbFile);
   const second = openSummaryStore(dbFile);
@@ -66,7 +66,7 @@ test("persists one compact ready summary and coordinates concurrent writers", ()
 });
 
 test("failed and expired generations are resumable", () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-lease-"));
+  const root = mkdtempSync(join(tmpdir(), "fessup-lease-"));
   const store = openSummaryStore(join(root, "summaries.sqlite"));
   try {
     const start = new Date("2026-07-17T00:00:00.000Z");
@@ -109,7 +109,7 @@ test("failed and expired generations are resumable", () => {
 });
 
 test("rejects malformed JSON if the database is externally corrupted", () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-corrupt-"));
+  const root = mkdtempSync(join(tmpdir(), "fessup-corrupt-"));
   const store = openSummaryStore(join(root, "summaries.sqlite"));
   try {
     store.ensurePending(SHA, []);
@@ -126,10 +126,10 @@ test("rejects malformed JSON if the database is externally corrupted", () => {
 });
 
 test("imports legacy AI rows but leaves raw rows pending", () => {
-  const root = mkdtempSync(join(tmpdir(), "whatijustdid-legacy-"));
-  const legacyDbDir = join(root, "whatijustdid", "db");
+  const root = mkdtempSync(join(tmpdir(), "fessup-legacy-"));
+  const legacyDbDir = join(root, "fessup", "db");
   const store = openSummaryStore(
-    join(root, ".git", "whatijustdid", "summaries.sqlite"),
+    join(root, ".git", "fessup", "summaries.sqlite"),
   );
   const rawSha = "b".repeat(40);
   try {
@@ -156,8 +156,8 @@ test("imports legacy AI rows but leaves raw rows pending", () => {
       }),
     );
     const index = new Map([
-      ["whatijustdid/db/ai.json", { sha: SHA }],
-      ["whatijustdid/db/raw.json", { sha: rawSha }],
+      ["fessup/db/ai.json", { sha: SHA }],
+      ["fessup/db/raw.json", { sha: rawSha }],
     ]);
     const config = { root, legacyDbDir, dbFile: store.dbFile };
     const result = importLegacyRows(config, {
