@@ -25,7 +25,13 @@ test("serves the bundled viewer with live reload", async () => {
     assert.equal(html.status, 200);
     const htmlBody = await html.text();
     assert.match(htmlBody, /<title>whatijustdid · Changelog<\/title>/);
+    assert.match(htmlBody, /src="\.\/whatijustdid\.js"/);
     assert.match(htmlBody, /new EventSource\("\/__whatijustdid_live"\)/);
+
+    const script = await fetch(`${preview.url}/whatijustdid.js`);
+    assert.equal(script.status, 200);
+    assert.match(script.headers.get("content-type"), /^text\/javascript/);
+    assert.match(await script.text(), /Repository ledger/);
 
     const data = await fetch(`${preview.url}/data.js`);
     assert.equal(data.status, 200);
