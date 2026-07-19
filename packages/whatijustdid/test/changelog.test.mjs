@@ -344,6 +344,12 @@ test("build displays ready and pending records without commit-message text", () 
     assert.match(output, /Summary is waiting to be generated/);
     assert.doesNotMatch(output, /must never appear/i);
     assert.match(output, /window\.__WHATIJUSTDID_PROJECTS__ = \[\s+"web"/);
+    assert.match(
+      output,
+      new RegExp(
+        `window\\.__WHATIJUSTDID_META__ = \\{\\s+"databaseSizeBytes": ${store.sizeBytes()}\\s+\\}`,
+      ),
+    );
   } finally {
     store.close();
     rmSync(root, { recursive: true, force: true });
