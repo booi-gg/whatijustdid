@@ -37,6 +37,10 @@ export function verbosityPrompt(verbosity) {
   return `Turn the supplied code diff into a ${level} user-facing changelog entry.
 Return one item per distinct job performed. Describe observable behavior, not filenames or implementation trivia.
 Use past tense. Base every claim on the code diff; never substitute a commit message. Do not invent changes.
+A hunk that only adds, removes, or rewrites comments, docstrings, or whitespace changes no behavior:
+describe it as a comment/documentation change (type "docs" or "style"), and never claim the behavior the
+comment text talks about was added or removed — e.g. deleting a comment that explains a workaround is
+"Removed an explanatory comment", not "Removed the workaround".
 Return only data matching the supplied JSON schema.`;
 }
 
