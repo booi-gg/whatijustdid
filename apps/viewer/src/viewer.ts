@@ -39,6 +39,11 @@ export interface ViewerModel {
   groups: ViewerGroup[];
   projectName: string;
   projectNames: string[];
+  databaseSizeBytes: number | null;
+}
+
+interface ViewerMetadata {
+  databaseSizeBytes?: number;
 }
 
 declare global {
@@ -46,6 +51,7 @@ declare global {
     __WHATIJUSTDID__?: ViewerGroup[];
     __WHATIJUSTDID_PROJECT_NAME__?: string;
     __WHATIJUSTDID_PROJECTS__?: string[];
+    __WHATIJUSTDID_META__?: ViewerMetadata;
   }
 }
 
@@ -58,6 +64,7 @@ export function readViewerModel(): ViewerModel {
   const configuredProjects = Array.isArray(window.__WHATIJUSTDID_PROJECTS__)
     ? window.__WHATIJUSTDID_PROJECTS__
     : [];
+  const databaseSizeBytes = window.__WHATIJUSTDID_META__?.databaseSizeBytes;
   const projects = new Set<string>();
 
   for (const project of configuredProjects) {
@@ -81,6 +88,12 @@ export function readViewerModel(): ViewerModel {
       window.__WHATIJUSTDID_PROJECT_NAME__.trim()
         ? window.__WHATIJUSTDID_PROJECT_NAME__.trim()
         : "Untitled project",
+    databaseSizeBytes:
+      typeof databaseSizeBytes === "number" &&
+      Number.isSafeInteger(databaseSizeBytes) &&
+      databaseSizeBytes >= 0
+        ? databaseSizeBytes
+        : null,
     projectNames: [
       "All",
       ...projects,

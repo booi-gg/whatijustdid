@@ -191,9 +191,10 @@ npx whatijustdid preview
 npx whatijustdid preview --port 4173
 npx whatijustdid build
 npx whatijustdid edit <commit-sha-or-prefix>
+npx whatijustdid clear --yes
 ```
 
-`preview` serves the bundled viewer with live reload. `edit` changes the private SQLite summary and rebuilds no repository-owned database row.
+`preview` serves the bundled viewer with live reload. `edit` changes a private SQLite summary. `clear --yes` permanently removes every local summary and rebuilds the viewer; it does not change Git history or the shared configuration.
 
 ## Configuration
 

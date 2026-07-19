@@ -1,10 +1,14 @@
 import { spawn } from "node:child_process";
+import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
 import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_JS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, SSE_PATH } from "./brand.mjs";
+import { clearHistory } from "./clear.mjs";
 
 const DEFAULT_PORT = 9453;
+const ACTION_TOKEN_PLACEHOLDER = "__WHATIJUSTDID_ACTION_TOKEN__";
+const CLEAR_HISTORY_PATH = "/api/actions/clear-history";
 const LIVE_RELOAD_CLIENT = `<script>
   (() => {
     const source = new EventSource("${SSE_PATH}");
@@ -13,7 +17,7 @@ const LIVE_RELOAD_CLIENT = `<script>
 </script>`;
 
 /** Serve the package-owned viewer and reload connected browsers when it changes. */
-export async function startPreview(config, options = {}) {
+export async function startPreview(config, options = {}, dependencies = {}) {
   const viewerFile = VIEWER_FILE_PATH;
   const dataFile = config.dataFile;
   if (!existsSync(viewerFile)) {
@@ -29,9 +33,18 @@ export async function startPreview(config, options = {}) {
     options.port !== undefined && options.port !== null && options.port !== "";
   const port = previewPort(options.port);
   const clients = new Set();
+  const actionToken = randomUUID();
+  const runClearHistory = dependencies.clearHistory ?? clearHistory;
   const server = createServer((request, response) => {
     try {
-      serveRequest(request, response, { viewerFile, dataFile, clients }, url);
+      serveRequest(request, response, {
+        viewerFile,
+        dataFile,
+        clients,
+        actionToken,
+        config,
+        runClearHistory,
+      }, url);
     } catch (error) {
       response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
       response.end(`${CLI_NAME} preview: ${error.message}\n`);
@@ -76,13 +89,17 @@ export async function startPreview(config, options = {}) {
 
 function serveRequest(request, response, files, url) {
   const method = request.method ?? "GET";
+  const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+  if (pathname === CLEAR_HISTORY_PATH) {
+    serveClearHistory(request, response, files, method);
+    return;
+  }
   if (method !== "GET" && method !== "HEAD") {
     response.writeHead(405, { Allow: "GET, HEAD" });
     response.end();
     return;
   }
 
-  const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
   if (pathname === "/") {
     response.writeHead(302, { Location: `/${VIEWER_FILENAME}` });
     response.end();
@@ -127,6 +144,7 @@ function serveRequest(request, response, files, url) {
       html = `${html}\n${LIVE_RELOAD_CLIENT}\n`;
     }
     html = html.replaceAll("__PREVIEW_URL__", url);
+    html = html.replaceAll(ACTION_TOKEN_PLACEHOLDER, files.actionToken);
     send(response, method, 200, "text/html; charset=utf-8", html);
     return;
   }
@@ -142,6 +160,44 @@ function serveRequest(request, response, files, url) {
   }
 
   send(response, method, 404, "text/plain; charset=utf-8", "Not found\n");
+}
+
+function serveClearHistory(request, response, files, method) {
+  if (method !== "POST") {
+    response.writeHead(405, { Allow: "POST" });
+    response.end();
+    return;
+  }
+  if (request.headers["x-whatijustdid-action-token"] !== files.actionToken) {
+    sendJson(response, 403, {
+      error: "This action is not authorized by the active preview session",
+    });
+    return;
+  }
+  if (request.headers["x-whatijustdid-confirm"] !== "clear-history") {
+    sendJson(response, 400, {
+      error: "Clearing history requires explicit confirmation",
+    });
+    return;
+  }
+
+  try {
+    const result = files.runClearHistory(files.config, { confirm: true });
+    sendJson(response, 200, result);
+  } catch (error) {
+    const status = error?.code === "WHATIJUSTDID_ACTIVE_GENERATION" ? 409 : 500;
+    sendJson(response, status, {
+      error: error?.message ?? "Unable to clear local history",
+    });
+  }
+}
+
+function sendJson(response, status, body) {
+  response.writeHead(status, {
+    "Cache-Control": "no-store",
+    "Content-Type": "application/json; charset=utf-8",
+  });
+  response.end(`${JSON.stringify(body)}\n`);
 }
 
 function send(response, method, status, contentType, body) {

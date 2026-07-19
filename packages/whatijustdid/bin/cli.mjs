@@ -7,6 +7,7 @@ import pc from "picocolors";
 import { validateAgentConfig } from "../src/agents/index.mjs";
 import { CLI_NAME, ENV_PREFIX, TITLE_NAME } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
+import { clearHistory } from "../src/clear.mjs";
 import {
   draftCommitMessage,
   runGitCommit,
@@ -239,6 +240,19 @@ async function main() {
       }
       break;
     }
+    case "clear": {
+      if (!rest.includes("--yes")) {
+        throw new Error(
+          `No history was cleared. Re-run ${CLI_NAME} clear --yes to permanently remove local summaries`,
+        );
+      }
+      const config = loadConfig();
+      const result = clearHistory(config, { confirm: true });
+      log(
+        `${P} cleared ${bold(formatEntries(result.cleared))}; viewer now has ${bold(formatEntries(result.viewerEntries))}`,
+      );
+      break;
+    }
     case "sync":
       throw new Error(
         "Cloud sync is not available yet; no local history was generated or uploaded",
@@ -342,6 +356,7 @@ ${pc.bold("Usage:")}
   ${CLI_NAME} ${pc.green("build")}                   Rebuild the private viewer cache
   ${CLI_NAME} ${pc.green("preview")}                 Open the bundled viewer with live reload
   ${CLI_NAME} ${pc.green("edit")} SHA                Edit a local summary
+  ${CLI_NAME} ${pc.green("clear --yes")}              Permanently clear local summary history
   ${CLI_NAME} ${pc.green("db")}                      Show and open the SQLite database location
   ${CLI_NAME} ${pc.green("sync")}                    Reserved for hosted multi-device sync
 

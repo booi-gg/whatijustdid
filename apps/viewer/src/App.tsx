@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   dateValue,
   localDateKey,
@@ -22,6 +22,13 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
   minute: "2-digit",
 });
+
+const actionToken = document.querySelector<HTMLMetaElement>(
+  'meta[name="whatijustdid-action-token"]',
+)?.content;
+const canRunPreviewActions = Boolean(
+  actionToken && actionToken !== "__WHATIJUSTDID_ACTION_TOKEN__",
+);
 
 const tagStyles: Record<ChangeType, string> = {
   feat: "bg-[oklch(0.22_0.04_155)] text-[oklch(0.72_0.13_155)]",
@@ -68,10 +75,18 @@ export function App({ model }: AppProps) {
     0,
   );
   const summary = `${entryCount} ${entryCount === 1 ? "change" : "changes"} across ${visibleGroups.length} ${visibleGroups.length === 1 ? "commit" : "commits"} · ${activeProject}`;
+  const databaseSize =
+    model.databaseSizeBytes === null
+      ? null
+      : formatBytes(model.databaseSizeBytes);
 
   return (
     <div className="mx-auto w-[min(900px,calc(100%-40px))] pt-[68px] pb-[92px] max-[700px]:w-[min(900px,calc(100%-28px))] max-[700px]:pt-[42px]">
-      <Masthead projectName={model.projectName} summary={summary} />
+      <Masthead
+        databaseSize={databaseSize}
+        projectName={model.projectName}
+        summary={summary}
+      />
       <div className="sticky top-0 z-10 -mx-3.5 mb-[38px] border-b border-line-strong/65 bg-surface/92 px-3.5 py-[15px] backdrop-blur-[14px]">
         <ProjectFilters
           activeProject={activeProject}
@@ -95,9 +110,11 @@ export function App({ model }: AppProps) {
 }
 
 function Masthead({
+  databaseSize,
   projectName,
   summary,
 }: {
+  databaseSize: string | null;
   projectName: string;
   summary: string;
 }) {
@@ -127,6 +144,11 @@ function Masthead({
         aria-live="polite"
       >
         {summary}
+        {databaseSize ? (
+          <span className="mt-1 block text-[11px] font-bold text-faint">
+            Database size · <span className="text-muted">{databaseSize}</span>
+          </span>
+        ) : null}
       </p>
     </header>
   );
@@ -363,9 +385,83 @@ function Footer() {
         Generated with <span className="font-[750] text-ink">whatijustdid</span>
         .
       </span>
-      <span>Only opted-in commits appear.</span>
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 max-[700px]:justify-start">
+        <span>Only opted-in commits appear.</span>
+        {canRunPreviewActions ? <ClearHistoryButton /> : null}
+      </div>
     </footer>
   );
+}
+
+function ClearHistoryButton() {
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleClearHistory() {
+    const confirmed = window.confirm(
+      "Clear every local summary for this clone?\n\nLinked worktrees share this history. You can generate it again later, which may use AI tokens.",
+    );
+    if (!confirmed || !actionToken) return;
+
+    setError(null);
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/actions/clear-history", {
+          method: "POST",
+          headers: {
+            "X-Whatijustdid-Action-Token": actionToken,
+            "X-Whatijustdid-Confirm": "clear-history",
+          },
+        });
+        if (!response.ok) throw new Error(await actionError(response));
+        window.location.reload();
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to clear local history",
+        );
+      }
+    });
+  }
+
+  return (
+    <span className="inline-flex flex-col items-end gap-1 max-[700px]:items-start">
+      <button
+        className="cursor-pointer border-0 bg-transparent p-0 font-bold text-faint underline decoration-line-strong underline-offset-2 hover:text-[oklch(0.72_0.14_25)] disabled:cursor-wait disabled:opacity-60"
+        type="button"
+        disabled={isPending}
+        onClick={handleClearHistory}
+      >
+        {isPending ? "Clearing…" : "Clear local history"}
+      </button>
+      {error ? (
+        <span
+          className="max-w-[280px] text-right text-[oklch(0.72_0.14_25)] max-[700px]:text-left"
+          role="alert"
+        >
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+async function actionError(response: Response) {
+  try {
+    const body: unknown = await response.json();
+    if (
+      body &&
+      typeof body === "object" &&
+      "error" in body &&
+      typeof body.error === "string"
+    ) {
+      return body.error;
+    }
+  } catch {
+    // Fall back to a status-based message for a malformed error response.
+  }
+  return `Unable to clear local history (${response.status})`;
 }
 
 function groupByDay(groups: ViewerGroup[]) {
@@ -386,4 +482,15 @@ function formatDay(key: string) {
 
 function formatTokens(total: number) {
   return total >= 1_000 ? `${(total / 1_000).toFixed(1)}k tok` : `${total} tok`;
+}
+
+function formatBytes(total: number) {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = total;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }

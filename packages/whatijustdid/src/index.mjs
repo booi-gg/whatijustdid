@@ -2,6 +2,7 @@ export { loadConfig } from "./config.mjs";
 export { generate, planGeneration } from "./generate.mjs";
 export { startPreview } from "./preview.mjs";
 export { build, readEntries } from "./build.mjs";
+export { clearHistory } from "./clear.mjs";
 export { installHooks, uninstallHooks } from "./hooks.mjs";
 export { initializeProject } from "./init.mjs";
 export { getAgent, validateAgentConfig } from "./agents/index.mjs";

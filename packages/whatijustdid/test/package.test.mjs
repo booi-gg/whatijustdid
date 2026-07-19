@@ -42,6 +42,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
     assert.ok(paths.includes("assets/whatijustdid.css"));
     assert.ok(paths.includes("assets/whatijustdid.js"));
     assert.ok(paths.includes("bin/cli.mjs"));
+    assert.ok(paths.includes("src/clear.mjs"));
     assert.ok(paths.includes("src/store.mjs"));
     assert.ok(paths.includes("whatijustdid.json"));
     assert.equal(paths.some((path) => path.startsWith("test/")), false);
@@ -192,6 +193,27 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
       return /Summary failed:.*OPENAI_API_KEY not set/.test(data) ? data : null;
     });
     assert.doesNotMatch(viewerData, /failure remains visible/);
+
+    const unconfirmedClear = spawnSync(cli, ["clear"], {
+      cwd: consumer,
+      encoding: "utf8",
+      env: { ...process.env, NO_COLOR: "1" },
+    });
+    assert.equal(unconfirmedClear.status, 1);
+    assert.match(unconfirmedClear.stderr, /clear --yes/);
+
+    const clearOutput = run(cli, ["clear", "--yes"], consumer);
+    assert.match(clearOutput, /cleared 2 entries; viewer now has 0 entries/);
+    const clearedDatabase = new DatabaseSync(summariesDb);
+    try {
+      assert.equal(
+        clearedDatabase.prepare("SELECT count(*) AS count FROM commit_summaries").get().count,
+        0,
+      );
+    } finally {
+      clearedDatabase.close();
+    }
+    assert.match(readFileSync(viewerDataFile, "utf8"), /window\.__WHATIJUSTDID__ = \[\]/);
 
     const scopePreview = run(cli, ["backfill"], consumer);
     assert.match(scopePreview, /no AI calls made/);

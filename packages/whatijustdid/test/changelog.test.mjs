@@ -386,6 +386,12 @@ test("build displays ready and pending records without commit-message text", () 
       /window\.__WHATIJUSTDID_PROJECT_NAME__ = "Miso Katsu"/,
     );
     assert.match(output, /window\.__WHATIJUSTDID_PROJECTS__ = \[\s+"web"/);
+    assert.match(
+      output,
+      new RegExp(
+        `window\\.__WHATIJUSTDID_META__ = \\{\\s+"databaseSizeBytes": ${store.sizeBytes()}\\s+\\}`,
+      ),
+    );
   } finally {
     store.close();
     rmSync(root, { recursive: true, force: true });
