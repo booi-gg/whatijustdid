@@ -18,7 +18,7 @@ import { CLI_NAME, ENV_PREFIX } from "../src/brand.mjs";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-test("packed package keeps AI summaries private and persistent", { timeout: 30_000 }, async () => {
+test("packed package keeps AI summaries private and persistent", { timeout: 60_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-package-"));
   let mockAgent = null;
   try {
@@ -67,7 +67,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     assert.equal(existsSync(join(consumer, ".git", "hooks", "pre-commit")), false);
     assert.match(
       readFileSync(join(consumer, ".git", "hooks", "post-commit"), "utf8"),
-      /record \|\| true/,
+      /nohup.*record --silent.*>\/dev\/null.*&/,
     );
     assert.equal(existsSync(join(consumer, "whatijustdid")), false);
     assert.equal(existsSync(join(consumer, ".git", "whatijustdid", "summaries.sqlite")), true);
@@ -125,28 +125,36 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       },
     );
     assert.equal(successfulCommit.status, 0);
-    assert.match(successfulCommit.stderr, /saved an AI summary/);
-    assert.match(successfulCommit.stderr, /viewer now has 1 entry/);
+    // The hook spawns record in the background, so the commit output stays
+    // quiet and the summary lands shortly after the commit returns.
+    assert.doesNotMatch(successfulCommit.stderr, /saved an AI summary/);
 
     const sha = run("git", ["rev-parse", "HEAD"], consumer).trim();
-    const database = new DatabaseSync(join(consumer, ".git", "whatijustdid", "summaries.sqlite"));
-    try {
-      const row = database.prepare(
-        "SELECT status, agent, model, changes_json FROM commit_summaries WHERE commit_sha = ?",
-      ).get(sha);
-      assert.equal(row.status, "ready");
-      assert.equal(row.agent, "codex");
-      assert.equal(row.model, "gpt-5.4-mini");
-      assert.equal(
-        JSON.parse(row.changes_json)[0].summary,
-        "Initialized whatijustdid from the committed code",
-      );
-    } finally {
-      database.close();
-    }
+    const summariesDb = join(consumer, ".git", "whatijustdid", "summaries.sqlite");
+    const row = await waitFor(() => {
+      const database = new DatabaseSync(summariesDb);
+      try {
+        const found = database.prepare(
+          "SELECT status, agent, model, changes_json FROM commit_summaries WHERE commit_sha = ?",
+        ).get(sha);
+        return found && found.status !== "generating" ? found : null;
+      } finally {
+        database.close();
+      }
+    });
+    assert.equal(row.status, "ready");
+    assert.equal(row.agent, "codex");
+    assert.equal(row.model, "gpt-5.4-mini");
+    assert.equal(
+      JSON.parse(row.changes_json)[0].summary,
+      "Initialized whatijustdid from the committed code",
+    );
 
-    let viewerData = readFileSync(join(consumer, ".git", "whatijustdid", "data.js"), "utf8");
-    assert.match(viewerData, /Initialized whatijustdid from the committed code/);
+    const viewerDataFile = join(consumer, ".git", "whatijustdid", "data.js");
+    let viewerData = await waitFor(() => {
+      const data = readFileSync(viewerDataFile, "utf8");
+      return /Initialized whatijustdid from the committed code/.test(data) ? data : null;
+    });
     assert.doesNotMatch(viewerData, /THIS MESSAGE MUST NOT BECOME THE SUMMARY/);
     assert.equal(existsSync(join(consumer, "whatijustdid")), false);
     assert.equal(run("git", ["status", "--short"], consumer).trim(), "");
@@ -171,9 +179,10 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
       },
     );
     assert.equal(failedCommit.status, 0);
-    assert.match(failedCommit.stderr, /OPENAI_API_KEY not set/);
-    viewerData = readFileSync(join(consumer, ".git", "whatijustdid", "data.js"), "utf8");
-    assert.match(viewerData, /Summary failed:.*OPENAI_API_KEY not set/);
+    viewerData = await waitFor(() => {
+      const data = readFileSync(viewerDataFile, "utf8");
+      return /Summary failed:.*OPENAI_API_KEY not set/.test(data) ? data : null;
+    });
     assert.doesNotMatch(viewerData, /failure remains visible/);
 
     const scopePreview = run(cli, ["backfill"], consumer);
@@ -218,6 +227,18 @@ test("packed package keeps AI summaries private and persistent", { timeout: 30_0
     rmSync(root, { recursive: true, force: true });
   }
 });
+
+async function waitFor(check, timeoutMs = 15_000) {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const result = check();
+    if (result) return result;
+    if (Date.now() > deadline) {
+      throw new Error("Timed out waiting for the background record to finish");
+    }
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+}
 
 async function waitForOutput(child, pattern, timeoutMs = 5_000) {
   let output = "";
