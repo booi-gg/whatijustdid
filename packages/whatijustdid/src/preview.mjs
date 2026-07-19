@@ -2,7 +2,7 @@ import { spawn } from "node:child_process";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
-import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, SSE_PATH } from "./brand.mjs";
+import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_JS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, SSE_PATH } from "./brand.mjs";
 
 const DEFAULT_PORT = 4173;
 const LIVE_RELOAD_CLIENT = `<script>
@@ -18,6 +18,9 @@ export async function startPreview(config, options = {}) {
   const dataFile = config.dataFile;
   if (!existsSync(viewerFile)) {
     throw new Error(`Bundled viewer not found at ${viewerFile}; reinstall ${CLI_NAME}`);
+  }
+  if (!existsSync(VIEWER_JS_FILE_PATH)) {
+    throw new Error(`Bundled viewer script not found at ${VIEWER_JS_FILE_PATH}; reinstall ${CLI_NAME}`);
   }
   if (!dataFile) throw new Error("Private viewer data path is not configured");
 
@@ -37,7 +40,7 @@ export async function startPreview(config, options = {}) {
   const address = server.address();
   const url = `http://${host}:${address.port}`;
   let reloadTimer;
-  const watchers = [viewerFile, dataFile].map((file) =>
+  const watchers = [viewerFile, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, dataFile].map((file) =>
     watch(dirname(file), (_event, filename) => {
       if (filename && String(filename) !== basename(file)) return;
       clearTimeout(reloadTimer);
@@ -88,6 +91,16 @@ function serveRequest(request, response, files, url) {
       200,
       "text/css; charset=utf-8",
       readFileSync(VIEWER_CSS_FILE_PATH),
+    );
+    return;
+  }
+  if (pathname === `/${VIEWER_JS_FILENAME}` && existsSync(VIEWER_JS_FILE_PATH)) {
+    send(
+      response,
+      method,
+      200,
+      "text/javascript; charset=utf-8",
+      readFileSync(VIEWER_JS_FILE_PATH),
     );
     return;
   }

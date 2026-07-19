@@ -39,6 +39,8 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
     assert.equal(manifest.name, "whatijustdid");
     const paths = manifest.files.map((file) => file.path);
     assert.ok(paths.includes("assets/whatijustdid.html"));
+    assert.ok(paths.includes("assets/whatijustdid.css"));
+    assert.ok(paths.includes("assets/whatijustdid.js"));
     assert.ok(paths.includes("bin/cli.mjs"));
     assert.ok(paths.includes("src/store.mjs"));
     assert.ok(paths.includes("whatijustdid.json"));
@@ -100,7 +102,10 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
     try {
       const response = await fetch(`${preview.url}/whatijustdid.html`);
       assert.equal(response.status, 200);
-      assert.match(await response.text(), /Repository ledger/);
+      assert.match(await response.text(), /src="\.\/whatijustdid\.js"/);
+      const script = await fetch(`${preview.url}/whatijustdid.js`);
+      assert.equal(script.status, 200);
+      assert.match(await script.text(), /Repository ledger/);
     } finally {
       await preview.close();
     }
