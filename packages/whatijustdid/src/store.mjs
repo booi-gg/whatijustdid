@@ -299,6 +299,26 @@ export class LocalSummaryStore {
     return this.getBySha(commitSha);
   }
 
+  /** Remove local summary history without replacing the database or its identity. */
+  clearSummaries(now = new Date()) {
+    const nowMs = now.valueOf();
+    return this.#transaction(() => {
+      const active = Number(this.database.prepare(`
+        SELECT count(*) AS count
+        FROM commit_summaries
+        WHERE status = 'generating' AND lease_expires_at > ?
+      `).get(nowMs).count);
+      if (active > 0) {
+        const error = new Error(
+          `Cannot clear history while ${active} ${active === 1 ? "summary is" : "summaries are"} being generated`,
+        );
+        error.code = "WHATIJUSTDID_ACTIVE_GENERATION";
+        throw error;
+      }
+      return Number(this.database.prepare("DELETE FROM commit_summaries").run().changes);
+    });
+  }
+
   metadata(key) {
     return this.database.prepare("SELECT value FROM store_metadata WHERE key = ?").get(key)?.value ?? null;
   }

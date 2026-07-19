@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import {
   dateValue,
   localDateKey,
@@ -22,6 +22,13 @@ const timeFormatter = new Intl.DateTimeFormat(undefined, {
   hour: "numeric",
   minute: "2-digit",
 });
+
+const actionToken = document.querySelector<HTMLMetaElement>(
+  'meta[name="whatijustdid-action-token"]',
+)?.content;
+const canRunPreviewActions = Boolean(
+  actionToken && actionToken !== "__WHATIJUSTDID_ACTION_TOKEN__",
+);
 
 const tagStyles: Record<ChangeType, string> = {
   feat: "bg-[oklch(0.22_0.04_155)] text-[oklch(0.72_0.13_155)]",
@@ -371,9 +378,83 @@ function Footer() {
         Generated with <span className="font-[750] text-ink">whatijustdid</span>
         .
       </span>
-      <span>Only opted-in commits appear.</span>
+      <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 max-[700px]:justify-start">
+        <span>Only opted-in commits appear.</span>
+        {canRunPreviewActions ? <ClearHistoryButton /> : null}
+      </div>
     </footer>
   );
+}
+
+function ClearHistoryButton() {
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  function handleClearHistory() {
+    const confirmed = window.confirm(
+      "Clear every local summary for this clone?\n\nLinked worktrees share this history. You can generate it again later, which may use AI tokens.",
+    );
+    if (!confirmed || !actionToken) return;
+
+    setError(null);
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/actions/clear-history", {
+          method: "POST",
+          headers: {
+            "X-Whatijustdid-Action-Token": actionToken,
+            "X-Whatijustdid-Confirm": "clear-history",
+          },
+        });
+        if (!response.ok) throw new Error(await actionError(response));
+        window.location.reload();
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to clear local history",
+        );
+      }
+    });
+  }
+
+  return (
+    <span className="inline-flex flex-col items-end gap-1 max-[700px]:items-start">
+      <button
+        className="cursor-pointer border-0 bg-transparent p-0 font-bold text-faint underline decoration-line-strong underline-offset-2 hover:text-[oklch(0.72_0.14_25)] disabled:cursor-wait disabled:opacity-60"
+        type="button"
+        disabled={isPending}
+        onClick={handleClearHistory}
+      >
+        {isPending ? "Clearing…" : "Clear local history"}
+      </button>
+      {error ? (
+        <span
+          className="max-w-[280px] text-right text-[oklch(0.72_0.14_25)] max-[700px]:text-left"
+          role="alert"
+        >
+          {error}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+async function actionError(response: Response) {
+  try {
+    const body: unknown = await response.json();
+    if (
+      body &&
+      typeof body === "object" &&
+      "error" in body &&
+      typeof body.error === "string"
+    ) {
+      return body.error;
+    }
+  } catch {
+    // Fall back to a status-based message for a malformed error response.
+  }
+  return `Unable to clear local history (${response.status})`;
 }
 
 function groupByDay(groups: ViewerGroup[]) {

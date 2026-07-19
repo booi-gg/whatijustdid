@@ -108,6 +108,38 @@ test("failed and expired generations are resumable", () => {
   }
 });
 
+test("clears summaries but preserves store identity and active generations", () => {
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-clear-"));
+  const store = openSummaryStore(join(root, "summaries.sqlite"));
+  const activeSha = "c".repeat(40);
+  try {
+    const storeId = store.metadata("store_id");
+    store.ensurePending(SHA, []);
+    assert.equal(store.clearSummaries(), 1);
+    assert.equal(store.getBySha(SHA), null);
+    assert.equal(store.metadata("store_id"), storeId);
+
+    const now = new Date("2026-07-19T00:00:00.000Z");
+    const lease = store.claim(activeSha, {
+      now,
+      leaseMs: 10_000,
+      projects: [],
+      agent: "codex",
+    });
+    assert.throws(
+      () => store.clearSummaries(new Date(now.valueOf() + 1)),
+      (error) => error.code === "WHATIJUSTDID_ACTIVE_GENERATION",
+    );
+    assert.equal(store.getBySha(activeSha).status, "generating");
+
+    store.fail(activeSha, lease, new Error("stopped"), now);
+    assert.equal(store.clearSummaries(now), 1);
+  } finally {
+    store.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
 test("rejects malformed JSON if the database is externally corrupted", () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-corrupt-"));
   const store = openSummaryStore(join(root, "summaries.sqlite"));
