@@ -62,10 +62,13 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
       tarball,
     ], consumer, npmEnvironment);
     const cli = join(consumer, "node_modules", ".bin", "whatijustdid");
+    mockAgent = await startMockOpenAi();
     const initOutput = run(cli, ["init", "--no-preview"], consumer, {
       OPENAI_API_KEY: "test-key",
+      OPENAI_BASE_URL: mockAgent.url,
     });
     assert.match(initOutput, /private database/);
+    assert.match(initOutput, /named this project Jollof Rice with codex/);
     assert.equal(existsSync(join(consumer, ".git", "hooks", "pre-commit")), false);
     assert.match(
       readFileSync(join(consumer, ".git", "hooks", "post-commit"), "utf8"),
@@ -76,6 +79,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
     assert.deepEqual(
       JSON.parse(readFileSync(join(consumer, "whatijustdid.json"), "utf8")),
       {
+        projectName: "Jollof Rice",
         agent: "codex",
         model: null,
         verbosity: "normal",
@@ -110,7 +114,6 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
       await preview.close();
     }
 
-    mockAgent = await startMockOpenAi();
     run("git", ["add", "."], consumer);
     const successfulCommit = spawnSync(
       "git",
@@ -276,16 +279,24 @@ async function waitForOutput(child, pattern, timeoutMs = 5_000) {
 async function startMockOpenAi() {
   const script = `
     const { createServer } = require("node:http");
-    const output = JSON.stringify({
+    const summary = JSON.stringify({
       type: "chore",
       changes: [{
         type: "chore",
         summary: "Initialized whatijustdid from the committed code",
       }],
     });
-    const server = createServer((_request, response) => {
-      response.writeHead(200, { "content-type": "application/json" });
-      response.end(JSON.stringify({ output_text: output }));
+    const server = createServer((request, response) => {
+      let body = "";
+      request.on("data", (chunk) => { body += chunk; });
+      request.on("end", () => {
+        const payload = JSON.parse(body);
+        const output = payload?.text?.format?.name === "project_name"
+          ? JSON.stringify({ name: "Jollof Rice" })
+          : summary;
+        response.writeHead(200, { "content-type": "application/json" });
+        response.end(JSON.stringify({ output_text: output }));
+      });
     });
     server.listen(0, "127.0.0.1", () => {
       process.stdout.write(String(server.address().port) + "\\n");

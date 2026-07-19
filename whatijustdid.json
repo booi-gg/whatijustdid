@@ -1,4 +1,5 @@
 {
+  "projectName": "Miso Katsu",
   "agent": "deepseek",
   "model": "deepseek-v4-pro",
   "verbosity": "detailed",

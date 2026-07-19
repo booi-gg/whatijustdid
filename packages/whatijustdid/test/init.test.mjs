@@ -15,18 +15,22 @@ import { ENV_PREFIX } from "../src/brand.mjs";
 import { loadConfig } from "../src/config.mjs";
 import { initializeProject } from "../src/init.mjs";
 
-test("creates only whatijustdid.json in the repository", () => {
+test("creates only whatijustdid.json with a dish name in the repository", async () => {
   const root = repository("whatijustdid-init-");
   try {
     writeFileSync(join(root, ".gitignore"), "node_modules/\n");
     const config = loadConfig({ root, env: {} });
-    const first = initializeProject(config);
+    const first = await initializeProject(config, {
+      random: () => 0,
+      validateAgentConfig: () => ({ valid: false }),
+    });
 
     assert.deepEqual(first.created, ["whatijustdid.json"]);
     assert.deepEqual(first.updated, []);
     assert.deepEqual(
       JSON.parse(readFileSync(join(root, "whatijustdid.json"), "utf8")),
       {
+        projectName: "Jollof Rice",
         agent: "codex",
         model: null,
         verbosity: "normal",
@@ -38,6 +42,8 @@ test("creates only whatijustdid.json in the repository", () => {
         projects: {},
       },
     );
+    assert.equal(first.projectName, "Jollof Rice");
+    assert.equal(first.projectNameSource, "list");
     assert.equal(
       config.dbFile,
       join(realpathSync(root), ".git", "whatijustdid", "summaries.sqlite"),
@@ -53,7 +59,11 @@ test("creates only whatijustdid.json in the repository", () => {
       "node_modules/\n",
     );
 
-    const second = initializeProject(config);
+    const second = await initializeProject(config, {
+      nameProject: () => {
+        throw new Error("must not rename an initialized project");
+      },
+    });
     assert.equal(second.created.length, 0);
     assert.equal(second.updated.length, 0);
   } finally {
@@ -61,12 +71,39 @@ test("creates only whatijustdid.json in the repository", () => {
   }
 });
 
-test("does not read or preserve changereceipt.json", () => {
+test("uses the configured AI to name a project on first init", async () => {
+  const root = repository("whatijustdid-ai-name-");
+  try {
+    const config = loadConfig({ root, env: {} });
+    const result = await initializeProject(config, {
+      random: () => 0,
+      nameProject: async ({ randomCue }) => {
+        assert.equal(randomCue, "Jollof Rice");
+        return { name: "Miso Katsu" };
+      },
+    });
+
+    assert.equal(result.projectName, "Miso Katsu");
+    assert.equal(result.projectNameSource, "codex");
+    assert.equal(
+      JSON.parse(readFileSync(join(root, "whatijustdid.json"), "utf8"))
+        .projectName,
+      "Miso Katsu",
+    );
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("does not read or preserve changereceipt.json", async () => {
   const root = repository("whatijustdid-removed-config-");
   try {
     writeFileSync(join(root, "changereceipt.json"), '{"agent":"claude"}\n');
     const config = loadConfig({ root, env: {} });
-    initializeProject(config);
+    await initializeProject(config, {
+      random: () => 0,
+      validateAgentConfig: () => ({ valid: false }),
+    });
 
     assert.equal(config.agent, "codex");
     assert.equal(
@@ -83,8 +120,13 @@ test("migrates provider to agent, retires raw, and respects injected env", () =>
   const root = repository("whatijustdid-config-");
   try {
     const path = join(root, "whatijustdid.json");
-    writeFileSync(path, '{"provider":"claude"}\n');
-    assert.equal(loadConfig({ root, env: {} }).agent, "claude");
+    writeFileSync(
+      path,
+      '{"projectName":"Kimchi Jjigae","provider":"claude"}\n',
+    );
+    const configured = loadConfig({ root, env: {} });
+    assert.equal(configured.agent, "claude");
+    assert.equal(configured.projectName, "Kimchi Jjigae");
 
     writeFileSync(path, '{"provider":"raw","model":"not-an-ai-model"}\n');
     const retiredRaw = loadConfig({ root, env: {} });
