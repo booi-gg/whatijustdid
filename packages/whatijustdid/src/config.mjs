@@ -1,9 +1,10 @@
 import { existsSync, readFileSync } from "node:fs";
-import { dirname, isAbsolute, join, normalize, resolve } from "node:path";
+import { basename, dirname, isAbsolute, join, normalize, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { VERBOSITY_LEVELS } from "./agents/shared.mjs";
 import { CLI_NAME, ENV_PREFIX } from "./brand.mjs";
 import { gitCommonDir, gitDir, repoRoot } from "./git.mjs";
+import { normalizeProjectName } from "./project-name.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const defaultConfigPath = join(packageDir, "whatijustdid.json");
@@ -58,6 +59,7 @@ export function loadConfig(options = {}) {
   const viewerDir = join(gitDir(root), CLI_NAME);
 
   return {
+    projectName: normalizeProjectName(config.projectName) ?? basename(root),
     agent,
     model: model ?? null,
     verbosity,

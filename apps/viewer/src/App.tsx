@@ -82,7 +82,11 @@ export function App({ model }: AppProps) {
 
   return (
     <div className="mx-auto w-[min(900px,calc(100%-40px))] pt-[68px] pb-[92px] max-[700px]:w-[min(900px,calc(100%-28px))] max-[700px]:pt-[42px]">
-      <Masthead databaseSize={databaseSize} summary={summary} />
+      <Masthead
+        databaseSize={databaseSize}
+        projectName={model.projectName}
+        summary={summary}
+      />
       <div className="sticky top-0 z-10 -mx-3.5 mb-[38px] border-b border-line-strong/65 bg-surface/92 px-3.5 py-[15px] backdrop-blur-[14px]">
         <ProjectFilters
           activeProject={activeProject}
@@ -107,9 +111,11 @@ export function App({ model }: AppProps) {
 
 function Masthead({
   databaseSize,
+  projectName,
   summary,
 }: {
   databaseSize: string | null;
+  projectName: string;
   summary: string;
 }) {
   return (
@@ -126,10 +132,11 @@ function Masthead({
             Repository ledger
           </span>
         </p>
-        <h1 className="m-0 max-w-[620px] text-[clamp(38px,7vw,72px)]/[0.94] font-[720] tracking-[-0.075em]">
-          Change,
-          <br />
-          recorded.
+        <p className="mb-2 text-[10px]/[1.2] font-bold tracking-[0.12em] text-accent uppercase">
+          Project
+        </p>
+        <h1 className="overflow-wrap-anywhere m-0 max-w-[650px] text-[clamp(38px,7vw,72px)]/[0.94] font-[720] tracking-[-0.075em]">
+          {projectName}
         </h1>
       </div>
       <p

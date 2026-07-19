@@ -80,7 +80,8 @@ export function build(config, options = {}) {
   mkdirSync(dirname(config.dataFile), { recursive: true });
   writeFileSync(
     config.dataFile,
-    `${banner}window.__WHATIJUSTDID_META__ = ${JSON.stringify({ databaseSizeBytes }, null, 2)};\n` +
+    `${banner}window.__WHATIJUSTDID_PROJECT_NAME__ = ${JSON.stringify(config.projectName)};\n` +
+      `window.__WHATIJUSTDID_META__ = ${JSON.stringify({ databaseSizeBytes }, null, 2)};\n` +
       `window.__WHATIJUSTDID_PROJECTS__ = ${JSON.stringify(projects, null, 2)};\n` +
       `window.__WHATIJUSTDID__ = ${JSON.stringify(groups, null, 2)};\n`,
   );

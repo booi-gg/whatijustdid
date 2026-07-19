@@ -22,50 +22,72 @@ Raw diffs, commit messages, and full commit metadata are not copied into SQLite.
 
 Hosted account/team sync is intentionally reserved for a later paid cloud service. whatijustdid will sync records through that service rather than commit databases or summaries to Git.
 
-## Requirements
+## Quick start
 
-- Git
-- Node.js 22.13 or newer
-- credentials for one supported AI agent
+You need Git, Node.js 22.13 or newer, and credentials for one supported AI agent.
 
-Codex/OpenAI is the default. `raw` is not an agent and there is no commit-message fallback.
+1. Export the AI credential **before** running `init`. The generic variable works with whichever agent is configured:
 
-Choose an agent and export its API key:
+   ```bash
+   export WHATIJUSTDID_AGENT_API_KEY=sk-...
+   ```
+
+   Codex/OpenAI is the default. You can instead use its standard variable:
+
+   ```bash
+   export OPENAI_API_KEY=sk-...
+   ```
+
+2. Install and initialize the app in your Git repository:
+
+   ```bash
+   npm install --save-dev whatijustdid
+   npx whatijustdid init
+   ```
+
+3. Commit normally. The installed hook summarizes each committed code diff:
+
+   ```bash
+   git add -A
+   git commit -m "feat: add account settings"
+   ```
+
+4. Open the changelog again whenever you need it:
+
+   ```bash
+   npx whatijustdid preview
+   ```
+
+On first init, the configured AI chooses a real dish from somewhere in the world as the project name. If the AI request is unavailable, init chooses from the bundled dish list instead. The result is written to `projectName` in `whatijustdid.json`, where you can change it at any time.
+
+Initialization also creates private SQLite storage, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx whatijustdid init --no-preview` when a script must initialize and exit.
+
+To select another agent before init:
 
 ```bash
-# Codex / OpenAI (default)
-export OPENAI_API_KEY=sk-...
-
 # DeepSeek
-export changereceipt_AGENT=deepseek
+export WHATIJUSTDID_AGENT=deepseek
 export DEEPSEEK_API_KEY=sk-...
 
 # Claude
-export changereceipt_AGENT=claude
+export WHATIJUSTDID_AGENT=claude
 export ANTHROPIC_API_KEY=sk-ant-...
 
 # Local Ollama (no API key needed)
-export changereceipt_AGENT=llama
+export WHATIJUSTDID_AGENT=llama
 ```
 
 To override the default model per agent:
 
 ```bash
-export whatijustdid_MODEL=gpt-5.4-flash   # or deepseek-v4-pro, claude-sonnet-4-20250514, etc.
+export WHATIJUSTDID_MODEL=gpt-5.4   # or another model supported by your agent
 ```
 
-## Install
-
-```bash
-npm install --save-dev whatijustdid
-npx whatijustdid init
-```
-
-Initialization creates shared `whatijustdid.json`, initializes private SQLite, installs Git hooks, builds the private viewer cache, and opens the preview. The bundled viewer remains package-owned; it is not copied into the repository. Use `npx whatijustdid init --no-preview` when a script must initialize and exit.
+`raw` is not an agent and there is no commit-message fallback.
 
 After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
 
-### Skipping summary generation
+## Skipping summary generation
 
 Skip per-commit summary generation in one of two ways:
 
@@ -180,6 +202,7 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 
 ```json
 {
+  "projectName": "Jollof Rice",
   "agent": "codex",
   "model": null,
   "verbosity": "normal",
@@ -195,7 +218,7 @@ The tracked `whatijustdid.json` contains safe shared defaults:
 }
 ```
 
-`model: null` lets the selected agent use its package default. `verbosity` controls summary detail: `"concise"` (600 tokens, 140 chars/change), `"normal"` (1200, 280), to `"detailed"` (2400, 560). `showTokens` (default `false`) — when `true`, the bundled viewer displays a per-commit token-count badge next to each summary entry showing the AI usage for that generation.
+`projectName` is the heading shown in the HTML viewer. Edit it to any non-empty name, then run `npx whatijustdid build` (or restart `preview`) to rebuild the viewer data. `model: null` lets the selected agent use its package default. `verbosity` controls summary detail: `"concise"` (600 tokens, 140 chars/change), `"normal"` (1200, 280), to `"detailed"` (2400, 560). `showTokens` (default `false`) — when `true`, the bundled viewer displays a per-commit token-count badge next to each summary entry showing the AI usage for that generation.
 
 Put personal overrides in Git-private `.git/whatijustdid/whatijustdid.local.json`. Environment variables take precedence:
 

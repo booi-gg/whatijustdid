@@ -3,7 +3,10 @@ import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { describe as describeWithOpenAI } from "../src/agents/codex.mjs";
+import {
+  describe as describeWithOpenAI,
+  nameProject as nameProjectWithOpenAI,
+} from "../src/agents/codex.mjs";
 import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
 import { getAgent } from "../src/agents/index.mjs";
 import { WHATIJUSTDID_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
@@ -112,7 +115,8 @@ test("agent failure never falls back to commit-message text", async () => {
   } finally {
     if (originalKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = originalKey;
-    if (originalGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    if (originalGenericKey === undefined)
+      delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
     else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = originalGenericKey;
   }
 });
@@ -150,7 +154,8 @@ test("OpenAI defaults to the Codex model and receives code, not commit messages"
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
     else process.env.OPENAI_API_KEY = previousKey;
-    if (previousGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    if (previousGenericKey === undefined)
+      delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
     else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = previousGenericKey;
   }
 
@@ -158,6 +163,37 @@ test("OpenAI defaults to the Codex model and receives code, not commit messages"
   assert.match(JSON.stringify(request), /export const feature/);
   assert.doesNotMatch(JSON.stringify(request), /SECRET COMMIT MESSAGE/);
   assert.equal(request.reasoning, undefined);
+});
+
+test("OpenAI generates a structured dish name for first-time setup", async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  let request;
+  process.env.OPENAI_API_KEY = "test-key";
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return {
+      ok: true,
+      json: async () => ({ output_text: '{"name":"Miso Katsu"}' }),
+    };
+  };
+
+  let result;
+  try {
+    result = await nameProjectWithOpenAI(
+      { randomCue: "Jollof Rice" },
+      { model: null, timeoutMs: 1000 },
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  }
+
+  assert.equal(result.name, "Miso Katsu");
+  assert.equal(request.text.format.name, "project_name");
+  assert.deepEqual(request.text.format.schema.required, ["name"]);
+  assert.match(JSON.stringify(request.input), /Jollof Rice/);
 });
 
 test("DeepSeek uses its API key, fast model, and JSON output mode", async () => {
@@ -208,7 +244,8 @@ test("DeepSeek uses its API key, fast model, and JSON output mode", async () => 
     globalThis.fetch = previousFetch;
     if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
     else process.env.DEEPSEEK_API_KEY = previousKey;
-    if (previousGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    if (previousGenericKey === undefined)
+      delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
     else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = previousGenericKey;
     if (previousBaseUrl === undefined) delete process.env.DEEPSEEK_BASE_URL;
     else process.env.DEEPSEEK_BASE_URL = previousBaseUrl;
@@ -242,7 +279,8 @@ test("DeepSeek reports its missing credential clearly", async () => {
   } finally {
     if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
     else process.env.DEEPSEEK_API_KEY = previousKey;
-    if (previousGenericKey === undefined) delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
+    if (previousGenericKey === undefined)
+      delete process.env[`${ENV_PREFIX}_AGENT_API_KEY`];
     else process.env[`${ENV_PREFIX}_AGENT_API_KEY`] = previousGenericKey;
   }
 });
@@ -343,6 +381,10 @@ test("build displays ready and pending records without commit-message text", () 
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
     assert.doesNotMatch(output, /must never appear/i);
+    assert.match(
+      output,
+      /window\.__WHATIJUSTDID_PROJECT_NAME__ = "Miso Katsu"/,
+    );
     assert.match(output, /window\.__WHATIJUSTDID_PROJECTS__ = \[\s+"web"/);
     assert.match(
       output,
@@ -404,6 +446,7 @@ test("editing updates private SQLite without changing commit identity", () => {
 function testConfig(root) {
   return {
     root,
+    projectName: "Miso Katsu",
     dbFile: join(root, ".git", "whatijustdid", "summaries.sqlite"),
     dataFile: join(root, "whatijustdid", "data.js"),
     viewerLimit: 200,

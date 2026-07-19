@@ -1,13 +1,14 @@
-import { copyFileSync, existsSync, mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { chooseProjectName } from "./project-name.mjs";
 import { openSummaryStore } from "./store.mjs";
 
 const packageDir = dirname(dirname(fileURLToPath(import.meta.url)));
 const defaultConfigPath = join(packageDir, "whatijustdid.json");
 
 /** Scaffold shared config and initialize the clone-private SQLite store. */
-export function initializeProject(config, dependencies = {}) {
+export async function initializeProject(config, dependencies = {}) {
   const created = [];
   const updated = [];
   const unchanged = [];
@@ -21,20 +22,37 @@ export function initializeProject(config, dependencies = {}) {
   const configTarget = config.isDefaultConfig
     ? join(config.root, "whatijustdid.json")
     : config.configPath;
-  record(copyAsset(defaultConfigPath, configTarget, false), configTarget);
+  let projectNameSource = null;
+  if (existsSync(configTarget)) {
+    record("unchanged", configTarget);
+  } else {
+    const generated = await chooseProjectName(config, dependencies);
+    writeInitialConfig(configTarget, generated.name);
+    config.projectName = generated.name;
+    projectNameSource = generated.source;
+    record("created", configTarget);
+  }
 
   const store = dependencies.store ?? openSummaryStore(config);
   if (!dependencies.store) store.close();
 
-  return { created, updated, unchanged, dbFile: config.dbFile };
+  return {
+    created,
+    updated,
+    unchanged,
+    dbFile: config.dbFile,
+    projectName: config.projectName,
+    projectNameSource,
+  };
 }
 
-function copyAsset(source, target, overwrite) {
+function writeInitialConfig(target, projectName) {
   mkdirSync(dirname(target), { recursive: true });
-  if (existsSync(target) && !overwrite) return "unchanged";
-  const status = existsSync(target) ? "updated" : "created";
-  copyFileSync(source, target);
-  return status;
+  const defaults = JSON.parse(readFileSync(defaultConfigPath, "utf8"));
+  writeFileSync(
+    target,
+    `${JSON.stringify({ ...defaults, projectName }, null, 2)}\n`,
+  );
 }
 
 function repositoryPath(root, path) {

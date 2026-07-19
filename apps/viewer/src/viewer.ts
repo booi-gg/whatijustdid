@@ -37,6 +37,7 @@ export interface ViewerGroup {
 
 export interface ViewerModel {
   groups: ViewerGroup[];
+  projectName: string;
   projectNames: string[];
   databaseSizeBytes: number | null;
 }
@@ -48,6 +49,7 @@ interface ViewerMetadata {
 declare global {
   interface Window {
     __WHATIJUSTDID__?: ViewerGroup[];
+    __WHATIJUSTDID_PROJECT_NAME__?: string;
     __WHATIJUSTDID_PROJECTS__?: string[];
     __WHATIJUSTDID_META__?: ViewerMetadata;
   }
@@ -81,6 +83,11 @@ export function readViewerModel(): ViewerModel {
 
   return {
     groups,
+    projectName:
+      typeof window.__WHATIJUSTDID_PROJECT_NAME__ === "string" &&
+      window.__WHATIJUSTDID_PROJECT_NAME__.trim()
+        ? window.__WHATIJUSTDID_PROJECT_NAME__.trim()
+        : "Untitled project",
     databaseSizeBytes:
       typeof databaseSizeBytes === "number" &&
       Number.isSafeInteger(databaseSizeBytes) &&

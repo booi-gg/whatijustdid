@@ -65,6 +65,55 @@ export const WHATIJUSTDID_SCHEMA = {
   required: ["type", "changes"],
 };
 
+export const PROJECT_NAME_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    name: { type: "string" },
+  },
+  required: ["name"],
+};
+
+export function projectNamePrompt() {
+  return `Choose one real, established dish from any cuisine in the world as a memorable software project name.
+Vary the region and cuisine instead of reaching for the same famous dishes every time. Use the dish's commonly
+recognized English or transliterated name, with no adjectives, commentary, quotation marks, or project suffix.
+Return only data matching the supplied JSON schema.`;
+}
+
+export function formatProjectNameInput({ randomCue }) {
+  return [
+    `Random dish cue: ${randomCue}`,
+    "Use the cue to vary the choice; you may choose that dish or a different real dish.",
+  ].join("\n");
+}
+
+export function parseProjectNameJson(text) {
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  const candidate =
+    start >= 0 && end >= start ? text.slice(start, end + 1) : text;
+  let parsed;
+  try {
+    parsed = JSON.parse(candidate);
+  } catch (error) {
+    throw new Error(
+      `Agent returned an invalid project name: ${error.message}`,
+      {
+        cause: error,
+      },
+    );
+  }
+  const name =
+    typeof parsed?.name === "string"
+      ? parsed.name.trim().replace(/\s+/g, " ")
+      : "";
+  if (!name || name.length > 80) {
+    throw new Error("Agent returned an invalid project name");
+  }
+  return name;
+}
+
 export function formatAgentInput({ files = [], diff = "" }) {
   return [
     `Changed files:\n${boundedFileList(files)}`,

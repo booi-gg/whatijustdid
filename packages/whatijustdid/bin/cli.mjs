@@ -270,13 +270,20 @@ async function main() {
     case "init":
     case "install": {
       const config = loadConfig();
-      const initialized = initializeProject(config);
+      const initialized = await initializeProject(config);
       const changed = [...initialized.created, ...initialized.updated];
       log(
         changed.length
           ? `${P} initialized ${green(changed.join(", "))}`
           : `${P} ${dim("project files already initialized")}`,
       );
+      if (initialized.projectNameSource) {
+        log(
+          initialized.projectNameSource === "list"
+            ? `${P} named this project ${bold(initialized.projectName)} from the built-in dish list`
+            : `${P} named this project ${bold(initialized.projectName)} with ${initialized.projectNameSource}`,
+        );
+      }
       const validation = validateAgentConfig(config.agent);
       if (!validation.valid) {
         console.error(agentConfigHelp(config, validation));
@@ -354,6 +361,7 @@ ${pc.bold("Usage:")}
   ${CLI_NAME} ${pc.green("sync")}                    Reserved for hosted multi-device sync
 
 ${pc.bold("Config:")} whatijustdid.json ${pc.dim("(repo root, tracked)")}
+  ${pc.cyan("projectName")}      display name shown in the viewer ${pc.dim('(generated on first init; e.g. "Jollof Rice")')}
   ${pc.cyan("agent")}            codex ${pc.dim("(default)")} | openai | claude | deepseek | llama
   ${pc.cyan("model")}            null ${pc.dim("(default, agent picks)")} | any model id string ${pc.dim('e.g. "gpt-5.2-mini"')}
   ${pc.cyan("verbosity")}        concise | normal ${pc.dim("(default)")} | detailed
