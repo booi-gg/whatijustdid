@@ -13,9 +13,16 @@ test("serves the bundled viewer with live reload", async () => {
   mkdirSync(directory);
   writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [];\n");
 
+  let clearCalls = 0;
   const preview = await startPreview(
     { root, dir: "whatijustdid", dataFile },
     { open: false, port: 0 },
+    {
+      clearHistory: () => {
+        clearCalls++;
+        return { cleared: 2, viewerEntries: 0 };
+      },
+    },
   );
   try {
     const redirect = await fetch(preview.url, { redirect: "manual" });
@@ -28,6 +35,40 @@ test("serves the bundled viewer with live reload", async () => {
     assert.match(htmlBody, /<title>whatijustdid · Changelog<\/title>/);
     assert.match(htmlBody, /src="\.\/whatijustdid\.js"/);
     assert.match(htmlBody, /new EventSource\("\/__whatijustdid_live"\)/);
+    const token = htmlBody.match(
+      /name="whatijustdid-action-token"\s+content="([^"]+)"/,
+    )?.[1];
+    assert.equal(typeof token, "string");
+    assert.notEqual(token, "__WHATIJUSTDID_ACTION_TOKEN__");
+
+    const unauthorized = await fetch(
+      `${preview.url}/api/actions/clear-history`,
+      {
+        method: "POST",
+        headers: { "X-Whatijustdid-Confirm": "clear-history" },
+      },
+    );
+    assert.equal(unauthorized.status, 403);
+
+    const unconfirmed = await fetch(
+      `${preview.url}/api/actions/clear-history`,
+      {
+        method: "POST",
+        headers: { "X-Whatijustdid-Action-Token": token },
+      },
+    );
+    assert.equal(unconfirmed.status, 400);
+
+    const cleared = await fetch(`${preview.url}/api/actions/clear-history`, {
+      method: "POST",
+      headers: {
+        "X-Whatijustdid-Action-Token": token,
+        "X-Whatijustdid-Confirm": "clear-history",
+      },
+    });
+    assert.equal(cleared.status, 200);
+    assert.deepEqual(await cleared.json(), { cleared: 2, viewerEntries: 0 });
+    assert.equal(clearCalls, 1);
 
     const script = await fetch(`${preview.url}/whatijustdid.js`);
     assert.equal(script.status, 200);
