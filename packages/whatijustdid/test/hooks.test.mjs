@@ -48,11 +48,11 @@ test("uninstalls whatijustdid hooks while preserving unrelated hook logic", () =
       "#!/bin/sh\necho user-hook\n",
     );
     const postCommit = readFileSync(join(hooksDir, "post-commit"), "utf8");
-    assert.match(postCommit, /record \|\| true/);
-    assert.doesNotMatch(postCommit, /--silent| build/);
+    assert.match(postCommit, /nohup.*record --silent.*>\/dev\/null.*&/);
+    assert.doesNotMatch(postCommit, /build/);
     assert.match(
       readFileSync(join(hooksDir, "post-merge"), "utf8"),
-      /record --merge-only \|\| true/,
+      /nohup.*record --merge-only --silent.*>\/dev\/null.*&/,
     );
     for (const name of ["post-checkout", "post-rewrite"]) {
       assert.match(

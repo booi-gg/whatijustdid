@@ -39,10 +39,12 @@ export function installHooks(root) {
     let content = existsSync(path) ? readFileSync(path, "utf8") : "#!/bin/sh\n";
     if (!content.startsWith("#!")) content = "#!/bin/sh\n" + content;
     const commandLines = commands
-      .map(
-        (command) =>
-          `if [ -z "\${${ENV_PREFIX}_SKIP}" ] && ! git log -1 --pretty=%B | grep -q '\\[skip wijd\\]'; then node --no-warnings ${shellQuote(runner)} ${command} || true; fi`,
-      )
+      .map((command) => {
+        if (command.startsWith("record")) {
+          return `if [ -z "\${${ENV_PREFIX}_SKIP}" ] && ! git log -1 --pretty=%B | grep -q '\\[skip wijd\\]'; then nohup node --no-warnings ${shellQuote(runner)} ${command} --silent >/dev/null 2>&1 & fi`;
+        }
+        return `if [ -z "\${${ENV_PREFIX}_SKIP}" ] && ! git log -1 --pretty=%B | grep -q '\\[skip wijd\\]'; then node --no-warnings ${shellQuote(runner)} ${command} || true; fi`;
+      })
       .join("\n");
     const block = `${HOOK_MARKER}\n${commandLines}\n${HOOK_END_MARKER}\n`;
     const base = content.replace(BLOCK, "").trimEnd();
