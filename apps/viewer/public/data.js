@@ -5,11 +5,13 @@
 const viewerWindow =
   /**
    * @type {Window & {
+   *   __WHATIJUSTDID_META__: { databaseSizeBytes: number };
    *   __WHATIJUSTDID_PROJECTS__: string[];
    *   __WHATIJUSTDID__: ViewerGroup[];
    * }}
    */ (/** @type {unknown} */ (window));
 
+viewerWindow.__WHATIJUSTDID_META__ = { databaseSizeBytes: 36_864 };
 viewerWindow.__WHATIJUSTDID_PROJECTS__ = ["viewer", "cli"];
 viewerWindow.__WHATIJUSTDID__ = [
   {

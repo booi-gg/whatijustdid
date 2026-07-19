@@ -68,10 +68,14 @@ export function App({ model }: AppProps) {
     0,
   );
   const summary = `${entryCount} ${entryCount === 1 ? "change" : "changes"} across ${visibleGroups.length} ${visibleGroups.length === 1 ? "commit" : "commits"} · ${activeProject}`;
+  const databaseSize =
+    model.databaseSizeBytes === null
+      ? null
+      : formatBytes(model.databaseSizeBytes);
 
   return (
     <div className="mx-auto w-[min(900px,calc(100%-40px))] pt-[68px] pb-[92px] max-[700px]:w-[min(900px,calc(100%-28px))] max-[700px]:pt-[42px]">
-      <Masthead summary={summary} />
+      <Masthead databaseSize={databaseSize} summary={summary} />
       <div className="sticky top-0 z-10 -mx-3.5 mb-[38px] border-b border-line-strong/65 bg-surface/92 px-3.5 py-[15px] backdrop-blur-[14px]">
         <ProjectFilters
           activeProject={activeProject}
@@ -94,7 +98,13 @@ export function App({ model }: AppProps) {
   );
 }
 
-function Masthead({ summary }: { summary: string }) {
+function Masthead({
+  databaseSize,
+  summary,
+}: {
+  databaseSize: string | null;
+  summary: string;
+}) {
   return (
     <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-7 border-b border-line-strong px-1 pb-[30px] max-[700px]:grid-cols-1 max-[700px]:gap-4">
       <div>
@@ -120,6 +130,11 @@ function Masthead({ summary }: { summary: string }) {
         aria-live="polite"
       >
         {summary}
+        {databaseSize ? (
+          <span className="mt-1 block text-[11px] font-bold text-faint">
+            Database size · <span className="text-muted">{databaseSize}</span>
+          </span>
+        ) : null}
       </p>
     </header>
   );
@@ -379,4 +394,15 @@ function formatDay(key: string) {
 
 function formatTokens(total: number) {
   return total >= 1_000 ? `${(total / 1_000).toFixed(1)}k tok` : `${total} tok`;
+}
+
+function formatBytes(total: number) {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = total;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
 }

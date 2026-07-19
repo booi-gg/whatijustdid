@@ -310,6 +310,17 @@ export class LocalSummaryStore {
     `).run(key, String(value));
   }
 
+  /** Logical database size, including committed pages that are still in WAL. */
+  sizeBytes() {
+    const pageCount = Number(
+      this.database.prepare("PRAGMA page_count").get().page_count,
+    );
+    const pageSize = Number(
+      this.database.prepare("PRAGMA page_size").get().page_size,
+    );
+    return pageCount * pageSize;
+  }
+
   close() {
     this.database.close();
   }
