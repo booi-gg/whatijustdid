@@ -4,6 +4,7 @@ import {
   formatAgentInput,
   parseAgentJson,
   postJson,
+  resolveApiKey,
   verbosityConfig,
   verbosityPrompt,
 } from "./shared.mjs";

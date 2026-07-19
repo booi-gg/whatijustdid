@@ -118,6 +118,22 @@ export function commitDiff(sha, maxBytes, cwd = process.cwd()) {
   return truncateUtf8(out, maxBytes);
 }
 
+/** Stage every change in the worktree, including untracked files. */
+export function stageAll(cwd = process.cwd()) {
+  git(["add", "-A"], { cwd });
+}
+
+/** Paths staged in the index right now. */
+export function stagedFiles(cwd = process.cwd()) {
+  const out = tryGit(["diff", "--cached", "--name-only", "--no-ext-diff"], { cwd });
+  return out ? out.split("\n").filter(Boolean) : [];
+}
+
+export function stagedDiff(maxBytes, cwd = process.cwd()) {
+  const out = tryGit(["diff", "--cached", "--no-ext-diff", "--unified=2"], { cwd });
+  return truncateUtf8(out, maxBytes);
+}
+
 export function currentHead(cwd = process.cwd()) {
   return tryGit(["rev-parse", "HEAD"], { cwd });
 }

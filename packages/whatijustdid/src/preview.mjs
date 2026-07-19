@@ -25,6 +25,8 @@ export async function startPreview(config, options = {}) {
   if (!dataFile) throw new Error("Private viewer data path is not configured");
 
   const host = options.host ?? "127.0.0.1";
+  const explicitPort =
+    options.port !== undefined && options.port !== null && options.port !== "";
   const port = previewPort(options.port);
   const clients = new Set();
   const server = createServer((request, response) => {
@@ -36,7 +38,20 @@ export async function startPreview(config, options = {}) {
     }
   });
 
-  await listen(server, port, host);
+  try {
+    await listen(server, port, host);
+  } catch (error) {
+    if (error?.code !== "EADDRINUSE") throw error;
+    if (explicitPort) {
+      throw new Error(
+        `Port ${port} is already in use; pass a different --port or free it up`,
+        { cause: error },
+      );
+    }
+    /* Default port taken (usually another preview instance) — let the OS
+       assign a free one; the printed URL reports the actual port. */
+    await listen(server, 0, host);
+  }
   const address = server.address();
   const url = `http://${host}:${address.port}`;
   let reloadTimer;

@@ -91,6 +91,48 @@ npx whatijustdid unhook
 
 Existing hook logic is preserved. Git hooks are clone-local and normally shared by linked worktrees.
 
+## AI commit messages
+
+`whatijustdid commit` wraps `git commit`: it sends the staged diff to the configured agent, proposes a conventional-commit message, and asks before committing.
+
+```bash
+git add -p
+npx whatijustdid commit
+```
+
+```
+wijd: summarizing 2 staged files with codex…
+
+  feat: added a commit command that drafts the message from the staged diff
+
+wijd: commit with this message? yes / regenerate / cancel:
+```
+
+- `y` (or Enter) runs `git commit -m` with the proposed message; the normal `post-commit` hook then records the summary as usual.
+- `r` asks the agent for another message.
+- `c` cancels; nothing is committed.
+
+When nothing is staged yet, the CLI offers to stage for you instead of failing:
+
+```
+wijd: nothing staged. stage everything (git add -A) / cancel:
+```
+
+Flags:
+
+```bash
+# Stage everything first (git add -A), then draft and commit
+npx whatijustdid commit --all
+
+# Accept the first generated message without prompting
+npx whatijustdid commit --yes
+
+# Forward extra flags to git commit after --
+npx whatijustdid commit -- --no-verify
+```
+
+Because `commit` is a wrapper, it prints every git command it runs (`$ git add -A`, `$ git commit -m '…'`) so nothing happens invisibly. The staged diff is bounded by `maxDiffBytes`, and the message style follows the configured `verbosity`.
+
 ## Existing history and token control
 
 whatijustdid never spends tokens across repository history without an explicit scope.

@@ -7,15 +7,21 @@ import pc from "picocolors";
 import { validateAgentConfig } from "../src/agents/index.mjs";
 import { CLI_NAME, ENV_PREFIX, TITLE_NAME } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
+import {
+  draftCommitMessage,
+  runGitCommit,
+  stagedChange,
+} from "../src/commit.mjs";
 import { loadConfig } from "../src/config.mjs";
 import { editEntry } from "../src/edit.mjs";
 import { generate, planGeneration } from "../src/generate.mjs";
-import { repoRoot } from "../src/git.mjs";
+import { repoRoot, stageAll } from "../src/git.mjs";
 import { installHooks, uninstallHooks } from "../src/hooks.mjs";
 import { initializeProject } from "../src/init.mjs";
 import { importLegacyRows } from "../src/legacy.mjs";
 import { startPreview } from "../src/preview.mjs";
 import { recordCommittedChange } from "../src/record.mjs";
+import { selectOption } from "../src/select.mjs";
 
 const P = pc.dim(`${CLI_NAME}:`);
 const Perr = pc.red(`${CLI_NAME}:`);
@@ -76,6 +82,82 @@ async function main() {
           ? `${P} saved an AI summary for ${sha(result.entry.commitSha)}; viewer now has ${bold(formatEntries(total))}`
           : `${P} ${dim(recordSkipMessage(result.reason))}; viewer now has ${bold(formatEntries(total))}`,
       );
+      break;
+    }
+    case "commit": {
+      const config = loadConfig();
+      const validation = validateAgentConfig(config.agent);
+      if (!validation.valid) {
+        console.error(agentConfigHelp(config, validation));
+        process.exitCode = 1;
+        break;
+      }
+      const separator = rest.indexOf("--");
+      const ownArgs = separator >= 0 ? rest.slice(0, separator) : rest;
+      const gitArgs = separator >= 0 ? rest.slice(separator + 1) : [];
+      const stageEverything =
+        ownArgs.includes("--all") || ownArgs.includes("-a");
+      const autoConfirm = ownArgs.includes("--yes");
+      if (stageEverything) {
+        log(`${P} ${dim(gitCommandLine(["add", "-A"]))}`);
+        stageAll(config.root);
+      }
+      let change = stagedChange(config);
+      if (!change && !stageEverything && process.stdin.isTTY) {
+        const action = await selectOption(`${P} nothing staged.`, [
+          {
+            label: "stage everything (git add -A)",
+            value: "stage",
+            keys: ["s", "a", "y"],
+          },
+          { label: "cancel", value: "cancel", keys: ["c", "n"] },
+        ]);
+        if (action === "cancel") {
+          log(`${P} ${yellow("cancelled")}; nothing was committed`);
+          break;
+        }
+        log(`${P} ${dim(gitCommandLine(["add", "-A"]))}`);
+        stageAll(config.root);
+        change = stagedChange(config);
+      }
+      if (!change) {
+        throw new Error(
+          stageEverything || process.stdin.isTTY
+            ? "nothing to commit; the working tree is clean"
+            : "nothing staged to commit; stage changes with git add first, or pass --all to stage everything",
+        );
+      }
+      if (!autoConfirm && !process.stdin.isTTY) {
+        throw new Error(
+          "commit needs an interactive terminal; pass --yes to accept the generated message automatically",
+        );
+      }
+      const fileCount = change.files.length;
+      log(
+        `${P} ${dim(`summarizing ${fileCount} staged ${fileCount === 1 ? "file" : "files"} with ${config.agent}…`)}`,
+      );
+      for (;;) {
+        const { message } = await draftCommitMessage(config, change);
+        log(`\n${indentCommitMessage(message)}\n`);
+        const choice = autoConfirm
+          ? "commit"
+          : await selectOption(`${P} commit with this message?`, [
+              { label: "commit", value: "commit", keys: ["y"] },
+              { label: "regenerate", value: "regenerate", keys: ["r"] },
+              { label: "cancel", value: "cancel", keys: ["c", "n"] },
+            ]);
+        if (choice === "regenerate") {
+          log(`${P} ${dim(`asking ${config.agent} for another message…`)}`);
+          continue;
+        }
+        if (choice === "cancel") {
+          log(`${P} ${yellow("cancelled")}; nothing was committed`);
+          break;
+        }
+        log(`${P} ${dim(gitCommandLine(["commit", "-m", message, ...gitArgs]))}`);
+        runGitCommit(message, { cwd: config.root, args: gitArgs });
+        break;
+      }
       break;
     }
     case "generate":
@@ -242,6 +324,10 @@ ${pc.bold("Usage:")}
   ${CLI_NAME} ${pc.green("hook")}                    Install or refresh local Git hooks
   ${CLI_NAME} ${pc.green("unhook")}                  Remove ${TITLE_NAME} from local Git hooks
   ${CLI_NAME} ${pc.green("record")}                  Summarize the current HEAD commit
+  ${CLI_NAME} ${pc.green("commit")}                  Draft an AI commit message for staged changes, confirm, commit
+  ${CLI_NAME} ${pc.green("commit")} --all            Stage everything (git add -A) before drafting
+  ${CLI_NAME} ${pc.green("commit")} --yes            Commit with the first generated message, no prompt
+  ${CLI_NAME} ${pc.green("commit")} -- ARGS          Forward extra flags to git commit ${pc.dim("e.g. -- --no-verify")}
   ${CLI_NAME} ${pc.green("backfill")}                Preview the default bounded history scope
   ${CLI_NAME} ${pc.green("backfill")} --limit N      Generate at most N recent commits
   ${CLI_NAME} ${pc.green("backfill")} --all --yes    Generate every reachable commit
@@ -357,6 +443,24 @@ function repoConfigName(config) {
   return config.isDefaultConfig
     ? "whatijustdid.json"
     : relative(config.root, config.configPath) || "whatijustdid.json";
+}
+
+/** The exact shell command this wrapper is about to run, copy-pasteable. */
+function gitCommandLine(args) {
+  return `$ ${["git", ...args].map(shellQuoteArg).join(" ")}`;
+}
+
+function shellQuoteArg(value) {
+  return /^[\w./:=@-]+$/.test(value)
+    ? value
+    : `'${value.replace(/'/g, `'"'"'`)}'`;
+}
+
+function indentCommitMessage(message) {
+  const [subject, ...body] = message.split("\n");
+  return [bold(subject), ...body]
+    .map((line) => (line ? `  ${line}` : line))
+    .join("\n");
 }
 
 function commitMessageContainsSkip() {

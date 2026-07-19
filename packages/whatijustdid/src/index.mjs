@@ -7,6 +7,12 @@ export { initializeProject } from "./init.mjs";
 export { getAgent, validateAgentConfig } from "./agents/index.mjs";
 export { recordCommittedChange } from "./record.mjs";
 export { describeChange } from "./describe.mjs";
+export {
+  draftCommitMessage,
+  formatCommitMessage,
+  runGitCommit,
+  stagedChange,
+} from "./commit.mjs";
 export { editEntry, applyEntryEdit } from "./edit.mjs";
 export { importLegacyRows } from "./legacy.mjs";
 export {
