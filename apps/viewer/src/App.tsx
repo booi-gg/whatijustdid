@@ -102,7 +102,7 @@ function Masthead({ summary }: { summary: string }) {
           <span className="inline-flex items-center gap-2 text-ink">
             <BrandMark />
             <span className="text-xs tracking-[-0.045em] lowercase">
-              whatijustdid
+              whatijustdid [new]
             </span>
           </span>
           <span className="inline-flex items-center gap-2.5 before:h-[13px] before:w-px before:bg-line-strong before:content-['']">

@@ -4,7 +4,7 @@ import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
 import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_JS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, SSE_PATH } from "./brand.mjs";
 
-const DEFAULT_PORT = 4173;
+const DEFAULT_PORT = 9453;
 const LIVE_RELOAD_CLIENT = `<script>
   (() => {
     const source = new EventSource("${SSE_PATH}");
