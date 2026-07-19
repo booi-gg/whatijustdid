@@ -105,17 +105,24 @@ wijd: summarizing 2 staged files with codex…
 
   feat: added a commit command that drafts the message from the staged diff
 
-wijd: commit with this message? yes / regenerate / cancel:
+wijd: commit with this message?
+  ❯ commit
+    regenerate
+    cancel
 ```
 
-- `y` (or Enter) runs `git commit -m` with the proposed message; the normal `post-commit` hook then records the summary as usual.
-- `r` asks the agent for another message.
-- `c` cancels; nothing is committed.
+Pick with ↑/↓ and Enter (or the shortcut letters `y`/`r`/`c`; Esc cancels):
+
+- **commit** runs `git commit -m` with the proposed message; the normal `post-commit` hook then records the summary as usual.
+- **regenerate** asks the agent for another message.
+- **cancel** exits; nothing is committed.
 
 When nothing is staged yet, the CLI offers to stage for you instead of failing:
 
 ```
-wijd: nothing staged. stage everything (git add -A) / cancel:
+wijd: nothing staged.
+  ❯ stage everything (git add -A)
+    cancel
 ```
 
 Flags:
