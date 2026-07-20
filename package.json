@@ -7,8 +7,8 @@
     "test": "turbo run test",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{js,jsx,ts,tsx,json,css,md}\"",
-    "release": "pnpm --filter whatijustdid publish --no-git-checks",
-    "release:dry": "pnpm --filter whatijustdid publish --dry-run --no-git-checks",
+    "release": "turbo run build --filter=whatijustdid && pnpm --filter whatijustdid publish --no-git-checks",
+    "release:dry": "turbo run build --filter=whatijustdid && pnpm --filter whatijustdid publish --dry-run --no-git-checks",
     "release:patch": "pnpm --filter whatijustdid exec npm version patch --no-git-tag-version && pnpm release",
     "release:minor": "pnpm --filter whatijustdid exec npm version minor && pnpm release",
     "release:major": "pnpm --filter whatijustdid exec npm version major && pnpm release"
