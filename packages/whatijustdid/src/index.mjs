@@ -5,7 +5,7 @@ export { build, readEntries } from "./build.mjs";
 export { clearHistory } from "./clear.mjs";
 export { installHooks, uninstallHooks } from "./hooks.mjs";
 export { initializeProject } from "./init.mjs";
-export { getAgent, validateAgentConfig } from "./agents/index.mjs";
+export { getAgent, resolveAgentModel, validateAgentConfig } from "./agents/index.mjs";
 export { recordCommittedChange } from "./record.mjs";
 export { describeChange } from "./describe.mjs";
 export {

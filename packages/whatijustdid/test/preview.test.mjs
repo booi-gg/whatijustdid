@@ -6,6 +6,8 @@ import { join } from "node:path";
 import test from "node:test";
 import { startPreview } from "../src/preview.mjs";
 
+const COMMIT_SHA = "a".repeat(40);
+
 test("serves the bundled viewer with live reload", async () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-preview-"));
   const directory = join(root, "whatijustdid");
@@ -14,13 +16,20 @@ test("serves the bundled viewer with live reload", async () => {
   writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [];\n");
 
   let clearCalls = 0;
+  let generatedSha = null;
   const preview = await startPreview(
-    { root, dir: "whatijustdid", dataFile },
+    { root, dir: "whatijustdid", dataFile, viewerLimit: 200 },
     { open: false, port: 0 },
     {
       clearHistory: () => {
         clearCalls++;
         return { cleared: 2, viewerEntries: 0 };
+      },
+      build: () => 1,
+      commitShas: () => [COMMIT_SHA],
+      recordCommittedChange: async (_config, _dependencies, options) => {
+        generatedSha = options.sha;
+        return { created: true, reason: "generated" };
       },
     },
   );
@@ -69,6 +78,36 @@ test("serves the bundled viewer with live reload", async () => {
     assert.equal(cleared.status, 200);
     assert.deepEqual(await cleared.json(), { cleared: 2, viewerEntries: 0 });
     assert.equal(clearCalls, 1);
+
+    const unauthorizedGeneration = await fetch(
+      `${preview.url}/api/actions/generate-summary/${COMMIT_SHA}`,
+      { method: "POST" },
+    );
+    assert.equal(unauthorizedGeneration.status, 403);
+
+    const staleGeneration = await fetch(
+      `${preview.url}/api/actions/generate-summary/${"b".repeat(40)}`,
+      {
+        method: "POST",
+        headers: { "X-Whatijustdid-Action-Token": token },
+      },
+    );
+    assert.equal(staleGeneration.status, 404);
+
+    const generated = await fetch(
+      `${preview.url}/api/actions/generate-summary/${COMMIT_SHA}`,
+      {
+        method: "POST",
+        headers: { "X-Whatijustdid-Action-Token": token },
+      },
+    );
+    assert.equal(generated.status, 200);
+    assert.deepEqual(await generated.json(), {
+      created: true,
+      reason: "generated",
+      viewerEntries: 1,
+    });
+    assert.equal(generatedSha, COMMIT_SHA);
 
     const script = await fetch(`${preview.url}/whatijustdid.js`);
     assert.equal(script.status, 200);

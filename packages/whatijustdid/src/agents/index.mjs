@@ -24,6 +24,14 @@ export function getAgent(name) {
   return agent;
 }
 
+/** Resolve the actual model an agent will use without making an API call. */
+export function resolveAgentModel(name, configuredModel) {
+  if (typeof configuredModel === "string" && configuredModel.trim()) {
+    return configuredModel.trim();
+  }
+  return AGENTS[name]?.DEFAULT_MODEL ?? null;
+}
+
 export function validateAgentConfig(agent, env = process.env) {
   if (!AGENTS[agent]) {
     return {

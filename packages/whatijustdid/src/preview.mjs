@@ -4,11 +4,15 @@ import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
 import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_JS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, SSE_PATH } from "./brand.mjs";
+import { build } from "./build.mjs";
 import { clearHistory } from "./clear.mjs";
+import { commitShas } from "./git.mjs";
+import { recordCommittedChange } from "./record.mjs";
 
 const DEFAULT_PORT = 9453;
 const ACTION_TOKEN_PLACEHOLDER = "__WHATIJUSTDID_ACTION_TOKEN__";
 const CLEAR_HISTORY_PATH = "/api/actions/clear-history";
+const GENERATE_SUMMARY_PREFIX = "/api/actions/generate-summary/";
 const LIVE_RELOAD_CLIENT = `<script>
   (() => {
     const source = new EventSource("${SSE_PATH}");
@@ -35,20 +39,34 @@ export async function startPreview(config, options = {}, dependencies = {}) {
   const clients = new Set();
   const actionToken = randomUUID();
   const runClearHistory = dependencies.clearHistory ?? clearHistory;
+  const runBuild = dependencies.build ?? build;
+  const listCommitShas = dependencies.commitShas ?? commitShas;
+  const runRecordCommittedChange =
+    dependencies.recordCommittedChange ?? recordCommittedChange;
   const server = createServer((request, response) => {
-    try {
-      serveRequest(request, response, {
+    void serveRequest(
+      request,
+      response,
+      {
         viewerFile,
         dataFile,
         clients,
         actionToken,
         config,
         runClearHistory,
-      }, url);
-    } catch (error) {
+        runBuild,
+        listCommitShas,
+        runRecordCommittedChange,
+      },
+      url,
+    ).catch((error) => {
+      if (response.headersSent) {
+        response.destroy();
+        return;
+      }
       response.writeHead(500, { "Content-Type": "text/plain; charset=utf-8" });
       response.end(`${CLI_NAME} preview: ${error.message}\n`);
-    }
+    });
   });
 
   try {
@@ -87,11 +105,15 @@ export async function startPreview(config, options = {}, dependencies = {}) {
   return { close, server, url };
 }
 
-function serveRequest(request, response, files, url) {
+async function serveRequest(request, response, files, url) {
   const method = request.method ?? "GET";
   const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
   if (pathname === CLEAR_HISTORY_PATH) {
     serveClearHistory(request, response, files, method);
+    return;
+  }
+  if (pathname.startsWith(GENERATE_SUMMARY_PREFIX)) {
+    await serveGenerateSummary(request, response, files, method, pathname);
     return;
   }
   if (method !== "GET" && method !== "HEAD") {
@@ -160,6 +182,80 @@ function serveRequest(request, response, files, url) {
   }
 
   send(response, method, 404, "text/plain; charset=utf-8", "Not found\n");
+}
+
+async function serveGenerateSummary(
+  request,
+  response,
+  files,
+  method,
+  pathname,
+) {
+  if (method !== "POST") {
+    response.writeHead(405, { Allow: "POST" });
+    response.end();
+    return;
+  }
+  if (request.headers["x-whatijustdid-action-token"] !== files.actionToken) {
+    sendJson(response, 403, {
+      error: "This action is not authorized by the active preview session",
+    });
+    return;
+  }
+
+  const sha = pathname.slice(GENERATE_SUMMARY_PREFIX.length).toLowerCase();
+  if (!/^[0-9a-f]{40}$/u.test(sha)) {
+    sendJson(response, 400, { error: "Choose a valid commit to generate" });
+    return;
+  }
+
+  const visibleShas = files.listCommitShas(
+    files.config.viewerLimit,
+    files.config.root,
+  );
+  if (!visibleShas.includes(sha)) {
+    sendJson(response, 404, {
+      error: "This commit is no longer in the current viewer history",
+    });
+    return;
+  }
+
+  let result;
+  try {
+    result = await files.runRecordCommittedChange(files.config, {}, { sha });
+  } catch (error) {
+    try {
+      files.runBuild(files.config);
+    } catch {
+      // The generation error is more useful than a secondary cache failure.
+    }
+    sendJson(response, 500, {
+      error: error?.message ?? "Unable to generate this summary",
+    });
+    return;
+  }
+
+  if (result.reason === "no-code-changes") {
+    sendJson(response, 422, {
+      error: "This commit has no code diff to summarize",
+    });
+    return;
+  }
+
+  try {
+    const viewerEntries = files.runBuild(files.config);
+    sendJson(response, 200, {
+      created: result.created,
+      reason: result.reason,
+      viewerEntries,
+    });
+  } catch (error) {
+    sendJson(response, 500, {
+      error:
+        error?.message ??
+        "The summary was saved but the viewer could not refresh",
+    });
+  }
 }
 
 function serveClearHistory(request, response, files, method) {

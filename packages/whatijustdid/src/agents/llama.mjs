@@ -13,7 +13,7 @@ import {
 } from "./shared.mjs";
 
 // Local Ollama. No API key, no cloud, and no runtime dependency.
-const DEFAULT_MODEL = "llama3.2";
+export const DEFAULT_MODEL = "llama3.2";
 
 export async function nameProject(input, { model, timeoutMs }) {
   const selectedModel = model ?? DEFAULT_MODEL;

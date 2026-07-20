@@ -54,7 +54,10 @@ const END = "\x1d";
 export function recentCommitMetas(limit, cwd = process.cwd()) {
   const count = Number.isInteger(limit) && limit > 0 ? [`-n${limit}`] : [];
   const format = `%x1e%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%cI%x1d`;
-  const out = tryGit(["log", "--topo-order", ...count, `--format=${format}`, "HEAD"], { cwd });
+  const args = ["--topo-order", "--numstat", ...count, `--format=${format}`, "HEAD"];
+  const out =
+    tryGit(["log", "--diff-merges=first-parent", ...args], { cwd }) ||
+    tryGit(["log", ...args], { cwd });
   return out
     .split(RECORD)
     .map((chunk) => parseCompactCommit(chunk))
@@ -89,6 +92,7 @@ function parseCompactCommit(chunk) {
     .trimStart()
     .split(FIELD);
   if (!sha) return null;
+  const stats = parseNumstat(chunk.slice(end + END.length));
   return {
     sha,
     shortSha,
@@ -98,6 +102,32 @@ function parseCompactCommit(chunk) {
     committer,
     committerEmail,
     date,
+    ...stats,
+  };
+}
+
+function parseNumstat(value) {
+  let additions = 0;
+  let deletions = 0;
+  let filesChanged = 0;
+
+  for (const line of value.split("\n")) {
+    const firstTab = line.indexOf("\t");
+    const secondTab = firstTab < 0 ? -1 : line.indexOf("\t", firstTab + 1);
+    if (firstTab < 0 || secondTab < 0) continue;
+    const added = line.slice(0, firstTab);
+    const deleted = line.slice(firstTab + 1, secondTab);
+    if (!/^(?:\d+|-)$/u.test(added) || !/^(?:\d+|-)$/u.test(deleted)) continue;
+    filesChanged++;
+    if (added !== "-") additions += Number(added);
+    if (deleted !== "-") deletions += Number(deleted);
+  }
+
+  return {
+    additions,
+    deletions,
+    filesChanged,
+    linesChanged: additions + deletions,
   };
 }
 

@@ -87,7 +87,7 @@ export WHATIJUSTDID_MODEL=gpt-5.4   # or another model supported by your agent
 
 After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
 
-The viewer still lists recent Git commits that have no local summary. This includes commits brought in through a pull: individual pulled commits are not automatically sent to the configured AI agent. Their summary is shown as `N/A` until you explicitly generate one with `backfill`.
+The viewer still lists recent Git commits that have no local summary. This includes commits brought in through a pull: individual pulled commits are not automatically sent to the configured AI agent. Their summary is shown as `N/A`, alongside the changed-line count and an estimated token range. Open the page through `whatijustdid preview` and choose **Generate** on one commit, or use `backfill` for an explicitly bounded range.
 
 ## Skipping summary generation
 
@@ -196,7 +196,7 @@ npx whatijustdid edit <commit-sha-or-prefix>
 npx whatijustdid clear --yes
 ```
 
-`preview` serves the bundled viewer with live reload. `edit` changes a private SQLite summary. `clear --yes` permanently removes every local summary and rebuilds the viewer; it does not change Git history or the shared configuration.
+`preview` serves the bundled viewer with live reload and enables its local actions, including per-commit generation. `edit` changes a private SQLite summary. `clear --yes` permanently removes every local summary and rebuilds the viewer; it does not change Git history or the shared configuration.
 
 ## Configuration
 
