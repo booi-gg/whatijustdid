@@ -508,7 +508,7 @@ function GenerationCard({
             Generating
           </p>
           <strong className="block text-[15px]/[1.35] font-[750] text-ink">
-            Generating what you just did…
+            Generating <span className="italic">changlogs...</span>…
           </strong>
           <p className="mt-1.5 max-w-[620px] text-xs/[1.55] text-muted">
             Reading this commit’s diff and writing its local summary. This page
@@ -527,7 +527,8 @@ function GenerationCard({
                 N/A
               </strong>
               <span className="text-xs/[1.5] text-muted">
-                Generate what you just did for this commit.
+                Generate <span className="italic">changelog</span> for this
+                commit.
               </span>
             </div>
             <p className="mt-2 text-[10.5px]/[1.5] font-semibold text-faint">

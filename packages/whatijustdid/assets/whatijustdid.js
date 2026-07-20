@@ -13076,7 +13076,7 @@ function le({ group: e, status: t }) {
             }),
             (0, y.jsx)(`strong`, {
               className: `block text-[15px]/[1.35] font-[750] text-ink`,
-              children: `Generating what you just did…`,
+              children: `Generating changelogs…`,
             }),
             (0, y.jsx)(`p`, {
               className: `mt-1.5 max-w-[620px] text-xs/[1.55] text-muted`,
@@ -13105,7 +13105,7 @@ function le({ group: e, status: t }) {
                     }),
                     (0, y.jsx)(`span`, {
                       className: `text-xs/[1.5] text-muted`,
-                      children: `Generate what you just did for this commit.`,
+                      children: `Generate changelog for this commit.`,
                     }),
                   ],
                 }),
