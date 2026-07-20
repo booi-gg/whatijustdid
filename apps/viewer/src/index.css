@@ -74,6 +74,14 @@
   contain-intrinsic-size: auto 180px;
 }
 
+.generated-commit-highlight {
+  border-color: oklch(0.5 0.085 92 / 0.72);
+  background-color: oklch(0.2 0.027 92);
+  box-shadow:
+    inset 3px 0 0 oklch(0.85 0.17 92 / 0.72),
+    0 1px 0 oklch(0.1 0.01 60 / 0.2);
+}
+
 .generation-panel-active {
   isolation: isolate;
   background:
