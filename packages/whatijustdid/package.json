@@ -1,6 +1,6 @@
 {
   "name": "whatijustdid",
-  "version": "0.1.20",
+  "version": "0.1.23",
   "type": "module",
   "description": "Private, persistent AI summaries for every committed code change.",
   "keywords": [

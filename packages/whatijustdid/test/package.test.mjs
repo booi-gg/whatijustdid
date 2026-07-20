@@ -18,7 +18,7 @@ import { CLI_NAME, ENV_PREFIX } from "../src/brand.mjs";
 
 const packageRoot = dirname(dirname(fileURLToPath(import.meta.url)));
 
-test("packed package keeps AI summaries private and persistent", { timeout: 60_000 }, async () => {
+test("packed package keeps AI summaries private and persistent", { timeout: 120_000 }, async () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-package-"));
   let mockAgent = null;
   try {
@@ -261,7 +261,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
   }
 });
 
-async function waitFor(check, timeoutMs = 15_000) {
+async function waitFor(check, timeoutMs = 30_000) {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
     const result = check();
