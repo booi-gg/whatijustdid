@@ -6,7 +6,7 @@ import { openSummaryStore } from "./store.mjs";
 
 const abc = "abcdefghijklmnopqrstuvwxyz";
 
-/** Read local generation records for recent, still-reachable Git commits. */
+/** Read recent, still-reachable Git commits and their local generation records. */
 export function readEntries(config, options = {}) {
   const limit = Number.isInteger(config.viewerLimit) && config.viewerLimit > 0
     ? config.viewerLimit
@@ -16,9 +16,7 @@ export function readEntries(config, options = {}) {
   const ownsStore = !options.store;
   try {
     const records = store.listByShas(commits.map((commit) => commit.sha));
-    return commits
-      .map((commit) => ({ commit, summary: records.get(commit.sha) }))
-      .filter(({ summary }) => summary);
+    return commits.map((commit) => ({ commit, summary: records.get(commit.sha) }));
   } finally {
     if (ownsStore) store.close();
   }
@@ -26,13 +24,13 @@ export function readEntries(config, options = {}) {
 
 /** Map one stored AI result to the shape the bundled viewer renders. */
 function toGroup(summary, commit, showTokens) {
-  const ready = summary.status === "ready" && summary.changes?.length;
+  const ready = summary?.status === "ready" && summary.changes?.length;
   const group = {
     kind: "commit",
     ref: commit.shortSha ?? commit.sha.slice(0, 7),
     author: commit.author || "Unknown",
     date: commit.date ?? new Date(0).toISOString(),
-    projects: summary.projects,
+    projects: summary?.projects ?? [],
     link: null,
     entries: ready
       ? summary.changes.map((change, index) => ({
@@ -46,13 +44,14 @@ function toGroup(summary, commit, showTokens) {
         description: statusMessage(summary),
       }],
   };
-  if (showTokens && summary.usage) {
+  if (showTokens && summary?.usage) {
     group.usage = summary.usage;
   }
   return group;
 }
 
 function statusMessage(summary) {
+  if (!summary) return "N/A";
   if (summary.status === "failed") {
     return `Summary failed: ${summary.lastError ?? "unknown error"}`;
   }

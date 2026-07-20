@@ -203,7 +203,7 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
     assert.match(unconfirmedClear.stderr, /clear --yes/);
 
     const clearOutput = run(cli, ["clear", "--yes"], consumer);
-    assert.match(clearOutput, /cleared 2 entries; viewer now has 0 entries/);
+    assert.match(clearOutput, /cleared 2 entries; viewer now has 2 entries/);
     const clearedDatabase = new DatabaseSync(summariesDb);
     try {
       assert.equal(
@@ -213,7 +213,10 @@ test("packed package keeps AI summaries private and persistent", { timeout: 60_0
     } finally {
       clearedDatabase.close();
     }
-    assert.match(readFileSync(viewerDataFile, "utf8"), /window\.__WHATIJUSTDID__ = \[\]/);
+    const clearedViewerData = readFileSync(viewerDataFile, "utf8");
+    assert.match(clearedViewerData, /"description": "N\/A"/);
+    assert.doesNotMatch(clearedViewerData, /Initialized whatijustdid from the committed code/);
+    assert.doesNotMatch(clearedViewerData, /Summary failed:/);
 
     const scopePreview = run(cli, ["backfill"], consumer);
     assert.match(scopePreview, /no AI calls made/);

@@ -20,6 +20,7 @@ import { openSummaryStore } from "../src/store.mjs";
 
 const SHA_A = "a".repeat(40);
 const SHA_B = "b".repeat(40);
+const SHA_C = "c".repeat(40);
 
 test("maps one commit to every touched project", () => {
   assert.deepEqual(
@@ -347,9 +348,10 @@ test("history generation requires an explicit scope and resumes ready commits", 
   }
 });
 
-test("build displays ready and pending records without commit-message text", () => {
+test("build displays ready, pending, and missing summaries without commit-message text", () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-build-"));
   const config = testConfig(root);
+  config.showTokens = true;
   const store = openSummaryStore(config);
   try {
     const lease = store.claim(SHA_A, { projects: ["web"], agent: "codex" });
@@ -361,6 +363,13 @@ test("build displays ready and pending records without commit-message text", () 
     });
     store.ensurePending(SHA_B, []);
     const commits = [
+      {
+        sha: SHA_C,
+        shortSha: "ccccccc",
+        author: "Carla",
+        date: "2026-07-19T10:00:00.000Z",
+        subject: "pulled commit message must never appear",
+      },
       {
         sha: SHA_B,
         shortSha: "bbbbbbb",
@@ -376,10 +385,11 @@ test("build displays ready and pending records without commit-message text", () 
         body: "- Must also never appear",
       },
     ];
-    assert.equal(build(config, { store, commits }), 2);
+    assert.equal(build(config, { store, commits }), 3);
     const output = readFileSync(config.dataFile, "utf8");
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
+    assert.match(output, /"ref": "ccccccc"[\s\S]*?"description": "N\/A"/);
     assert.doesNotMatch(output, /must never appear/i);
     assert.match(
       output,
