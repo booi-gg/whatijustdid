@@ -38,6 +38,8 @@ const canRunPreviewActions = Boolean(
 );
 const generatedHighlightsStorageKey =
   "whatijustdid:generated-commit-highlights";
+const generatedScrollTargetStorageKey =
+  "whatijustdid:generated-scroll-target";
 const generatedHighlightDismissDelay = 5_000;
 
 const tagStyles: Record<ChangeType, string> = {
@@ -77,6 +79,14 @@ export function App({ model }: AppProps) {
   const [generatedHighlights, setGeneratedHighlights] = useState(() =>
     activeGeneratedHighlights(model.groups),
   );
+  // A commit reloads the page twice while generating (once when its status
+  // flips to "generating", again once it reaches "ready" — see store.mjs's
+  // claim()/complete() split), so this can't be consumed on first read: doing
+  // that would clear it on the first, still-generating reload, before the
+  // second reload — the one where the card's height actually changes from
+  // the generation panel to its final entry list — ever sees it. It's only
+  // cleared once the target card is confirmed ready (below).
+  const [scrollTargetSha] = useState(() => readGeneratedScrollTarget());
   const visibleGroups = useMemo(
     () =>
       model.groups
@@ -140,6 +150,7 @@ export function App({ model }: AppProps) {
               groups={groups}
               key={date}
               onGeneratedHighlightDismissed={dismissGeneratedHighlight}
+              scrollTargetSha={scrollTargetSha}
             />
           ))
         ) : (
@@ -285,11 +296,13 @@ function DaySection({
   generatedHighlights,
   groups,
   onGeneratedHighlightDismissed,
+  scrollTargetSha,
 }: {
   date: string;
   generatedHighlights: Set<string>;
   groups: ViewerGroup[];
   onGeneratedHighlightDismissed: (sha: string) => void;
+  scrollTargetSha: string | null;
 }) {
   return (
     <section className="relative min-w-0 [--content-inset:58px] [--thread-x:16px] pb-12 pl-[var(--content-inset)] last:pb-0 before:absolute before:top-[9px] before:bottom-[-12px] before:left-[calc(var(--thread-x)-1px)] before:w-px before:bg-line-strong before:content-[''] last:before:bottom-0 max-[700px]:[--content-inset:34px] max-[700px]:[--thread-x:7px]">
@@ -306,6 +319,10 @@ function DaySection({
             }
             key={`${group.date ?? date}-${group.ref ?? "change"}-${index}`}
             onGeneratedHighlightDismissed={onGeneratedHighlightDismissed}
+            shouldScrollIntoView={
+              typeof group.sha === "string" &&
+              group.sha.toLowerCase() === scrollTargetSha
+            }
           />
         ))}
       </div>
@@ -317,12 +334,15 @@ function CommitCard({
   group,
   isGeneratedHighlight,
   onGeneratedHighlightDismissed,
+  shouldScrollIntoView,
 }: {
   group: ViewerGroup;
   isGeneratedHighlight: boolean;
   onGeneratedHighlightDismissed: (sha: string) => void;
+  shouldScrollIntoView: boolean;
 }) {
   const dismissTimer = useRef<number | null>(null);
+  const articleRef = useRef<HTMLElement | null>(null);
   const isPullRequest = group.kind === "pr";
   const status = group.status ?? "ready";
   const isReady = status === "ready";
@@ -346,6 +366,19 @@ function CommitCard({
     [],
   );
 
+  // Runs once on mount. Scrolls on every reload this card is the marked
+  // target for — including the intermediate "generating" reload — so the
+  // card never appears to vanish mid-generation. The marker itself is only
+  // cleared once this card is confirmed "ready", since an earlier reload
+  // (still "generating") isn't the one that actually shifts the layout.
+  useEffect(() => {
+    if (!shouldScrollIntoView) return;
+    articleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (isReady && typeof group.sha === "string") {
+      clearGeneratedScrollTarget(group.sha);
+    }
+  }, []);
+
   function handleMouseEnter() {
     if (
       !isGeneratedHighlight ||
@@ -367,6 +400,7 @@ function CommitCard({
         isPullRequest ? "before:bg-pr" : "before:bg-accent"
       }`}
       onMouseEnter={handleMouseEnter}
+      ref={articleRef}
     >
       <header className="mb-2.5 flex min-h-[18px] flex-wrap items-center gap-2 text-xs/[1.5] text-muted">
         <span
@@ -468,6 +502,7 @@ function GenerationCard({
     setError(null);
     // The data-file watcher may reload the page before the response resolves.
     addGeneratedHighlight(sha);
+    markGeneratedScrollTarget(sha);
     startTransition(async () => {
       try {
         const response = await fetch(`/api/actions/generate-summary/${sha}`, {
@@ -482,6 +517,7 @@ function GenerationCard({
         window.location.reload();
       } catch (requestError) {
         removeGeneratedHighlight(sha);
+        clearGeneratedScrollTarget(sha);
         setError(
           requestError instanceof Error
             ? requestError.message
@@ -834,6 +870,41 @@ function readGeneratedHighlights() {
     );
   } catch {
     return new Set<string>();
+  }
+}
+
+function markGeneratedScrollTarget(sha: string) {
+  try {
+    window.sessionStorage.setItem(
+      generatedScrollTargetStorageKey,
+      sha.toLowerCase(),
+    );
+  } catch {
+    // The auto-scroll is optional when browser storage is unavailable.
+  }
+}
+
+function clearGeneratedScrollTarget(sha: string) {
+  try {
+    if (
+      window.sessionStorage.getItem(generatedScrollTargetStorageKey) ===
+      sha.toLowerCase()
+    ) {
+      window.sessionStorage.removeItem(generatedScrollTargetStorageKey);
+    }
+  } catch {
+    // Nothing to clean up when browser storage is unavailable.
+  }
+}
+
+function readGeneratedScrollTarget() {
+  try {
+    const value = window.sessionStorage.getItem(
+      generatedScrollTargetStorageKey,
+    );
+    return value && /^[0-9a-f]{40}$/i.test(value) ? value : null;
+  } catch {
+    return null;
   }
 }
 
