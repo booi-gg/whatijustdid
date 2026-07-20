@@ -68,12 +68,15 @@ interface AppProps {
 
 export function App({ model }: AppProps) {
   const [activeProject, setActiveProject] = useState("All");
+  // Only the initial mount reads storage; it is not re-persisted here because
+  // this snapshot is filtered to commits that are already "ready", and a
+  // commit is very likely to reload the page mid-generation (once when the
+  // summary is claimed, again once it completes) before it reaches "ready".
+  // Writing the filtered snapshot back on every mount would erase the
+  // highlight for a commit that is still generating.
   const [generatedHighlights, setGeneratedHighlights] = useState(() =>
     activeGeneratedHighlights(model.groups),
   );
-  useEffect(() => {
-    writeGeneratedHighlights(generatedHighlights);
-  }, [generatedHighlights]);
   const visibleGroups = useMemo(
     () =>
       model.groups
