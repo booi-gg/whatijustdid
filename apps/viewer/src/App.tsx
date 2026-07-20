@@ -386,7 +386,7 @@ function Footer() {
         .
       </span>
       <div className="flex flex-wrap items-center justify-end gap-x-3 gap-y-1 max-[700px]:justify-start">
-        <span>Only opted-in commits appear.</span>
+        <span>Missing local summaries appear as N/A.</span>
         {canRunPreviewActions ? <ClearHistoryButton /> : null}
       </div>
     </footer>

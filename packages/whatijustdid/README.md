@@ -87,6 +87,8 @@ export WHATIJUSTDID_MODEL=gpt-5.4   # or another model supported by your agent
 
 After each successful commit, the `post-commit` hook summarizes the committed code diff and rebuilds the private viewer data. The hook prints whether generation succeeded or failed. Agent failures never block the Git commit; failed records appear in the viewer and remain resumable in SQLite.
 
+The viewer still lists recent Git commits that have no local summary. This includes commits brought in through a pull: individual pulled commits are not automatically sent to the configured AI agent. Their summary is shown as `N/A` until you explicitly generate one with `backfill`.
+
 ## Skipping summary generation
 
 Skip per-commit summary generation in one of two ways:
