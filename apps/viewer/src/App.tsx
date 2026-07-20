@@ -1,4 +1,11 @@
-import { useMemo, useState, useTransition } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   dateValue,
   localDateKey,
@@ -29,6 +36,9 @@ const actionToken = document.querySelector<HTMLMetaElement>(
 const canRunPreviewActions = Boolean(
   actionToken && actionToken !== "__WHATIJUSTDID_ACTION_TOKEN__",
 );
+const generatedHighlightsStorageKey =
+  "whatijustdid:generated-commit-highlights";
+const generatedHighlightDismissDelay = 5_000;
 
 const tagStyles: Record<ChangeType, string> = {
   feat: "bg-[oklch(0.22_0.04_155)] text-[oklch(0.72_0.13_155)]",
@@ -58,6 +68,12 @@ interface AppProps {
 
 export function App({ model }: AppProps) {
   const [activeProject, setActiveProject] = useState("All");
+  const [generatedHighlights, setGeneratedHighlights] = useState(() =>
+    activeGeneratedHighlights(model.groups),
+  );
+  useEffect(() => {
+    writeGeneratedHighlights(generatedHighlights);
+  }, [generatedHighlights]);
   const visibleGroups = useMemo(
     () =>
       model.groups
@@ -87,6 +103,15 @@ export function App({ model }: AppProps) {
     model.databaseSizeBytes === null
       ? null
       : formatBytes(model.databaseSizeBytes);
+  const dismissGeneratedHighlight = useCallback((sha: string) => {
+    removeGeneratedHighlight(sha);
+    setGeneratedHighlights((current) => {
+      if (!current.has(sha)) return current;
+      const next = new Set(current);
+      next.delete(sha);
+      return next;
+    });
+  }, []);
 
   return (
     <div className="mx-auto w-[min(900px,calc(100%-40px))] pt-[68px] pb-[92px] max-[700px]:w-[min(900px,calc(100%-28px))] max-[700px]:pt-[42px]">
@@ -106,7 +131,13 @@ export function App({ model }: AppProps) {
       <main>
         {days.length > 0 ? (
           days.map(([date, groups]) => (
-            <DaySection date={date} groups={groups} key={date} />
+            <DaySection
+              date={date}
+              generatedHighlights={generatedHighlights}
+              groups={groups}
+              key={date}
+              onGeneratedHighlightDismissed={dismissGeneratedHighlight}
+            />
           ))
         ) : (
           <EmptyState activeProject={activeProject} />
@@ -246,7 +277,17 @@ function ProjectFilters({
   );
 }
 
-function DaySection({ date, groups }: { date: string; groups: ViewerGroup[] }) {
+function DaySection({
+  date,
+  generatedHighlights,
+  groups,
+  onGeneratedHighlightDismissed,
+}: {
+  date: string;
+  generatedHighlights: Set<string>;
+  groups: ViewerGroup[];
+  onGeneratedHighlightDismissed: (sha: string) => void;
+}) {
   return (
     <section className="relative min-w-0 [--content-inset:58px] [--thread-x:16px] pb-12 pl-[var(--content-inset)] last:pb-0 before:absolute before:top-[9px] before:bottom-[-12px] before:left-[calc(var(--thread-x)+2px)] before:w-px before:bg-line-strong before:content-[''] last:before:bottom-0 max-[700px]:[--content-inset:34px] max-[700px]:[--thread-x:7px]">
       <h2 className="relative mb-6 text-[13px]/[18px] font-bold tracking-[-0.015em] text-muted before:absolute before:top-0 before:left-[calc(var(--thread-x)-var(--content-inset)-9px)] before:size-[18px] before:rounded-full before:border-[3px] before:border-muted before:bg-paper before:shadow-[0_0_0_4px_var(--color-paper)] before:content-[''] max-[700px]:text-xs">
@@ -256,7 +297,12 @@ function DaySection({ date, groups }: { date: string; groups: ViewerGroup[] }) {
         {groups.map((group, index) => (
           <CommitCard
             group={group}
+            isGeneratedHighlight={
+              typeof group.sha === "string" &&
+              generatedHighlights.has(group.sha.toLowerCase())
+            }
             key={`${group.date ?? date}-${group.ref ?? "change"}-${index}`}
+            onGeneratedHighlightDismissed={onGeneratedHighlightDismissed}
           />
         ))}
       </div>
@@ -264,7 +310,16 @@ function DaySection({ date, groups }: { date: string; groups: ViewerGroup[] }) {
   );
 }
 
-function CommitCard({ group }: { group: ViewerGroup }) {
+function CommitCard({
+  group,
+  isGeneratedHighlight,
+  onGeneratedHighlightDismissed,
+}: {
+  group: ViewerGroup;
+  isGeneratedHighlight: boolean;
+  onGeneratedHighlightDismissed: (sha: string) => void;
+}) {
+  const dismissTimer = useRef<number | null>(null);
   const isPullRequest = group.kind === "pr";
   const status = group.status ?? "ready";
   const isReady = status === "ready";
@@ -279,11 +334,36 @@ function CommitCard({ group }: { group: ViewerGroup }) {
   const linesChanged = validCount(group.stats?.linesChanged);
   const entries = Array.isArray(group.entries) ? group.entries : [];
 
+  useEffect(
+    () => () => {
+      if (dismissTimer.current !== null) {
+        window.clearTimeout(dismissTimer.current);
+      }
+    },
+    [],
+  );
+
+  function handleMouseEnter() {
+    if (
+      !isGeneratedHighlight ||
+      dismissTimer.current !== null ||
+      typeof group.sha !== "string"
+    ) {
+      return;
+    }
+    const sha = group.sha.toLowerCase();
+    dismissTimer.current = window.setTimeout(() => {
+      dismissTimer.current = null;
+      onGeneratedHighlightDismissed(sha);
+    }, generatedHighlightDismissDelay);
+  }
+
   return (
     <article
       className={`commit-visibility group relative min-w-0 max-w-full before:absolute before:top-0.5 before:left-[calc(var(--thread-x)-var(--content-inset)-7px)] before:z-[1] before:size-3.5 before:rounded-full before:border-[3px] before:border-paper before:shadow-[0_0_0_1px_var(--color-line-strong)] before:content-[''] ${
         isPullRequest ? "before:bg-pr" : "before:bg-accent"
       }`}
+      onMouseEnter={handleMouseEnter}
     >
       <header className="mb-2.5 flex min-h-[18px] flex-wrap items-center gap-2 text-xs/[1.5] text-muted">
         <span
@@ -338,7 +418,14 @@ function CommitCard({ group }: { group: ViewerGroup }) {
         ) : null}
       </header>
       {isReady ? (
-        <ol className="grid list-none gap-3.5 rounded-lg border border-line bg-surface px-[18px] py-4 pb-[17px] shadow-[0_1px_0_oklch(0.1_0.01_60/0.2)] transition-[border-color,box-shadow] duration-150 group-hover:border-[oklch(0.4_0.016_60)] group-hover:shadow-hard motion-reduce:transition-none max-[700px]:px-3.5">
+        <ol
+          className={`grid list-none gap-3.5 rounded-lg border px-[18px] py-4 pb-[17px] shadow-[0_1px_0_oklch(0.1_0.01_60/0.2)] transition-[background-color,border-color,box-shadow] duration-300 group-hover:border-[oklch(0.4_0.016_60)] group-hover:shadow-hard motion-reduce:transition-none max-[700px]:px-3.5 ${
+            isGeneratedHighlight
+              ? "generated-commit-highlight"
+              : "border-line bg-surface"
+          }`}
+          data-just-generated={isGeneratedHighlight ? "true" : undefined}
+        >
           {entries.map((entry, index) => (
             <EntryRow
               entry={entry}
@@ -376,6 +463,8 @@ function GenerationCard({
   function handleGenerate() {
     if (!canGenerate || !actionToken) return;
     setError(null);
+    // The data-file watcher may reload the page before the response resolves.
+    addGeneratedHighlight(sha);
     startTransition(async () => {
       try {
         const response = await fetch(`/api/actions/generate-summary/${sha}`, {
@@ -389,6 +478,7 @@ function GenerationCard({
         }
         window.location.reload();
       } catch (requestError) {
+        removeGeneratedHighlight(sha);
         setError(
           requestError instanceof Error
             ? requestError.message
@@ -698,4 +788,62 @@ function formatBytes(total: number) {
     unit++;
   }
   return `${unit === 0 ? value : value.toFixed(1)} ${units[unit]}`;
+}
+
+function activeGeneratedHighlights(groups: ViewerGroup[]) {
+  const stored = readGeneratedHighlights();
+  const readyShas = new Set(
+    groups.flatMap((group) =>
+      group.status === "ready" && typeof group.sha === "string"
+        ? [group.sha.toLowerCase()]
+        : [],
+    ),
+  );
+  const active = new Set([...stored].filter((sha) => readyShas.has(sha)));
+  return active;
+}
+
+function addGeneratedHighlight(sha: string) {
+  const highlights = readGeneratedHighlights();
+  highlights.add(sha.toLowerCase());
+  writeGeneratedHighlights(highlights);
+}
+
+function removeGeneratedHighlight(sha: string) {
+  const highlights = readGeneratedHighlights();
+  highlights.delete(sha.toLowerCase());
+  writeGeneratedHighlights(highlights);
+}
+
+function readGeneratedHighlights() {
+  try {
+    const stored: unknown = JSON.parse(
+      window.sessionStorage.getItem(generatedHighlightsStorageKey) ?? "[]",
+    );
+    return new Set(
+      Array.isArray(stored)
+        ? stored.filter(
+            (sha): sha is string =>
+              typeof sha === "string" && /^[0-9a-f]{40}$/i.test(sha),
+          )
+        : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
+}
+
+function writeGeneratedHighlights(highlights: Set<string>) {
+  try {
+    if (highlights.size === 0) {
+      window.sessionStorage.removeItem(generatedHighlightsStorageKey);
+      return;
+    }
+    window.sessionStorage.setItem(
+      generatedHighlightsStorageKey,
+      JSON.stringify([...highlights]),
+    );
+  } catch {
+    // The highlight is optional when browser storage is unavailable.
+  }
 }
