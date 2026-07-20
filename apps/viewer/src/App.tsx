@@ -44,6 +44,14 @@ const tagStyles: Record<ChangeType, string> = {
   other: "bg-[oklch(0.2_0.013_60)] text-[oklch(0.64_0.015_60)]",
 };
 
+const agentNames: Record<string, string> = {
+  claude: "Claude",
+  codex: "Codex",
+  deepseek: "DeepSeek",
+  llama: "Llama",
+  openai: "OpenAI",
+};
+
 interface AppProps {
   model: ViewerModel;
 }
@@ -258,6 +266,8 @@ function DaySection({ date, groups }: { date: string; groups: ViewerGroup[] }) {
 
 function CommitCard({ group }: { group: ViewerGroup }) {
   const isPullRequest = group.kind === "pr";
+  const status = group.status ?? "ready";
+  const isReady = status === "ready";
   const groupProjects =
     Array.isArray(group.projects) && group.projects.length > 0
       ? group.projects
@@ -266,6 +276,7 @@ function CommitCard({ group }: { group: ViewerGroup }) {
   const validDate = !Number.isNaN(date.valueOf());
   const url = safeHttpUrl(group.link);
   const tokenTotal = group.usage?.total ?? 0;
+  const linesChanged = validCount(group.stats?.linesChanged);
   const entries = Array.isArray(group.entries) ? group.entries : [];
 
   return (
@@ -301,8 +312,13 @@ function CommitCard({ group }: { group: ViewerGroup }) {
             {timeFormatter.format(date)}
           </time>
         ) : null}
-        {tokenTotal > 0 || url ? (
+        {(isReady && linesChanged !== null) || tokenTotal > 0 || url ? (
           <span className="ml-auto inline-flex items-center gap-2">
+            {isReady && linesChanged !== null ? (
+              <span className="whitespace-nowrap text-[10.5px] font-bold text-faint">
+                {formatLineChanges(linesChanged)}
+              </span>
+            ) : null}
             {tokenTotal > 0 ? (
               <span className="whitespace-nowrap rounded-[3px] bg-[oklch(0.2_0.025_180)] px-[7px] py-0.5 text-[10.5px] font-bold text-[oklch(0.68_0.08_180)]">
                 {formatTokens(tokenTotal)}
@@ -321,15 +337,174 @@ function CommitCard({ group }: { group: ViewerGroup }) {
           </span>
         ) : null}
       </header>
-      <ol className="grid list-none gap-3.5 rounded-lg border border-line bg-surface px-[18px] py-4 pb-[17px] shadow-[0_1px_0_oklch(0.1_0.01_60/0.2)] transition-[border-color,box-shadow] duration-150 group-hover:border-[oklch(0.4_0.016_60)] group-hover:shadow-hard motion-reduce:transition-none max-[700px]:px-3.5">
-        {entries.map((entry, index) => (
-          <EntryRow
-            entry={entry}
-            key={`${entry.letter ?? "entry"}-${entry.description ?? index}`}
-          />
-        ))}
-      </ol>
+      {isReady ? (
+        <ol className="grid list-none gap-3.5 rounded-lg border border-line bg-surface px-[18px] py-4 pb-[17px] shadow-[0_1px_0_oklch(0.1_0.01_60/0.2)] transition-[border-color,box-shadow] duration-150 group-hover:border-[oklch(0.4_0.016_60)] group-hover:shadow-hard motion-reduce:transition-none max-[700px]:px-3.5">
+          {entries.map((entry, index) => (
+            <EntryRow
+              entry={entry}
+              key={`${entry.letter ?? "entry"}-${entry.description ?? index}`}
+            />
+          ))}
+        </ol>
+      ) : (
+        <GenerationCard group={group} status={status} />
+      )}
     </article>
+  );
+}
+
+function GenerationCard({
+  group,
+  status,
+}: {
+  group: ViewerGroup;
+  status: NonNullable<ViewerGroup["status"]>;
+}) {
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const isGenerating = status === "generating" || isPending;
+  const sha = typeof group.sha === "string" ? group.sha : "";
+  const canGenerate = canRunPreviewActions && /^[0-9a-f]{40}$/i.test(sha);
+  const generation = group.generation;
+  const linesChanged = validCount(group.stats?.linesChanged);
+  const tokenEstimate = formatTokenEstimate(generation);
+  const storedError =
+    status === "failed"
+      ? group.entries?.[0]?.description?.replace(/^Summary failed:\s*/i, "")
+      : null;
+
+  function handleGenerate() {
+    if (!canGenerate || !actionToken) return;
+    setError(null);
+    startTransition(async () => {
+      try {
+        const response = await fetch(`/api/actions/generate-summary/${sha}`, {
+          method: "POST",
+          headers: { "X-Whatijustdid-Action-Token": actionToken },
+        });
+        if (!response.ok) {
+          throw new Error(
+            await actionError(response, "Unable to generate this summary"),
+          );
+        }
+        window.location.reload();
+      } catch (requestError) {
+        setError(
+          requestError instanceof Error
+            ? requestError.message
+            : "Unable to generate this summary",
+        );
+      }
+    });
+  }
+
+  return (
+    <div
+      className={`generation-panel relative overflow-hidden rounded-lg border px-[18px] py-[17px] shadow-[0_1px_0_oklch(0.1_0.01_60/0.2)] max-[700px]:px-3.5 ${
+        isGenerating
+          ? "generation-panel-active border-accent/45"
+          : "border-line bg-surface"
+      }`}
+      aria-busy={isGenerating}
+      aria-live="polite"
+    >
+      {isGenerating ? (
+        <div className="relative z-[1]">
+          <p className="mb-3 flex items-center gap-2 text-[10px]/[1.2] font-bold tracking-[0.1em] text-accent uppercase">
+            <span
+              className="generation-pulse size-2 rounded-full bg-accent"
+              aria-hidden="true"
+            />
+            Generating
+          </p>
+          <strong className="block text-[15px]/[1.35] font-[750] text-ink">
+            Generating what you just did…
+          </strong>
+          <p className="mt-1.5 max-w-[620px] text-xs/[1.55] text-muted">
+            Reading this commit’s diff and writing its local summary. This page
+            refreshes when it is ready.
+          </p>
+          <GenerationDetails group={group} />
+        </div>
+      ) : (
+        <div className="relative z-[1] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 max-[700px]:grid-cols-1 max-[700px]:gap-4">
+          <div className="min-w-0">
+            <p className="mb-2 text-[10px]/[1.2] font-bold tracking-[0.1em] text-muted uppercase">
+              {status === "failed" ? "Generation failed" : "Not generated"}
+            </p>
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <strong className="text-[20px]/[1.1] font-[780] tracking-[-0.04em] text-ink">
+                N/A
+              </strong>
+              <span className="text-xs/[1.5] text-muted">
+                Generate what you just did for this commit.
+              </span>
+            </div>
+            <p className="mt-2 text-[10.5px]/[1.5] font-semibold text-faint">
+              {linesChanged === null
+                ? "Line count unavailable"
+                : formatLineChanges(linesChanged)}
+              {tokenEstimate ? ` · ${tokenEstimate}` : ""}
+            </p>
+            <p className="mt-1 overflow-wrap-anywhere text-[10.5px]/[1.5] text-faint">
+              Agent ·{" "}
+              <span className="font-bold text-muted">
+                {formatAgentName(generation?.agent)}
+              </span>
+              {" · "}Model ·{" "}
+              <code className="font-bold text-muted">
+                {generation?.model || "provider default"}
+              </code>
+            </p>
+            {storedError || error ? (
+              <p
+                className="mt-2 overflow-wrap-anywhere text-[11px]/[1.5] text-[oklch(0.72_0.14_25)]"
+                role="alert"
+              >
+                {error ?? storedError}
+              </p>
+            ) : null}
+            {!canRunPreviewActions ? (
+              <p className="mt-2 text-[10.5px]/[1.5] text-faint">
+                Open with <code>whatijustdid preview</code> to generate.
+              </p>
+            ) : null}
+          </div>
+          <button
+            className="min-h-10 min-w-[112px] cursor-pointer rounded-[5px] border border-accent bg-accent px-4 py-2 text-xs font-[780] text-accent-ink shadow-[3px_3px_0_oklch(0.1_0.01_60)] transition-[transform,box-shadow] hover:-translate-y-px hover:shadow-[4px_4px_0_oklch(0.1_0.01_60)] disabled:cursor-not-allowed disabled:border-line-strong disabled:bg-line disabled:text-faint disabled:shadow-none motion-reduce:transition-none max-[700px]:w-full"
+            type="button"
+            disabled={!canGenerate}
+            onClick={handleGenerate}
+          >
+            Generate
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function GenerationDetails({ group }: { group: ViewerGroup }) {
+  const generation = group.generation;
+  const details = [
+    ["Agent", formatAgentName(generation?.agent)],
+    ["Model", generation?.model || "provider default"],
+    ["Commit", group.ref || "change"],
+  ];
+
+  return (
+    <dl className="mt-4 grid grid-cols-3 gap-px overflow-hidden rounded-[5px] border border-line-strong bg-line-strong max-[700px]:grid-cols-1">
+      {details.map(([label, value]) => (
+        <div className="min-w-0 bg-paper/90 px-3 py-2.5" key={label}>
+          <dt className="mb-1 text-[9px]/[1.2] font-bold tracking-[0.09em] text-faint uppercase">
+            {label}
+          </dt>
+          <dd className="m-0 overflow-wrap-anywhere text-[11px]/[1.35] font-bold text-ink">
+            {value}
+          </dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 
@@ -413,7 +588,11 @@ function ClearHistoryButton() {
             "X-Whatijustdid-Confirm": "clear-history",
           },
         });
-        if (!response.ok) throw new Error(await actionError(response));
+        if (!response.ok) {
+          throw new Error(
+            await actionError(response, "Unable to clear local history"),
+          );
+        }
         window.location.reload();
       } catch (requestError) {
         setError(
@@ -447,7 +626,7 @@ function ClearHistoryButton() {
   );
 }
 
-async function actionError(response: Response) {
+async function actionError(response: Response, fallback: string) {
   try {
     const body: unknown = await response.json();
     if (
@@ -461,7 +640,7 @@ async function actionError(response: Response) {
   } catch {
     // Fall back to a status-based message for a malformed error response.
   }
-  return `Unable to clear local history (${response.status})`;
+  return `${fallback} (${response.status})`;
 }
 
 function groupByDay(groups: ViewerGroup[]) {
@@ -482,6 +661,32 @@ function formatDay(key: string) {
 
 function formatTokens(total: number) {
   return total >= 1_000 ? `${(total / 1_000).toFixed(1)}k tok` : `${total} tok`;
+}
+
+function formatTokenEstimate(generation: ViewerGroup["generation"]) {
+  const input = validCount(generation?.estimatedInputTokens);
+  const output = validCount(generation?.maxOutputTokens);
+  const parts = [
+    input === null ? null : `≈${formatTokens(input)} input`,
+    output === null ? null : `≤${formatTokens(output)} output`,
+  ].filter((part): part is string => part !== null);
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+function formatLineChanges(total: number) {
+  return `${total.toLocaleString()} ${total === 1 ? "line" : "lines"} changed`;
+}
+
+function formatAgentName(agent: string | undefined) {
+  return agent
+    ? (agentNames[agent.toLowerCase()] ?? agent)
+    : "configured agent";
+}
+
+function validCount(value: number | null | undefined) {
+  return typeof value === "number" && Number.isSafeInteger(value) && value >= 0
+    ? value
+    : null;
 }
 
 function formatBytes(total: number) {

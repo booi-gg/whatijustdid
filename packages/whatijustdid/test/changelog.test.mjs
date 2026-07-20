@@ -369,6 +369,10 @@ test("build displays ready, pending, and missing summaries without commit-messag
         author: "Carla",
         date: "2026-07-19T10:00:00.000Z",
         subject: "pulled commit message must never appear",
+        additions: 54,
+        deletions: 17,
+        filesChanged: 4,
+        linesChanged: 71,
       },
       {
         sha: SHA_B,
@@ -376,6 +380,10 @@ test("build displays ready, pending, and missing summaries without commit-messag
         author: "Bob",
         date: "2026-07-18T10:00:00.000Z",
         subject: "fix: must never appear",
+        additions: 10,
+        deletions: 2,
+        filesChanged: 2,
+        linesChanged: 12,
       },
       {
         sha: SHA_A,
@@ -383,6 +391,10 @@ test("build displays ready, pending, and missing summaries without commit-messag
         author: "Alice",
         date: "2026-07-17T10:00:00.000Z",
         body: "- Must also never appear",
+        additions: 4,
+        deletions: 1,
+        filesChanged: 1,
+        linesChanged: 5,
       },
     ];
     assert.equal(build(config, { store, commits }), 3);
@@ -390,6 +402,13 @@ test("build displays ready, pending, and missing summaries without commit-messag
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
     assert.match(output, /"ref": "ccccccc"[\s\S]*?"description": "N\/A"/);
+    assert.match(
+      output,
+      new RegExp(
+        `"sha": "${SHA_C}"[\\s\\S]*?"status": "missing"[\\s\\S]*?"linesChanged": 71[\\s\\S]*?"agent": "codex"[\\s\\S]*?"model": "gpt-5\\.4-mini"[\\s\\S]*?"estimatedInputTokens": 1316`,
+      ),
+    );
+    assert.match(output, /"maxOutputTokens": 1200/);
     assert.doesNotMatch(output, /must never appear/i);
     assert.match(
       output,

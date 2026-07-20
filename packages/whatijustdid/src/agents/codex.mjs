@@ -15,7 +15,7 @@ import {
 
 // "codex" is the package's OpenAI agent name. It uses the Responses API,
 // not a ChatGPT/Codex subscription or local CLI session.
-const DEFAULT_MODEL = "gpt-5.4-mini";
+export const DEFAULT_MODEL = "gpt-5.4-mini";
 
 export async function nameProject(input, { model, timeoutMs }) {
   const key = resolveApiKey("OPENAI_API_KEY");

@@ -14,7 +14,7 @@ import {
 } from "./shared.mjs";
 
 // DeepSeek's fast model keeps generation practical inside post-commit hooks.
-const DEFAULT_MODEL = "deepseek-v4-flash";
+export const DEFAULT_MODEL = "deepseek-v4-flash";
 
 export async function nameProject(input, { model, timeoutMs }) {
   const key = resolveApiKey("DEEPSEEK_API_KEY");

@@ -24,14 +24,35 @@ export interface ViewerUsage {
   total?: number;
 }
 
+export type ViewerSummaryStatus =
+  "missing" | "pending" | "generating" | "ready" | "failed";
+
+export interface ViewerCommitStats {
+  additions?: number;
+  deletions?: number;
+  filesChanged?: number;
+  linesChanged?: number;
+}
+
+export interface ViewerGeneration {
+  agent?: string;
+  model?: string | null;
+  estimatedInputTokens?: number | null;
+  maxOutputTokens?: number | null;
+}
+
 export interface ViewerGroup {
   kind?: string;
+  sha?: string;
   ref?: string;
   author?: string;
   date?: string;
+  status?: ViewerSummaryStatus;
   projects?: string[];
   link?: string | null;
   usage?: ViewerUsage;
+  stats?: ViewerCommitStats;
+  generation?: ViewerGeneration;
   entries?: ViewerEntry[];
 }
 

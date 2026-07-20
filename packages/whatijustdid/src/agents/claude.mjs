@@ -14,7 +14,7 @@ import {
 } from "./shared.mjs";
 
 // Raw HTTP keeps the package dependency-free inside latency-sensitive hooks.
-const DEFAULT_MODEL = "claude-sonnet-5";
+export const DEFAULT_MODEL = "claude-sonnet-5";
 
 export async function nameProject(input, { model, timeoutMs }) {
   const key = resolveApiKey("ANTHROPIC_API_KEY");
