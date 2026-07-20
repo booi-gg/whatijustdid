@@ -1,6 +1,6 @@
 // @ts-check
 
-/** @typedef {import("../src/viewer").ViewerGroup} ViewerGroup */
+/** @typedef {import("../src/viewer/model").ViewerGroup} ViewerGroup */
 
 const viewerWindow =
   /**

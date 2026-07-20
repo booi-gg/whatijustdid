@@ -1,8 +1,8 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { App } from "./App";
 import "./index.css";
-import { readViewerModel } from "./viewer";
+import { readViewerModel } from "./viewer/readViewerModel";
+import { ViewerApp } from "./viewer/ViewerApp";
 
 const root = document.querySelector("#root");
 
@@ -13,6 +13,6 @@ document.title = `${model.projectName} · whatijustdid`;
 
 createRoot(root).render(
   <StrictMode>
-    <App model={model} />
+    <ViewerApp model={model} />
   </StrictMode>,
 );
