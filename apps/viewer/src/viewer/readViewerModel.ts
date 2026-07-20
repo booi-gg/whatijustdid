@@ -2,6 +2,8 @@ import type { ViewerGroup, ViewerModel } from "./model";
 
 interface ViewerMetadata {
   databaseSizeBytes?: number;
+  generationLimit?: number;
+  viewerLimit?: number;
 }
 
 declare global {
@@ -50,10 +52,24 @@ export function readViewerModel(): ViewerModel {
       databaseSizeBytes >= 0
         ? databaseSizeBytes
         : null,
+    generationLimit: positiveInteger(
+      window.__WHATIJUSTDID_META__?.generationLimit,
+      50,
+    ),
+    viewerLimit: positiveInteger(
+      window.__WHATIJUSTDID_META__?.viewerLimit,
+      200,
+    ),
     projectNames: [
       "All",
       ...projects,
       ...(hasRepositoryChanges ? ["Repo"] : []),
     ],
   };
+}
+
+function positiveInteger(value: unknown, fallback: number) {
+  return Number.isSafeInteger(value) && Number(value) > 0
+    ? Number(value)
+    : fallback;
 }

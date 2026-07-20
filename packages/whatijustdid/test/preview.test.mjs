@@ -17,6 +17,8 @@ test("serves the bundled viewer with live reload", async () => {
 
   let clearCalls = 0;
   let generatedSha = null;
+  let backfillLimit = null;
+  let backfillCalls = 0;
   const preview = await startPreview(
     { root, dir: "whatijustdid", dataFile, viewerLimit: 200 },
     { open: false, port: 0 },
@@ -24,6 +26,19 @@ test("serves the bundled viewer with live reload", async () => {
       clearHistory: () => {
         clearCalls++;
         return { cleared: 2, viewerEntries: 0 };
+      },
+      planGeneration: (_config, options) => {
+        backfillLimit = options.limit;
+        return {
+          selectedCommits: options.limit,
+          candidateShas: [COMMIT_SHA],
+        };
+      },
+      generate: async (_config, options) => {
+        backfillCalls++;
+        assert.equal(options.plan.candidateShas[0], COMMIT_SHA);
+        assert.equal(options.continueOnError, true);
+        return { generated: 1, skipped: 0, failures: [] };
       },
       build: () => 1,
       commitShas: () => [COMMIT_SHA],
@@ -78,6 +93,63 @@ test("serves the bundled viewer with live reload", async () => {
     assert.equal(cleared.status, 200);
     assert.deepEqual(await cleared.json(), { cleared: 2, viewerEntries: 0 });
     assert.equal(clearCalls, 1);
+
+    const unauthorizedBackfill = await fetch(
+      `${preview.url}/api/actions/backfill`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Whatijustdid-Confirm": "backfill",
+        },
+        body: JSON.stringify({ limit: 12 }),
+      },
+    );
+    assert.equal(unauthorizedBackfill.status, 403);
+
+    const unconfirmedBackfill = await fetch(
+      `${preview.url}/api/actions/backfill`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Whatijustdid-Action-Token": token,
+        },
+        body: JSON.stringify({ limit: 12 }),
+      },
+    );
+    assert.equal(unconfirmedBackfill.status, 400);
+
+    const invalidBackfill = await fetch(`${preview.url}/api/actions/backfill`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Whatijustdid-Action-Token": token,
+        "X-Whatijustdid-Confirm": "backfill",
+      },
+      body: JSON.stringify({ limit: 201 }),
+    });
+    assert.equal(invalidBackfill.status, 400);
+
+    const backfilled = await fetch(`${preview.url}/api/actions/backfill`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Whatijustdid-Action-Token": token,
+        "X-Whatijustdid-Confirm": "backfill",
+      },
+      body: JSON.stringify({ limit: 12 }),
+    });
+    assert.equal(backfilled.status, 200);
+    assert.deepEqual(await backfilled.json(), {
+      selectedCommits: 12,
+      generated: 1,
+      skipped: 0,
+      failed: 0,
+      viewerEntries: 1,
+    });
+    assert.equal(backfillLimit, 12);
+    assert.equal(backfillCalls, 1);
 
     const unauthorizedGeneration = await fetch(
       `${preview.url}/api/actions/generate-summary/${COMMIT_SHA}`,
@@ -146,7 +218,8 @@ test("falls back to a free port when the default port is busy", async () => {
   const blocker = createServer(() => {});
   await new Promise((resolve, reject) => {
     blocker.once("error", (error) =>
-      error.code === "EADDRINUSE" ? resolve() : reject(error));
+      error.code === "EADDRINUSE" ? resolve() : reject(error),
+    );
     blocker.once("listening", resolve);
     blocker.listen(9453, "127.0.0.1");
   });

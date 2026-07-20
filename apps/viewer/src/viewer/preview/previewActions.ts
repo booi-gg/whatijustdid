@@ -45,6 +45,25 @@ export async function clearLocalHistory() {
   }
 }
 
+export async function backfillSummaries(limit: number) {
+  if (!actionToken) throw new Error("Unable to backfill summaries");
+
+  const response = await fetch("/api/actions/backfill", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Whatijustdid-Action-Token": actionToken,
+      "X-Whatijustdid-Confirm": "backfill",
+    },
+    body: JSON.stringify({ limit }),
+  });
+  if (!response.ok) {
+    throw new Error(
+      await actionError(response, "Unable to backfill summaries"),
+    );
+  }
+}
+
 async function actionError(response: Response, fallback: string) {
   try {
     const body: unknown = await response.json();
