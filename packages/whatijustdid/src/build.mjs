@@ -151,7 +151,22 @@ export function build(config, options = {}) {
   writeFileSync(
     config.dataFile,
     `${banner}window.__WHATIJUSTDID_PROJECT_NAME__ = ${JSON.stringify(config.projectName)};\n` +
-      `window.__WHATIJUSTDID_META__ = ${JSON.stringify({ databaseSizeBytes }, null, 2)};\n` +
+      `window.__WHATIJUSTDID_META__ = ${JSON.stringify(
+        {
+          databaseSizeBytes,
+          generationLimit:
+            Number.isSafeInteger(config.generationLimit) &&
+            config.generationLimit > 0
+              ? config.generationLimit
+              : 50,
+          viewerLimit:
+            Number.isSafeInteger(config.viewerLimit) && config.viewerLimit > 0
+              ? config.viewerLimit
+              : 200,
+        },
+        null,
+        2,
+      )};\n` +
       `window.__WHATIJUSTDID_PROJECTS__ = ${JSON.stringify(projects, null, 2)};\n` +
       `window.__WHATIJUSTDID__ = ${JSON.stringify(groups, null, 2)};\n`,
   );

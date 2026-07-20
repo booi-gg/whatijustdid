@@ -418,7 +418,7 @@ test("build displays ready, pending, and missing summaries without commit-messag
     assert.match(
       output,
       new RegExp(
-        `window\\.__WHATIJUSTDID_META__ = \\{\\s+"databaseSizeBytes": ${store.sizeBytes()}\\s+\\}`,
+        `window\\.__WHATIJUSTDID_META__ = \\{\\s+"databaseSizeBytes": ${store.sizeBytes()},\\s+"generationLimit": 50,\\s+"viewerLimit": 200\\s+\\}`,
       ),
     );
   } finally {

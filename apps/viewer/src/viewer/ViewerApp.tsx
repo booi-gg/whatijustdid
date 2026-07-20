@@ -1,11 +1,17 @@
 import { useMemo, useState } from "react";
 import type { ViewerModel } from "./model";
+import { Pagination } from "./Pagination";
 import { ProjectFilters } from "./ProjectFilters";
 import { useGeneratedCommitSession } from "./preview/useGeneratedCommitSession";
 import { selectViewerPage } from "./selectViewerPage";
 import { CommitTimeline } from "./timeline/CommitTimeline";
 import { ViewerFooter } from "./ViewerFooter";
 import { ViewerHeader } from "./ViewerHeader";
+import { ViewerSettings } from "./ViewerSettings";
+import {
+  readViewerPreferences,
+  saveViewerPreferences,
+} from "./viewerPreferences";
 
 interface ViewerAppProps {
   model: ViewerModel;
@@ -13,12 +19,27 @@ interface ViewerAppProps {
 
 export function ViewerApp({ model }: ViewerAppProps) {
   const [activeProject, setActiveProject] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [commitsPerPage, setCommitsPerPage] = useState(
+    () => readViewerPreferences(model.viewerLimit).commitsPerPage,
+  );
   const page = useMemo(
-    () => selectViewerPage(model, activeProject),
-    [activeProject, model],
+    () => selectViewerPage(model, activeProject, currentPage, commitsPerPage),
+    [activeProject, commitsPerPage, currentPage, model],
   );
   const { dismissHighlight, generatedHighlights, scrollTargetSha } =
     useGeneratedCommitSession(model.groups);
+
+  function handleProjectSelect(project: string) {
+    setActiveProject(project);
+    setCurrentPage(1);
+  }
+
+  function handleCommitsPerPageSave(value: number) {
+    saveViewerPreferences({ commitsPerPage: value });
+    setCommitsPerPage(value);
+    setCurrentPage(1);
+  }
 
   return (
     <div className="mx-auto w-[min(900px,calc(100%-40px))] pt-[68px] pb-[92px] max-[700px]:w-[min(900px,calc(100%-28px))] max-[700px]:pt-[42px]">
@@ -26,13 +47,21 @@ export function ViewerApp({ model }: ViewerAppProps) {
         databaseSize={page.databaseSize}
         projectName={model.projectName}
         summary={page.summary}
-      />
+      >
+        <ViewerSettings
+          commitsPerPage={commitsPerPage}
+          databaseSize={page.databaseSize}
+          defaultBackfillLimit={model.generationLimit}
+          maxCommits={model.viewerLimit}
+          onCommitsPerPageSave={handleCommitsPerPageSave}
+        />
+      </ViewerHeader>
       <div className="sticky top-0 z-10 -mx-3.5 mb-[38px] border-b border-line-strong/65 bg-surface/92 px-3.5 py-[15px] backdrop-blur-[14px]">
         <ProjectFilters
           activeProject={activeProject}
           projectCounts={page.projectCounts}
           projectNames={model.projectNames}
-          onSelect={setActiveProject}
+          onSelect={handleProjectSelect}
         />
       </div>
       <main>
@@ -46,6 +75,11 @@ export function ViewerApp({ model }: ViewerAppProps) {
         ) : (
           <EmptyState activeProject={activeProject} />
         )}
+        <Pagination
+          currentPage={page.currentPage}
+          onPageChange={setCurrentPage}
+          pageCount={page.pageCount}
+        />
       </main>
       <ViewerFooter />
     </div>

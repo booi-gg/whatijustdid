@@ -61,4 +61,6 @@ export interface ViewerModel {
   projectName: string;
   projectNames: string[];
   databaseSizeBytes: number | null;
+  generationLimit: number;
+  viewerLimit: number;
 }

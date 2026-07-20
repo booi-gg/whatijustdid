@@ -7,10 +7,12 @@ import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_JS_FILENAME, VIE
 import { build } from "./build.mjs";
 import { clearHistory } from "./clear.mjs";
 import { commitShas } from "./git.mjs";
+import { generate, planGeneration } from "./generate.mjs";
 import { recordCommittedChange } from "./record.mjs";
 
 const DEFAULT_PORT = 9453;
 const ACTION_TOKEN_PLACEHOLDER = "__WHATIJUSTDID_ACTION_TOKEN__";
+const BACKFILL_PATH = "/api/actions/backfill";
 const CLEAR_HISTORY_PATH = "/api/actions/clear-history";
 const GENERATE_SUMMARY_PREFIX = "/api/actions/generate-summary/";
 const LIVE_RELOAD_CLIENT = `<script>
@@ -39,6 +41,8 @@ export async function startPreview(config, options = {}, dependencies = {}) {
   const clients = new Set();
   const actionToken = randomUUID();
   const runClearHistory = dependencies.clearHistory ?? clearHistory;
+  const runGenerate = dependencies.generate ?? generate;
+  const runPlanGeneration = dependencies.planGeneration ?? planGeneration;
   const runBuild = dependencies.build ?? build;
   const listCommitShas = dependencies.commitShas ?? commitShas;
   const runRecordCommittedChange =
@@ -54,6 +58,8 @@ export async function startPreview(config, options = {}, dependencies = {}) {
         actionToken,
         config,
         runClearHistory,
+        runGenerate,
+        runPlanGeneration,
         runBuild,
         listCommitShas,
         runRecordCommittedChange,
@@ -108,6 +114,10 @@ export async function startPreview(config, options = {}, dependencies = {}) {
 async function serveRequest(request, response, files, url) {
   const method = request.method ?? "GET";
   const pathname = new URL(request.url ?? "/", "http://localhost").pathname;
+  if (pathname === BACKFILL_PATH) {
+    await serveBackfill(request, response, files, method);
+    return;
+  }
   if (pathname === CLEAR_HISTORY_PATH) {
     serveClearHistory(request, response, files, method);
     return;
@@ -182,6 +192,79 @@ async function serveRequest(request, response, files, url) {
   }
 
   send(response, method, 404, "text/plain; charset=utf-8", "Not found\n");
+}
+
+async function serveBackfill(request, response, files, method) {
+  if (method !== "POST") {
+    response.writeHead(405, { Allow: "POST" });
+    response.end();
+    return;
+  }
+  if (request.headers["x-whatijustdid-action-token"] !== files.actionToken) {
+    sendJson(response, 403, {
+      error: "This action is not authorized by the active preview session",
+    });
+    return;
+  }
+  if (request.headers["x-whatijustdid-confirm"] !== "backfill") {
+    sendJson(response, 400, {
+      error: "Backfilling summaries requires explicit confirmation",
+    });
+    return;
+  }
+
+  let body;
+  try {
+    body = await readJsonBody(request);
+  } catch (error) {
+    sendJson(
+      response,
+      error?.code === "WHATIJUSTDID_BODY_TOO_LARGE" ? 413 : 400,
+      {
+        error: error?.message ?? "Backfill settings must be valid JSON",
+      },
+    );
+    return;
+  }
+
+  const limit = body?.limit;
+  const maximum =
+    Number.isSafeInteger(files.config.viewerLimit) &&
+    files.config.viewerLimit > 0
+      ? files.config.viewerLimit
+      : 200;
+  if (!Number.isSafeInteger(limit) || limit <= 0 || limit > maximum) {
+    sendJson(response, 400, {
+      error: `Choose a backfill limit from 1 to ${maximum}`,
+    });
+    return;
+  }
+
+  try {
+    const plan = files.runPlanGeneration(files.config, { limit });
+    const result = await files.runGenerate(files.config, {
+      limit,
+      plan,
+      continueOnError: true,
+    });
+    const viewerEntries = files.runBuild(files.config);
+    sendJson(response, 200, {
+      selectedCommits: plan.selectedCommits,
+      generated: result.generated,
+      skipped: result.skipped,
+      failed: result.failures.length,
+      viewerEntries,
+    });
+  } catch (error) {
+    try {
+      files.runBuild(files.config);
+    } catch {
+      // The backfill error is more useful than a secondary cache failure.
+    }
+    sendJson(response, 500, {
+      error: error?.message ?? "Unable to backfill summaries",
+    });
+  }
 }
 
 async function serveGenerateSummary(
@@ -294,6 +377,31 @@ function sendJson(response, status, body) {
     "Content-Type": "application/json; charset=utf-8",
   });
   response.end(`${JSON.stringify(body)}\n`);
+}
+
+async function readJsonBody(request) {
+  const maximumBytes = 4_096;
+  const contentLength = Number(request.headers["content-length"] ?? 0);
+  if (Number.isFinite(contentLength) && contentLength > maximumBytes) {
+    const error = new Error("Backfill settings are too large");
+    error.code = "WHATIJUSTDID_BODY_TOO_LARGE";
+    throw error;
+  }
+
+  let body = "";
+  for await (const chunk of request) {
+    body += chunk;
+    if (Buffer.byteLength(body) > maximumBytes) {
+      const error = new Error("Backfill settings are too large");
+      error.code = "WHATIJUSTDID_BODY_TOO_LARGE";
+      throw error;
+    }
+  }
+  try {
+    return JSON.parse(body);
+  } catch {
+    throw new Error("Backfill settings must be valid JSON");
+  }
 }
 
 function send(response, method, status, contentType, body) {

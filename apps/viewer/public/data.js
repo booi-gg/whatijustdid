@@ -6,14 +6,22 @@ const viewerWindow =
   /**
    * @type {Window & {
    *   __WHATIJUSTDID_PROJECT_NAME__: string;
-   *   __WHATIJUSTDID_META__: { databaseSizeBytes: number };
+   *   __WHATIJUSTDID_META__: {
+   *     databaseSizeBytes: number;
+   *     generationLimit: number;
+   *     viewerLimit: number;
+   *   };
    *   __WHATIJUSTDID_PROJECTS__: string[];
    *   __WHATIJUSTDID__: ViewerGroup[];
    * }}
    */ (/** @type {unknown} */ (window));
 
 viewerWindow.__WHATIJUSTDID_PROJECT_NAME__ = "Miso Katsu";
-viewerWindow.__WHATIJUSTDID_META__ = { databaseSizeBytes: 36_864 };
+viewerWindow.__WHATIJUSTDID_META__ = {
+  databaseSizeBytes: 36_864,
+  generationLimit: 50,
+  viewerLimit: 200,
+};
 viewerWindow.__WHATIJUSTDID_PROJECTS__ = ["viewer", "cli"];
 viewerWindow.__WHATIJUSTDID__ = [
   {

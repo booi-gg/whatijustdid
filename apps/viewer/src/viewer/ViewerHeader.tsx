@@ -1,18 +1,23 @@
+import type { ReactNode } from "react";
+
 interface ViewerHeaderProps {
   databaseSize: string | null;
   projectName: string;
   summary: string;
+  children: ReactNode;
 }
 
 export function ViewerHeader({
   databaseSize,
   projectName,
   summary,
+  children,
 }: ViewerHeaderProps) {
   return (
-    <header className="grid grid-cols-[minmax(0,1fr)_auto] items-end gap-7 border-b border-line-strong px-1 pb-[30px] max-[700px]:grid-cols-1 max-[700px]:gap-4">
+    <header className="relative grid grid-cols-[minmax(0,1fr)_auto] items-end gap-7 border-b border-line-strong px-1 pb-[30px] max-[700px]:grid-cols-1 max-[700px]:gap-4">
+      <div className="absolute top-0 right-1 z-30">{children}</div>
       <div>
-        <p className="mb-[18px] flex items-center gap-2.5 text-[10px]/[1.2] font-bold tracking-[0.09em] text-muted uppercase">
+        <p className="mb-[18px] flex items-center gap-2.5 pr-12 text-[10px]/[1.2] font-bold tracking-[0.09em] text-muted uppercase">
           <span className="inline-flex items-center gap-2 text-ink">
             <BrandMark />
             <span className="text-xs tracking-[-0.045em] lowercase">
