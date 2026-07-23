@@ -7,15 +7,19 @@ import {
   describe as describeWithOpenAI,
   nameProject as nameProjectWithOpenAI,
 } from "../src/agents/codex.mjs";
+import { describe as describeWithClaude } from "../src/agents/claude.mjs";
 import { describe as describeWithDeepSeek } from "../src/agents/deepseek.mjs";
+import { describe as describeWithLlama } from "../src/agents/llama.mjs";
 import { getAgent } from "../src/agents/index.mjs";
 import { WHATIJUSTDID_SCHEMA, parseAgentJson } from "../src/agents/shared.mjs";
 import { ENV_PREFIX } from "../src/brand.mjs";
 import { build } from "../src/build.mjs";
 import { describeChange } from "../src/describe.mjs";
+import { createDraftProjector, extractSummaryDrafts } from "../src/draft.mjs";
 import { applyEntryEdit, editEntry } from "../src/edit.mjs";
 import { generate, planGeneration } from "../src/generate.mjs";
 import { projectsForFiles } from "../src/projects.mjs";
+import { recordCommittedChange } from "../src/record.mjs";
 import { openSummaryStore } from "../src/store.mjs";
 
 const SHA_A = "a".repeat(40);
@@ -92,6 +96,31 @@ test("repairs truncated JSON from max_tokens cut-off in changes array", () => {
       { type: "fix", summary: "Fixed the spinner animation." },
     ],
   });
+});
+
+test("projects readable summaries from partial structured JSON", () => {
+  const drafts = [];
+  const project = createDraftProjector((changes) => drafts.push(changes));
+  project(
+    '{"type":"feat","changes":[{"type":"feat","summary":"Added a \\u2728',
+  );
+  project(
+    ' streaming view with \\"quotes\\".' +
+      '"},{"type":"fix","summary":"Fixed partial',
+  );
+  project(' chunks."}]}');
+
+  assert.deepEqual(drafts, [
+    ["Added a ✨"],
+    ['Added a ✨ streaming view with "quotes".', "Fixed partial"],
+    ['Added a ✨ streaming view with "quotes".', "Fixed partial chunks."],
+  ]);
+  assert.deepEqual(
+    extractSummaryDrafts(
+      '{"changes":[{"summary":"One"},{"summary":"Two\\nlines"}]}',
+    ),
+    ["One", "Two\nlines"],
+  );
 });
 
 test("agent failure never falls back to commit-message text", async () => {
@@ -286,6 +315,201 @@ test("DeepSeek reports its missing credential clearly", async () => {
   }
 });
 
+test("OpenAI streams structured output text and usage", async () => {
+  const previousKey = process.env.OPENAI_API_KEY;
+  const previousFetch = globalThis.fetch;
+  const deltas = [];
+  let request;
+  process.env.OPENAI_API_KEY = "test-key";
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return streamResponse([
+      {
+        type: "response.output_text.delta",
+        delta: '{"type":"feat","changes":[{"type":"feat","summary":"Added ',
+      },
+      {
+        type: "response.output_text.delta",
+        delta: 'OpenAI streaming."}]}',
+      },
+      {
+        type: "response.completed",
+        response: {
+          usage: { input_tokens: 12, output_tokens: 7, total_tokens: 19 },
+        },
+      },
+    ]);
+  };
+
+  try {
+    const result = await describeWithOpenAI(
+      { files: ["feature.js"], diff: "+export const stream = true;" },
+      {
+        model: null,
+        timeoutMs: 1000,
+        onOutputTextDelta: (delta) => deltas.push(delta),
+      },
+    );
+    assert.equal(request.stream, true);
+    assert.equal(
+      deltas.join(""),
+      JSON.stringify({
+        type: "feat",
+        changes: [{ type: "feat", summary: "Added OpenAI streaming." }],
+      }),
+    );
+    assert.deepEqual(result.usage, { input: 12, output: 7, total: 19 });
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.OPENAI_API_KEY;
+    else process.env.OPENAI_API_KEY = previousKey;
+  }
+});
+
+test("Claude streams structured output text and usage", async () => {
+  const previousKey = process.env.ANTHROPIC_API_KEY;
+  const previousFetch = globalThis.fetch;
+  const deltas = [];
+  let request;
+  process.env.ANTHROPIC_API_KEY = "test-key";
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return streamResponse([
+      {
+        type: "message_start",
+        message: { usage: { input_tokens: 15, output_tokens: 0 } },
+      },
+      {
+        type: "content_block_delta",
+        delta: {
+          type: "text_delta",
+          text: '{"type":"fix","changes":[{"type":"fix","summary":"Fixed ',
+        },
+      },
+      {
+        type: "content_block_delta",
+        delta: { type: "text_delta", text: 'Claude streaming."}]}' },
+      },
+      { type: "message_delta", usage: { output_tokens: 8 } },
+      { type: "message_stop" },
+    ]);
+  };
+
+  try {
+    const result = await describeWithClaude(
+      { files: ["fix.js"], diff: "+export const fixed = true;" },
+      {
+        model: null,
+        timeoutMs: 1000,
+        onOutputTextDelta: (delta) => deltas.push(delta),
+      },
+    );
+    assert.equal(request.stream, true);
+    assert.match(deltas.join(""), /Claude streaming/);
+    assert.deepEqual(result.usage, { input: 15, output: 8, total: 23 });
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.ANTHROPIC_API_KEY;
+    else process.env.ANTHROPIC_API_KEY = previousKey;
+  }
+});
+
+test("DeepSeek streams structured output text and usage", async () => {
+  const previousKey = process.env.DEEPSEEK_API_KEY;
+  const previousFetch = globalThis.fetch;
+  const deltas = [];
+  let request;
+  process.env.DEEPSEEK_API_KEY = "test-key";
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return streamResponse([
+      {
+        choices: [
+          {
+            delta: {
+              content:
+                '{"type":"feat","changes":[{"type":"feat","summary":"Added ',
+            },
+          },
+        ],
+        usage: null,
+      },
+      {
+        choices: [{ delta: { content: 'DeepSeek streaming."}]}' } }],
+        usage: null,
+      },
+      {
+        choices: [],
+        usage: { prompt_tokens: 20, completion_tokens: 9, total_tokens: 29 },
+      },
+    ]);
+  };
+
+  try {
+    const result = await describeWithDeepSeek(
+      { files: ["feature.js"], diff: "+export const stream = true;" },
+      {
+        model: null,
+        timeoutMs: 1000,
+        onOutputTextDelta: (delta) => deltas.push(delta),
+      },
+    );
+    assert.equal(request.stream, true);
+    assert.deepEqual(request.stream_options, { include_usage: true });
+    assert.match(deltas.join(""), /DeepSeek streaming/);
+    assert.deepEqual(result.usage, { input: 20, output: 9, total: 29 });
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousKey === undefined) delete process.env.DEEPSEEK_API_KEY;
+    else process.env.DEEPSEEK_API_KEY = previousKey;
+  }
+});
+
+test("Ollama streams structured output text and usage", async () => {
+  const previousFetch = globalThis.fetch;
+  const deltas = [];
+  let request;
+  globalThis.fetch = async (_url, options) => {
+    request = JSON.parse(options.body);
+    return new Response(
+      [
+        {
+          message: {
+            content:
+              '{"type":"docs","changes":[{"type":"docs","summary":"Documented ',
+          },
+          done: false,
+        },
+        {
+          message: { content: 'Ollama streaming."}]}' },
+          done: true,
+          prompt_eval_count: 10,
+          eval_count: 6,
+        },
+      ]
+        .map((event) => JSON.stringify(event))
+        .join("\n"),
+      { status: 200 },
+    );
+  };
+
+  try {
+    const result = await describeWithLlama(
+      { files: ["README.md"], diff: "+Streaming docs" },
+      {
+        model: null,
+        timeoutMs: 1000,
+        onOutputTextDelta: (delta) => deltas.push(delta),
+      },
+    );
+    assert.equal(request.stream, true);
+    assert.match(deltas.join(""), /Ollama streaming/);
+    assert.deepEqual(result.usage, { input: 10, output: 6, total: 16 });
+  } finally {
+    globalThis.fetch = previousFetch;
+  }
+});
+
 test("uses a strict-agent-compatible structured output schema", () => {
   const changes = WHATIJUSTDID_SCHEMA.properties.changes;
   const summary = changes.items.properties.summary;
@@ -342,6 +566,43 @@ test("history generation requires an explicit scope and resumes ready commits", 
       () => generate(config, { all: true }, dependencies),
       /requires explicit confirmation/,
     );
+  } finally {
+    store.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("committed-change recording forwards provider output deltas", async () => {
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-stream-record-"));
+  const config = testConfig(root);
+  const store = openSummaryStore(config);
+  const deltas = [];
+  try {
+    const result = await recordCommittedChange(
+      config,
+      {
+        store,
+        commitFiles: () => ["apps/web/stream.js"],
+        commitDiff: () => "+export const streamed = true;",
+        describeChange: async (_input, _config, options) => {
+          options.onOutputTextDelta("first");
+          options.onOutputTextDelta(" second");
+          return {
+            type: "feat",
+            changes: [{ type: "feat", summary: "Added streaming." }],
+            agent: "codex",
+            model: "gpt-test",
+          };
+        },
+      },
+      {
+        sha: SHA_A,
+        onOutputTextDelta: (delta) => deltas.push(delta),
+      },
+    );
+    assert.equal(result.created, true);
+    assert.deepEqual(deltas, ["first", " second"]);
+    assert.equal(store.getBySha(SHA_A).status, "ready");
   } finally {
     store.close();
     rmSync(root, { recursive: true, force: true });
@@ -485,4 +746,16 @@ function testConfig(root) {
     model: null,
     timeoutMs: 100,
   };
+}
+
+function streamResponse(events) {
+  return new Response(
+    events
+      .map(
+        (event) =>
+          `event: ${event.type ?? "message"}\ndata: ${JSON.stringify(event)}\n\n`,
+      )
+      .join(""),
+    { status: 200, headers: { "Content-Type": "text/event-stream" } },
+  );
 }

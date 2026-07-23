@@ -3,6 +3,7 @@ import {
   backfillSummaries,
   canRunPreviewActions,
   clearLocalHistory,
+  requestViewerRefresh,
 } from "./preview/previewActions";
 
 interface ViewerSettingsProps {
@@ -93,7 +94,7 @@ export function ViewerSettings({
     startBackfillTransition(async () => {
       try {
         await backfillSummaries(limit);
-        window.location.reload();
+        requestViewerRefresh();
       } catch (requestError) {
         setActionError(
           actionErrorMessage(requestError, "Unable to backfill summaries"),
@@ -112,7 +113,7 @@ export function ViewerSettings({
     startClearTransition(async () => {
       try {
         await clearLocalHistory();
-        window.location.reload();
+        requestViewerRefresh();
       } catch (requestError) {
         setActionError(
           actionErrorMessage(requestError, "Unable to clear the database"),

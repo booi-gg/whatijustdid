@@ -7,8 +7,28 @@ import test from "node:test";
 import { startPreview } from "../src/preview.mjs";
 
 const COMMIT_SHA = "a".repeat(40);
+const READY_GROUP = {
+  kind: "commit",
+  sha: COMMIT_SHA,
+  ref: "aaaaaaa",
+  author: "Ada",
+  date: "2026-07-20T10:00:00.000Z",
+  status: "ready",
+  projects: [],
+  entries: [
+    { letter: "", tags: ["feat"], description: "Added streaming summaries." },
+  ],
+};
+const VIEWER_SNAPSHOT = {
+  databaseSizeBytes: 4096,
+  generationLimit: 50,
+  groups: [READY_GROUP],
+  projectName: "Miso Katsu",
+  projectNames: ["All", "Repo"],
+  viewerLimit: 200,
+};
 
-test("serves the bundled viewer with live reload", async () => {
+test("serves the bundled viewer with live data updates", async () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-preview-"));
   const directory = join(root, "whatijustdid");
   const dataFile = join(directory, "data.js");
@@ -42,8 +62,13 @@ test("serves the bundled viewer with live reload", async () => {
       },
       build: () => 1,
       commitShas: () => [COMMIT_SHA],
+      readViewerSnapshot: () => VIEWER_SNAPSHOT,
       recordCommittedChange: async (_config, _dependencies, options) => {
         generatedSha = options.sha;
+        options.onOutputTextDelta(
+          '{"type":"feat","changes":[{"type":"feat","summary":"Added ',
+        );
+        options.onOutputTextDelta('streaming summaries."}]}');
         return { created: true, reason: "generated" };
       },
     },
@@ -174,12 +199,28 @@ test("serves the bundled viewer with live reload", async () => {
       },
     );
     assert.equal(generated.status, 200);
-    assert.deepEqual(await generated.json(), {
-      created: true,
-      reason: "generated",
-      viewerEntries: 1,
-    });
+    assert.match(
+      generated.headers.get("content-type"),
+      /^application\/x-ndjson/,
+    );
+    const generationEvents = (await generated.text())
+      .trim()
+      .split("\n")
+      .map((line) => JSON.parse(line));
+    assert.deepEqual(
+      generationEvents.map((event) => event.type),
+      ["started", "draft", "draft", "complete"],
+    );
+    assert.deepEqual(generationEvents[2].changes, [
+      "Added streaming summaries.",
+    ]);
+    assert.deepEqual(generationEvents[3].group, READY_GROUP);
+    assert.equal(generationEvents[3].viewerEntries, 1);
     assert.equal(generatedSha, COMMIT_SHA);
+
+    const viewerModel = await fetch(`${preview.url}/api/viewer-model`);
+    assert.equal(viewerModel.status, 200);
+    assert.deepEqual(await viewerModel.json(), VIEWER_SNAPSHOT);
 
     const script = await fetch(`${preview.url}/whatijustdid.js`);
     assert.equal(script.status, 200);
@@ -197,10 +238,66 @@ test("serves the bundled viewer with live reload", async () => {
     const reader = stream.body.getReader();
     await reader.read();
     writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [1];\n");
-    const message = await readUntil(reader, /event: reload/, 5_000);
-    assert.match(message, /event: reload/);
+    const message = await readUntil(reader, /event: data/, 5_000);
+    assert.match(message, /event: data/);
     events.abort();
   } finally {
+    await preview.close();
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("streams a readable draft before generation completes", async () => {
+  const root = mkdtempSync(join(tmpdir(), "whatijustdid-preview-stream-"));
+  const directory = join(root, "whatijustdid");
+  const dataFile = join(directory, "data.js");
+  mkdirSync(directory);
+  writeFileSync(dataFile, "window.__WHATIJUSTDID__ = [];\n");
+
+  let finishGeneration;
+  const generationGate = new Promise((resolve) => {
+    finishGeneration = resolve;
+  });
+  const preview = await startPreview(
+    { root, dir: "whatijustdid", dataFile, viewerLimit: 200 },
+    { open: false, port: 0 },
+    {
+      build: () => 1,
+      commitShas: () => [COMMIT_SHA],
+      readViewerSnapshot: () => VIEWER_SNAPSHOT,
+      recordCommittedChange: async (_config, _dependencies, options) => {
+        options.onOutputTextDelta(
+          '{"type":"feat","changes":[{"type":"feat","summary":"Visible now',
+        );
+        await generationGate;
+        options.onOutputTextDelta('."}]}');
+        return { created: true, reason: "generated" };
+      },
+    },
+  );
+
+  try {
+    const html = await fetch(`${preview.url}/whatijustdid.html`);
+    const token = (await html.text()).match(
+      /name="whatijustdid-action-token"\s+content="([^"]+)"/,
+    )?.[1];
+    const generated = await fetch(
+      `${preview.url}/api/actions/generate-summary/${COMMIT_SHA}`,
+      {
+        method: "POST",
+        headers: { "X-Whatijustdid-Action-Token": token },
+      },
+    );
+    const reader = generated.body.getReader();
+    const draft = await readUntil(reader, /"type":"draft"/, 5_000);
+    assert.match(draft, /"changes":\["Visible now"\]/);
+    assert.doesNotMatch(draft, /"type":"complete"/);
+
+    finishGeneration();
+    const complete = await readUntil(reader, /"type":"complete"/, 5_000);
+    assert.match(complete, /"type":"complete"/);
+  } finally {
+    finishGeneration();
     await preview.close();
     rmSync(root, { recursive: true, force: true });
   }
