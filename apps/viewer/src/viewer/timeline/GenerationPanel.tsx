@@ -7,10 +7,6 @@ import {
   validCount,
 } from "../presentation";
 import {
-  beginGeneratedCommit,
-  failGeneratedCommit,
-} from "../preview/generatedCommitSession";
-import {
   canGenerateSummary,
   canRunPreviewActions,
   generateSummary,
@@ -18,11 +14,23 @@ import {
 
 interface GenerationPanelProps {
   group: ViewerGroup;
+  onGenerationFailed: (sha: string) => void;
+  onGenerationStarted: (sha: string) => void;
+  onGroupGenerated: (group: ViewerGroup) => void;
+  onGroupUpdated: (group: ViewerGroup) => void;
   status: ViewerSummaryStatus;
 }
 
-export function GenerationPanel({ group, status }: GenerationPanelProps) {
+export function GenerationPanel({
+  group,
+  onGenerationFailed,
+  onGenerationStarted,
+  onGroupGenerated,
+  onGroupUpdated,
+  status,
+}: GenerationPanelProps) {
   const [error, setError] = useState<string | null>(null);
+  const [draftChanges, setDraftChanges] = useState<string[]>([]);
   const [isPending, startTransition] = useTransition();
   const isGenerating = status === "generating" || isPending;
   const sha = typeof group.sha === "string" ? group.sha : "";
@@ -38,14 +46,19 @@ export function GenerationPanel({ group, status }: GenerationPanelProps) {
   function handleGenerate() {
     if (!canGenerate) return;
     setError(null);
-    // The data-file watcher may reload the page before the response resolves.
-    beginGeneratedCommit(sha);
+    setDraftChanges([]);
+    onGenerationStarted(sha);
     startTransition(async () => {
       try {
-        await generateSummary(sha);
-        window.location.reload();
+        const generatedGroup = await generateSummary(sha, (event) => {
+          if (event.type === "draft") setDraftChanges(event.changes);
+          if (event.type === "failed" && event.group) {
+            onGroupUpdated(event.group);
+          }
+        });
+        onGroupGenerated(generatedGroup);
       } catch (requestError) {
-        failGeneratedCommit(sha);
+        onGenerationFailed(sha);
         setError(
           requestError instanceof Error
             ? requestError.message
@@ -66,7 +79,7 @@ export function GenerationPanel({ group, status }: GenerationPanelProps) {
       aria-live="polite"
     >
       {isGenerating ? (
-        <GeneratingContent group={group} />
+        <GeneratingContent draftChanges={draftChanges} group={group} />
       ) : (
         <div className="relative z-[1] grid grid-cols-[minmax(0,1fr)_auto] items-center gap-6 max-[700px]:grid-cols-1 max-[700px]:gap-4">
           <div className="min-w-0">
@@ -126,7 +139,13 @@ export function GenerationPanel({ group, status }: GenerationPanelProps) {
   );
 }
 
-function GeneratingContent({ group }: { group: ViewerGroup }) {
+function GeneratingContent({
+  draftChanges,
+  group,
+}: {
+  draftChanges: string[];
+  group: ViewerGroup;
+}) {
   return (
     <div className="relative z-[1]">
       <p className="mb-3 flex items-center gap-2 text-[10px]/[1.2] font-bold tracking-[0.1em] text-accent uppercase">
@@ -137,12 +156,36 @@ function GeneratingContent({ group }: { group: ViewerGroup }) {
         Generating
       </p>
       <strong className="block text-[15px]/[1.35] font-[750] text-ink">
-        Generating <span className="italic">changlogs...</span>…
+        Generating <span className="italic">changelog</span>…
       </strong>
-      <p className="mt-1.5 max-w-[620px] text-xs/[1.55] text-muted">
-        Reading this commit’s diff and writing its local summary. This page
-        refreshes when it is ready.
-      </p>
+      {draftChanges.length > 0 ? (
+        <ol
+          className="mt-3 grid list-none gap-2.5"
+          aria-label="Changelog draft"
+        >
+          {draftChanges.map((summary, index) => (
+            <li
+              className="grid grid-cols-[34px_minmax(0,1fr)] items-start gap-2.5"
+              key={index}
+            >
+              <span className="min-w-8 rounded-sm bg-accent-soft px-1.5 py-0.5 text-center text-[11px]/[1.35] font-[750] text-accent">
+                ({String.fromCharCode(97 + Math.min(index, 25))})
+              </span>
+              <p className="m-0 overflow-wrap-anywhere text-[13.5px]/[1.55] text-[oklch(0.76_0.02_70)]">
+                {summary}
+                <span className="ml-0.5 text-accent" aria-hidden="true">
+                  ▍
+                </span>
+              </p>
+            </li>
+          ))}
+        </ol>
+      ) : (
+        <p className="mt-1.5 max-w-[620px] text-xs/[1.55] text-muted">
+          Reading this commit’s diff. Its changelog will appear here as the
+          configured agent writes it.
+        </p>
+      )}
       <GenerationDetails group={group} />
     </div>
   );

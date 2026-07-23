@@ -196,7 +196,7 @@ npx whatijustdid edit <commit-sha-or-prefix>
 npx whatijustdid clear --yes
 ```
 
-`preview` serves the bundled viewer with live reload and enables its local actions, including per-commit generation. `edit` changes a private SQLite summary. `clear --yes` permanently removes every local summary and rebuilds the viewer; it does not change Git history or the shared configuration.
+`preview` serves the bundled viewer with live data updates and enables its local actions, including streamed per-commit generation without a page reload. `edit` changes a private SQLite summary. `clear --yes` permanently removes every local summary and rebuilds the viewer; it does not change Git history or the shared configuration.
 
 ## Configuration
 

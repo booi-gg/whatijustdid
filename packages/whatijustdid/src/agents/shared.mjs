@@ -275,6 +275,115 @@ export async function postJson(url, { headers, body, label, timeoutMs }) {
   return response.json();
 }
 
+/** POST JSON and decode a provider's server-sent JSON events. */
+export async function* postSseJson(url, { headers, body, label, timeoutMs }) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      accept: "text/event-stream",
+      "content-type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+
+  await assertSuccessfulResponse(response, label);
+  if (!response.body) throw new Error(`${label}: streaming body was empty`);
+
+  let dataLines = [];
+  for await (const line of responseLines(response.body)) {
+    if (line === "") {
+      const event = parseStreamJson(dataLines.join("\n"), label);
+      dataLines = [];
+      if (event === STREAM_DONE) return;
+      if (event !== null) yield event;
+      continue;
+    }
+    if (line.startsWith(":")) continue;
+    const separator = line.indexOf(":");
+    const field = separator < 0 ? line : line.slice(0, separator);
+    if (field !== "data") continue;
+    let value = separator < 0 ? "" : line.slice(separator + 1);
+    if (value.startsWith(" ")) value = value.slice(1);
+    dataLines.push(value);
+  }
+
+  const event = parseStreamJson(dataLines.join("\n"), label);
+  if (event !== null && event !== STREAM_DONE) yield event;
+}
+
+/** POST JSON and decode a provider's newline-delimited JSON response. */
+export async function* postNdjson(url, { headers, body, label, timeoutMs }) {
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      accept: "application/x-ndjson",
+      "content-type": "application/json",
+      ...headers,
+    },
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(timeoutMs),
+  });
+
+  await assertSuccessfulResponse(response, label);
+  if (!response.body) throw new Error(`${label}: streaming body was empty`);
+
+  for await (const line of responseLines(response.body)) {
+    if (!line.trim()) continue;
+    const event = parseStreamJson(line, label);
+    if (event !== null && event !== STREAM_DONE) yield event;
+  }
+}
+
+const STREAM_DONE = Symbol("stream-done");
+
+async function assertSuccessfulResponse(response, label) {
+  if (response.ok) return;
+  const detail = (await response.text()).replace(/\s+/g, " ").slice(0, 400);
+  throw new Error(
+    `${label}: HTTP ${response.status}${detail ? ` — ${detail}` : ""}`,
+  );
+}
+
+function parseStreamJson(data, label) {
+  if (!data) return null;
+  if (data === "[DONE]") return STREAM_DONE;
+  try {
+    return JSON.parse(data);
+  } catch (error) {
+    throw new Error(`${label}: invalid streaming JSON: ${error.message}`, {
+      cause: error,
+    });
+  }
+}
+
+async function* responseLines(body) {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffered = "";
+  try {
+    while (true) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffered += decoder.decode(chunk.value, { stream: true });
+      let newline;
+      while ((newline = buffered.indexOf("\n")) >= 0) {
+        let line = buffered.slice(0, newline);
+        buffered = buffered.slice(newline + 1);
+        if (line.endsWith("\r")) line = line.slice(0, -1);
+        yield line;
+      }
+    }
+    buffered += decoder.decode();
+    if (buffered) {
+      yield buffered.endsWith("\r") ? buffered.slice(0, -1) : buffered;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+}
+
 /**
  * A single `${ENV_PREFIX}_AGENT_API_KEY` can hold the key for whichever agent
  * is currently configured, so switching agents doesn't require juggling
