@@ -47,6 +47,7 @@ export interface ViewerGroup {
   ref?: string;
   author?: string;
   date?: string;
+  message?: string;
   status?: ViewerSummaryStatus;
   projects?: string[];
   link?: string | null;

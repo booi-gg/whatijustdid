@@ -164,7 +164,14 @@ test("packed package keeps AI summaries private and persistent", { timeout: 120_
       const data = readFileSync(viewerDataFile, "utf8");
       return /Initialized whatijustdid from the committed code/.test(data) ? data : null;
     });
-    assert.doesNotMatch(viewerData, /THIS MESSAGE MUST NOT BECOME THE SUMMARY/);
+    assert.match(
+      viewerData,
+      /"message": "THIS MESSAGE MUST NOT BECOME THE SUMMARY"/,
+    );
+    assert.doesNotMatch(
+      viewerData,
+      /"description": "THIS MESSAGE MUST NOT BECOME THE SUMMARY"/,
+    );
     assert.equal(existsSync(join(consumer, "whatijustdid")), false);
     assert.equal(run("git", ["status", "--short"], consumer).trim(), "");
 
@@ -192,7 +199,11 @@ test("packed package keeps AI summaries private and persistent", { timeout: 120_
       const data = readFileSync(viewerDataFile, "utf8");
       return /Summary failed:.*OPENAI_API_KEY not set/.test(data) ? data : null;
     });
-    assert.doesNotMatch(viewerData, /failure remains visible/);
+    assert.match(viewerData, /"message": "failure remains visible"/);
+    assert.doesNotMatch(
+      viewerData,
+      /"description": "failure remains visible"/,
+    );
 
     const unconfirmedClear = spawnSync(cli, ["clear"], {
       cwd: consumer,

@@ -35,6 +35,7 @@ export interface CommitPresentation {
   isPullRequest: boolean;
   isReady: boolean;
   linesChanged: number | null;
+  message: string | null;
   projects: string[];
   status: ViewerSummaryStatus;
   tokenTotal: number;
@@ -51,6 +52,10 @@ export function presentCommit(group: ViewerGroup): CommitPresentation {
     isPullRequest: group.kind === "pr",
     isReady: status === "ready",
     linesChanged: validCount(group.stats?.linesChanged),
+    message:
+      typeof group.message === "string" && group.message.trim()
+        ? group.message.trim()
+        : null,
     projects:
       Array.isArray(group.projects) && group.projects.length > 0
         ? group.projects

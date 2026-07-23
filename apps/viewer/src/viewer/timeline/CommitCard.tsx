@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef } from "react";
+import { memo, useEffect, useId, useRef } from "react";
 import { type ChangeType, type ViewerEntry, type ViewerGroup } from "../model";
 import {
   formatLineChanges,
@@ -50,6 +50,7 @@ export const CommitCard = memo(function CommitCard({
 }: CommitCardProps) {
   const dismissTimer = useRef<number | null>(null);
   const articleRef = useRef<HTMLElement | null>(null);
+  const messageTooltipId = useId();
   const commit = presentCommit(group);
 
   useEffect(
@@ -97,60 +98,84 @@ export const CommitCard = memo(function CommitCard({
       onMouseEnter={handleMouseEnter}
       ref={articleRef}
     >
-      <header className="mb-2.5 flex min-h-[18px] flex-wrap items-center gap-2 text-xs/[1.5] text-muted">
-        <span
-          className={`rounded-[3px] px-1.5 py-[3px] text-[10px]/[1.2] font-[750] tracking-[0.08em] uppercase ${
-            commit.isPullRequest
-              ? "bg-[oklch(0.22_0.04_300)] text-[oklch(0.72_0.12_300)]"
-              : "bg-accent-soft text-accent"
+      <div className="group/commit-meta relative mb-2.5">
+        <header
+          aria-describedby={commit.message ? messageTooltipId : undefined}
+          className={`flex min-h-[18px] flex-wrap items-center gap-2 text-xs/[1.5] text-muted ${
+            commit.message
+              ? "cursor-help rounded-sm focus-visible:outline-3 focus-visible:outline-offset-3 focus-visible:outline-[oklch(0.85_0.17_92/0.35)]"
+              : ""
           }`}
+          tabIndex={commit.message ? 0 : undefined}
         >
-          {commit.isPullRequest ? "PR" : "Commit"}
-        </span>
-        <code className="text-[13px]/[1.2] font-[750] text-ink">
-          {group.ref || "change"}
-        </code>
-        <span>by {group.author || "Unknown"}</span>
-        {commit.projects.map((project) => (
           <span
-            className="rounded-[3px] border border-[oklch(0.32_0.05_260)] bg-[oklch(0.22_0.03_260)] px-1.5 py-0.5 text-[10px] font-bold text-[oklch(0.72_0.1_260)]"
-            key={project}
+            className={`rounded-[3px] px-1.5 py-[3px] text-[10px]/[1.2] font-[750] tracking-[0.08em] uppercase ${
+              commit.isPullRequest
+                ? "bg-[oklch(0.22_0.04_300)] text-[oklch(0.72_0.12_300)]"
+                : "bg-accent-soft text-accent"
+            }`}
           >
-            {project}
+            {commit.isPullRequest ? "PR" : "Commit"}
           </span>
-        ))}
-        {commit.date ? (
-          <time dateTime={commit.date.toISOString()}>
-            {formatTime(commit.date)}
-          </time>
+          <code className="text-[13px]/[1.2] font-[750] text-ink">
+            {group.ref || "change"}
+          </code>
+          <span>by {group.author || "Unknown"}</span>
+          {commit.projects.map((project) => (
+            <span
+              className="rounded-[3px] border border-[oklch(0.32_0.05_260)] bg-[oklch(0.22_0.03_260)] px-1.5 py-0.5 text-[10px] font-bold text-[oklch(0.72_0.1_260)]"
+              key={project}
+            >
+              {project}
+            </span>
+          ))}
+          {commit.date ? (
+            <time dateTime={commit.date.toISOString()}>
+              {formatTime(commit.date)}
+            </time>
+          ) : null}
+          {(commit.isReady && commit.linesChanged !== null) ||
+          commit.tokenTotal > 0 ||
+          commit.url ? (
+            <span className="ml-auto inline-flex items-center gap-2">
+              {commit.isReady && commit.linesChanged !== null ? (
+                <span className="whitespace-nowrap text-[10.5px] font-bold text-faint">
+                  {formatLineChanges(commit.linesChanged)}
+                </span>
+              ) : null}
+              {commit.tokenTotal > 0 ? (
+                <span className="whitespace-nowrap rounded-[3px] bg-[oklch(0.2_0.025_180)] px-[7px] py-0.5 text-[10.5px] font-bold text-[oklch(0.68_0.08_180)]">
+                  {formatTokens(commit.tokenTotal)}
+                </span>
+              ) : null}
+              {commit.url ? (
+                <a
+                  className="font-bold text-accent underline-offset-2 hover:underline"
+                  href={commit.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  View →
+                </a>
+              ) : null}
+            </span>
+          ) : null}
+        </header>
+        {commit.message ? (
+          <div
+            className="invisible absolute top-[calc(100%+7px)] left-0 z-20 max-h-72 w-max max-w-[min(520px,calc(100vw-48px))] translate-y-1 overflow-y-auto rounded-[5px] border border-line-strong bg-[oklch(0.155_0.012_60)] px-3 py-2.5 opacity-0 shadow-hard transition-[opacity,transform,visibility] duration-150 group-hover/commit-meta:visible group-hover/commit-meta:translate-y-0 group-hover/commit-meta:opacity-100 group-focus-within/commit-meta:visible group-focus-within/commit-meta:translate-y-0 group-focus-within/commit-meta:opacity-100 motion-reduce:transition-none"
+            id={messageTooltipId}
+            role="tooltip"
+          >
+            <span className="mb-1 block text-[9px]/[1.2] font-bold tracking-[0.09em] text-accent uppercase">
+              Original commit message
+            </span>
+            <p className="overflow-wrap-anywhere m-0 whitespace-pre-wrap text-[11px]/[1.55] text-ink">
+              {commit.message}
+            </p>
+          </div>
         ) : null}
-        {(commit.isReady && commit.linesChanged !== null) ||
-        commit.tokenTotal > 0 ||
-        commit.url ? (
-          <span className="ml-auto inline-flex items-center gap-2">
-            {commit.isReady && commit.linesChanged !== null ? (
-              <span className="whitespace-nowrap text-[10.5px] font-bold text-faint">
-                {formatLineChanges(commit.linesChanged)}
-              </span>
-            ) : null}
-            {commit.tokenTotal > 0 ? (
-              <span className="whitespace-nowrap rounded-[3px] bg-[oklch(0.2_0.025_180)] px-[7px] py-0.5 text-[10.5px] font-bold text-[oklch(0.68_0.08_180)]">
-                {formatTokens(commit.tokenTotal)}
-              </span>
-            ) : null}
-            {commit.url ? (
-              <a
-                className="font-bold text-accent underline-offset-2 hover:underline"
-                href={commit.url}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                View →
-              </a>
-            ) : null}
-          </span>
-        ) : null}
-      </header>
+      </div>
       {commit.isReady ? (
         <ol
           className={`grid list-none gap-3.5 rounded-lg border px-[18px] py-4 pb-[17px] shadow-[0_1px_0_oklch(0.1_0.01_60/0.2)] transition-[background-color,border-color,box-shadow] duration-300 group-hover:border-[oklch(0.4_0.016_60)] group-hover:shadow-hard motion-reduce:transition-none max-[700px]:px-3.5 ${

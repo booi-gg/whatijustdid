@@ -37,12 +37,14 @@ function toGroup(summary, commit, config) {
   const ready = summary?.status === "ready" && summary.changes?.length;
   const status = ready ? "ready" : (summary?.status ?? "missing");
   const stats = commitStats(commit);
+  const message = commitMessage(commit);
   const group = {
     kind: "commit",
     sha: commit.sha,
     ref: commit.shortSha ?? commit.sha.slice(0, 7),
     author: commit.author || "Unknown",
     date: commit.date ?? new Date(0).toISOString(),
+    ...(message ? { message } : {}),
     status,
     projects: summary?.projects ?? [],
     link: null,
@@ -66,6 +68,16 @@ function toGroup(summary, commit, config) {
     group.usage = summary.usage;
   }
   return group;
+}
+
+function commitMessage(commit) {
+  if (typeof commit?.message === "string" && commit.message.trim()) {
+    return commit.message.trim();
+  }
+  const subject =
+    typeof commit?.subject === "string" ? commit.subject.trim() : "";
+  const body = typeof commit?.body === "string" ? commit.body.trim() : "";
+  return [subject, body].filter(Boolean).join("\n\n");
 }
 
 function commitStats(commit) {

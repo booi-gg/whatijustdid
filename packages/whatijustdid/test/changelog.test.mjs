@@ -609,7 +609,7 @@ test("committed-change recording forwards provider output deltas", async () => {
   }
 });
 
-test("build displays ready, pending, and missing summaries without commit-message text", () => {
+test("build displays summaries and original commit messages separately", () => {
   const root = mkdtempSync(join(tmpdir(), "whatijustdid-build-"));
   const config = testConfig(root);
   config.showTokens = true;
@@ -629,7 +629,8 @@ test("build displays ready, pending, and missing summaries without commit-messag
         shortSha: "ccccccc",
         author: "Carla",
         date: "2026-07-19T10:00:00.000Z",
-        subject: "pulled commit message must never appear",
+        message:
+          "feat(viewer): show original commit messages\n\nExplain the reason for the change.",
         additions: 54,
         deletions: 17,
         filesChanged: 4,
@@ -640,7 +641,8 @@ test("build displays ready, pending, and missing summaries without commit-messag
         shortSha: "bbbbbbb",
         author: "Bob",
         date: "2026-07-18T10:00:00.000Z",
-        subject: "fix: must never appear",
+        subject: "fix(viewer): preserve pending summaries",
+        body: "- Keep generation status visible.",
         additions: 10,
         deletions: 2,
         filesChanged: 2,
@@ -651,7 +653,7 @@ test("build displays ready, pending, and missing summaries without commit-messag
         shortSha: "aaaaaaa",
         author: "Alice",
         date: "2026-07-17T10:00:00.000Z",
-        body: "- Must also never appear",
+        message: "   ",
         additions: 4,
         deletions: 1,
         filesChanged: 1,
@@ -662,6 +664,14 @@ test("build displays ready, pending, and missing summaries without commit-messag
     const output = readFileSync(config.dataFile, "utf8");
     assert.match(output, /AI summary from the code diff/);
     assert.match(output, /Summary is waiting to be generated/);
+    assert.match(
+      output,
+      /"message": "feat\(viewer\): show original commit messages\\n\\nExplain the reason for the change\."/,
+    );
+    assert.match(
+      output,
+      /"message": "fix\(viewer\): preserve pending summaries\\n\\n- Keep generation status visible\."/,
+    );
     assert.match(output, /"ref": "ccccccc"[\s\S]*?"description": "N\/A"/);
     assert.match(
       output,
@@ -670,7 +680,12 @@ test("build displays ready, pending, and missing summaries without commit-messag
       ),
     );
     assert.match(output, /"maxOutputTokens": 1200/);
-    assert.doesNotMatch(output, /must never appear/i);
+    assert.match(
+      output,
+      new RegExp(
+        `"sha": "${SHA_A}"[\\s\\S]*?"date": "2026-07-17T10:00:00\\.000Z",\\s+"status": "ready"`,
+      ),
+    );
     assert.match(
       output,
       /window\.__WHATIJUSTDID_PROJECT_NAME__ = "Miso Katsu"/,
