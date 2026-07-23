@@ -52,17 +52,27 @@ export async function nameProject(input, { model, timeoutMs }) {
 
 export async function describe(
   input,
-  { model, timeoutMs, verbosity = "normal", onOutputTextDelta },
+  {
+    model,
+    timeoutMs,
+    verbosity = "normal",
+    purpose = "changelog",
+    onOutputTextDelta,
+  },
 ) {
   const key = resolveApiKey("DEEPSEEK_API_KEY");
   if (!key) throw new Error("DEEPSEEK_API_KEY not set");
   const selectedModel = model ?? DEFAULT_MODEL;
   const { maxTokens, maxSummaryChars } = verbosityConfig(verbosity);
-  const systemPrompt = `${verbosityPrompt(verbosity)}
+  const exampleSummary =
+    purpose === "commit"
+      ? "add a new user-facing capability"
+      : "Added a new user-facing capability.";
+  const systemPrompt = `${verbosityPrompt(verbosity, purpose)}
 The required JSON schema is:
 ${JSON.stringify(WHATIJUSTDID_SCHEMA)}
 Example JSON output:
-{"type":"feat","changes":[{"type":"feat","summary":"Added a new user-facing capability."}]}`;
+{"type":"feat","changes":[{"type":"feat","summary":${JSON.stringify(exampleSummary)}}]}`;
 
   const url = apiUrl(
     process.env.DEEPSEEK_BASE_URL ?? "https://api.deepseek.com",
