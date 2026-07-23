@@ -1,11 +1,15 @@
 export { loadConfig } from "./config.mjs";
 export { generate, planGeneration } from "./generate.mjs";
 export { startPreview } from "./preview.mjs";
-export { build, readEntries } from "./build.mjs";
+export { build, readEntries, readViewerSnapshot } from "./build.mjs";
 export { clearHistory } from "./clear.mjs";
 export { installHooks, uninstallHooks } from "./hooks.mjs";
 export { initializeProject } from "./init.mjs";
-export { getAgent, resolveAgentModel, validateAgentConfig } from "./agents/index.mjs";
+export {
+  getAgent,
+  resolveAgentModel,
+  validateAgentConfig,
+} from "./agents/index.mjs";
 export { recordCommittedChange } from "./record.mjs";
 export { describeChange } from "./describe.mjs";
 export {

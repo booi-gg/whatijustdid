@@ -1,7 +1,18 @@
-import { useMemo, useState } from "react";
-import type { ViewerModel } from "./model";
+import {
+  startTransition,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import type { ViewerGroup, ViewerModel } from "./model";
 import { Pagination } from "./Pagination";
 import { ProjectFilters } from "./ProjectFilters";
+import {
+  canRunPreviewActions,
+  fetchViewerModel,
+  previewDataChangedEvent,
+} from "./preview/previewActions";
 import { useGeneratedCommitSession } from "./preview/useGeneratedCommitSession";
 import { selectViewerPage } from "./selectViewerPage";
 import { CommitTimeline } from "./timeline/CommitTimeline";
@@ -17,7 +28,8 @@ interface ViewerAppProps {
   model: ViewerModel;
 }
 
-export function ViewerApp({ model }: ViewerAppProps) {
+export function ViewerApp({ model: initialModel }: ViewerAppProps) {
+  const [model, setModel] = useState(initialModel);
   const [activeProject, setActiveProject] = useState("All");
   const [showMissingOnly, setShowMissingOnly] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -35,8 +47,58 @@ export function ViewerApp({ model }: ViewerAppProps) {
       ),
     [activeProject, commitsPerPage, currentPage, model, showMissingOnly],
   );
-  const { dismissHighlight, generatedHighlights, scrollTargetSha } =
-    useGeneratedCommitSession(model.groups);
+  const {
+    beginGeneration,
+    completeScroll,
+    dismissHighlight,
+    failGeneration,
+    generatedHighlights,
+    revealGeneratedCommit,
+    scrollTargetSha,
+  } = useGeneratedCommitSession(model.groups);
+
+  const replaceGroup = useCallback((group: ViewerGroup) => {
+    setModel((current) => replaceViewerGroup(current, group));
+  }, []);
+
+  const handleGroupGenerated = useCallback(
+    (group: ViewerGroup) => {
+      replaceGroup(group);
+      setShowMissingOnly(false);
+      setActiveProject((current) =>
+        viewerGroupMatchesProject(group, current) ? current : "All",
+      );
+      if (typeof group.sha === "string") revealGeneratedCommit(group.sha);
+    },
+    [replaceGroup, revealGeneratedCommit],
+  );
+
+  useEffect(() => {
+    if (!canRunPreviewActions) return;
+    let controller: AbortController | null = null;
+    const refresh = () => {
+      controller?.abort();
+      controller = new AbortController();
+      void fetchViewerModel(controller.signal)
+        .then((next) => {
+          startTransition(() => {
+            setModel((current) => reconcileViewerModel(current, next));
+          });
+        })
+        .catch((error: unknown) => {
+          if (error instanceof DOMException && error.name === "AbortError") {
+            return;
+          }
+          console.error("Unable to refresh viewer data", error);
+        });
+    };
+    window.addEventListener(previewDataChangedEvent, refresh);
+    refresh();
+    return () => {
+      controller?.abort();
+      window.removeEventListener(previewDataChangedEvent, refresh);
+    };
+  }, []);
 
   function handleProjectSelect(project: string) {
     setActiveProject(project);
@@ -87,7 +149,12 @@ export function ViewerApp({ model }: ViewerAppProps) {
           <CommitTimeline
             days={page.days}
             generatedHighlights={generatedHighlights}
+            onGenerationFailed={failGeneration}
+            onGenerationStarted={beginGeneration}
+            onGeneratedScrollCompleted={completeScroll}
             onGeneratedHighlightDismissed={dismissHighlight}
+            onGroupGenerated={handleGroupGenerated}
+            onGroupUpdated={replaceGroup}
             scrollTargetSha={scrollTargetSha}
           />
         ) : (
@@ -104,6 +171,44 @@ export function ViewerApp({ model }: ViewerAppProps) {
       </main>
       <ViewerFooter />
     </div>
+  );
+}
+
+function replaceViewerGroup(model: ViewerModel, updated: ViewerGroup) {
+  if (typeof updated.sha !== "string") return model;
+  let changed = false;
+  const groups = model.groups.map((group) => {
+    if (group.sha !== updated.sha) return group;
+    changed = true;
+    return updated;
+  });
+  return changed ? { ...model, groups } : model;
+}
+
+function reconcileViewerModel(current: ViewerModel, incoming: ViewerModel) {
+  const currentGroups = new Map(
+    current.groups.flatMap((group) =>
+      typeof group.sha === "string" ? [[group.sha, group] as const] : [],
+    ),
+  );
+  const groups = incoming.groups.map((group) => {
+    if (typeof group.sha !== "string") return group;
+    const existing = currentGroups.get(group.sha);
+    return existing && sameViewerGroup(existing, group) ? existing : group;
+  });
+  return { ...incoming, groups };
+}
+
+function sameViewerGroup(left: ViewerGroup, right: ViewerGroup) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
+function viewerGroupMatchesProject(group: ViewerGroup, project: string) {
+  const projects = Array.isArray(group.projects) ? group.projects : [];
+  return (
+    project === "All" ||
+    (project === "Repo" && projects.length === 0) ||
+    projects.includes(project)
   );
 }
 
