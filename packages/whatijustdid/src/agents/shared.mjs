@@ -38,11 +38,12 @@ export function verbosityPrompt(verbosity, purpose = "changelog") {
     return `Turn the supplied code diff into structured data for a Conventional Commit message.
 Return one item per distinct job performed. Describe observable behavior, not filenames or implementation trivia.
 Write every summary in imperative mood ("add", "fix", "remove"), never past tense or a gerund.
-The first summary becomes the subject after "<type>: ". Keep it to 5–10 words and make the whole subject
-50 characters or fewer when practical; it must never need more than 72. Do not include the type prefix or
-a trailing period in a summary. Add further items only for distinct work or essential context that belongs
-in the commit body. Always include essential context for breaking changes, security fixes, data migrations,
-and reverts.
+The first summary becomes the subject after "<type>: ". Keep it to 5–10 words and aim for 50 characters.
+The complete subject, including the type, colon, and space, MUST be 72 characters or fewer. If it would be
+longer, rewrite it as a shorter complete phrase before returning it. Never truncate a word, use an ellipsis,
+or end a summary with punctuation. Do not include the type prefix in a summary. Add further items only for
+distinct work or essential context that belongs in the commit body. Always include essential context for
+breaking changes, security fixes, data migrations, and reverts.
 Base every claim on the code diff; never substitute a commit message. Do not invent changes.
 A hunk that only adds, removes, or rewrites comments, docstrings, or whitespace changes no behavior:
 describe it as a comment/documentation change (type "docs" or "style"), and never claim the behavior the
