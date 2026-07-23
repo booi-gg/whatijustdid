@@ -2,8 +2,6 @@ import { spawnSync } from "node:child_process";
 import { describeChange } from "./describe.mjs";
 import { stagedDiff, stagedFiles } from "./git.mjs";
 
-const SUBJECT_TARGET = 50;
-const SUBJECT_LIMIT = 72;
 const BODY_LIMIT = 72;
 const COMMIT_TYPES = new Set([
   "feat",
@@ -39,11 +37,9 @@ export async function draftCommitMessage(config, change, dependencies = {}) {
 
 export function formatCommitMessage({ type, changes }) {
   const [first, ...rest] = changes;
-  const full = `${commitType(type)}: ${subjectCase(first.summary)}`;
-  const subject = truncateSubject(full);
-  const bullets = subject === full ? rest : changes;
-  if (!bullets.length) return subject;
-  return `${subject}\n\n${bullets.map((change) => wrapBullet(change.summary)).join("\n")}`;
+  const subject = `${commitType(type)}: ${subjectCase(first.summary)}`;
+  if (!rest.length) return subject;
+  return `${subject}\n\n${rest.map((change) => wrapBullet(change.summary)).join("\n")}`;
 }
 
 export function runGitCommit(message, { cwd, args = [] } = {}) {
@@ -62,25 +58,6 @@ function subjectCase(summary) {
   return /^[A-Z][a-z]/.test(text)
     ? text.charAt(0).toLowerCase() + text.slice(1)
     : text;
-}
-
-function truncateSubject(subject) {
-  if (subject.length <= SUBJECT_TARGET) return subject;
-  const preferred = wordBoundary(subject, SUBJECT_TARGET - 1);
-  if (preferred.length >= 40) return `${preferred}…`;
-  if (subject.length <= SUBJECT_LIMIT) return subject;
-  const hardLimit = wordBoundary(subject, SUBJECT_LIMIT - 1);
-  const truncated =
-    hardLimit.length >= 40
-      ? hardLimit
-      : subject.slice(0, SUBJECT_LIMIT - 1).trimEnd();
-  return `${truncated}…`;
-}
-
-function wordBoundary(text, limit) {
-  const cut = text.slice(0, limit);
-  const space = cut.lastIndexOf(" ");
-  return (space > 0 ? cut.slice(0, space) : cut).trimEnd();
 }
 
 function commitType(type) {

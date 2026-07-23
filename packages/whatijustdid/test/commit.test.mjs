@@ -42,32 +42,33 @@ test("puts additional changes into a bulleted body", () => {
   );
 });
 
-test("targets 50-character subjects and keeps the full text in the body", () => {
-  const summary =
-    "Add a commit wrapper that generates the message, asks for confirmation, and can regenerate";
+test("preserves the complete subject returned by the agent", () => {
   const message = formatCommitMessage({
     type: "feat",
-    changes: [{ type: "feat", summary }],
+    changes: [
+      {
+        type: "feat",
+        summary: "Increase default commits per page from 10 to 100",
+      },
+      { type: "chore", summary: "Bump package version to 0.1.33" },
+    ],
   });
-  const [subject, blank, ...body] = message.split("\n");
-  assert.ok(subject.length <= 50, `subject too long: ${subject.length}`);
-  assert.ok(subject.endsWith("…"));
-  assert.equal(blank, "");
-  assert.equal(body.join(" ").replace(/\s+/g, " "), `- ${summary}`);
-  assert.ok(
-    body.every((line) => line.length <= 72),
-    `body line too long: ${body.join("\n")}`,
+  assert.equal(
+    message,
+    "feat: increase default commits per page from 10 to 100\n\n- Bump package version to 0.1.33",
   );
 });
 
-test("never exceeds the 72-character hard subject limit", () => {
-  const message = formatCommitMessage({
-    type: "fix",
-    changes: [{ type: "fix", summary: `Fix ${"x".repeat(100)}` }],
-  });
-  const [subject] = message.split("\n");
-  assert.equal(subject.length, 72);
-  assert.ok(subject.endsWith("…"));
+test("does not truncate or add punctuation to agent wording", () => {
+  const summary =
+    "Add a commit wrapper that generates the message, asks for confirmation, and can regenerate";
+  assert.equal(
+    formatCommitMessage({
+      type: "feat",
+      changes: [{ type: "feat", summary }],
+    }),
+    `feat: add a commit wrapper that generates the message, asks for confirmation, and can regenerate`,
+  );
 });
 
 test("maps non-conventional types to chore", () => {
@@ -85,8 +86,9 @@ test("uses a commit-specific imperative prompt", () => {
   assert.match(prompt, /Conventional Commit/);
   assert.match(prompt, /imperative mood/);
   assert.match(prompt, /5–10 words/);
-  assert.match(prompt, /50 characters or fewer/);
-  assert.match(prompt, /never need more than 72/);
+  assert.match(prompt, /MUST be 72 characters or fewer/);
+  assert.match(prompt, /rewrite it as a shorter complete phrase/);
+  assert.match(prompt, /Never truncate a word, use an ellipsis/);
 });
 
 test("stagedChange returns null when nothing is staged", () => {
