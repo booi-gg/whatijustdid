@@ -7,6 +7,7 @@ export interface ViewerPage {
   currentPage: number;
   databaseSize: string | null;
   days: ViewerDay[];
+  missingChangelogCount: number;
   pageCount: number;
   projectCounts: ReadonlyMap<string, number>;
   summary: string;
@@ -17,9 +18,11 @@ export function selectViewerPage(
   activeProject: string,
   requestedPage: number,
   commitsPerPage: number,
+  showMissingOnly = false,
 ): ViewerPage {
   const visibleGroups = model.groups
     .filter((group) => matchesProject(group, activeProject))
+    .filter((group) => !showMissingOnly || isMissingChangelog(group))
     .slice()
     .sort((left, right) => dateValue(right.date) - dateValue(left.date));
   const pageCount = Math.max(
@@ -43,6 +46,7 @@ export function selectViewerPage(
     days: groupByDay(
       visibleGroups.slice(pageStart, pageStart + commitsPerPage),
     ),
+    missingChangelogCount: model.groups.filter(isMissingChangelog).length,
     pageCount,
     projectCounts: new Map(
       model.projectNames.map((project) => [
@@ -50,8 +54,14 @@ export function selectViewerPage(
         model.groups.filter((group) => matchesProject(group, project)).length,
       ]),
     ),
-    summary: `${entryCount} ${entryCount === 1 ? "change" : "changes"} across ${visibleGroups.length} ${visibleGroups.length === 1 ? "commit" : "commits"} · ${activeProject}`,
+    summary: showMissingOnly
+      ? `${visibleGroups.length} ${visibleGroups.length === 1 ? "commit needs" : "commits need"} a generated changelog`
+      : `${entryCount} ${entryCount === 1 ? "change" : "changes"} across ${visibleGroups.length} ${visibleGroups.length === 1 ? "commit" : "commits"} · ${activeProject}`,
   };
+}
+
+function isMissingChangelog(group: ViewerGroup) {
+  return (group.status ?? "ready") !== "ready";
 }
 
 function matchesProject(group: ViewerGroup, project: string) {
