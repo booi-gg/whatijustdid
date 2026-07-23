@@ -30,6 +30,8 @@ viewerWindow.__WHATIJUSTDID__ = [
     ref: "8f30c21",
     author: "Local preview",
     date: new Date().toISOString(),
+    message:
+      "feat(viewer): rebuild the repository ledger\n\n- Move the timeline into React\n- Preserve the original gold visual language",
     status: "ready",
     projects: ["viewer"],
     link: "https://github.com/booi-gg/changelog",
@@ -61,6 +63,7 @@ viewerWindow.__WHATIJUSTDID__ = [
     ref: "34da091",
     author: "Local preview",
     date: new Date(Date.now() - 86_400_000).toISOString(),
+    message: "fix(cli): keep live preview compatible with generated assets",
     status: "ready",
     projects: ["cli"],
     stats: { additions: 21, deletions: 8, filesChanged: 3, linesChanged: 29 },

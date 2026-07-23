@@ -53,7 +53,7 @@ const END = "\x1d";
 /** Recent reachable commit metadata in one Git process, newest first. */
 export function recentCommitMetas(limit, cwd = process.cwd()) {
   const count = Number.isInteger(limit) && limit > 0 ? [`-n${limit}`] : [];
-  const format = `%x1e%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%cI%x1d`;
+  const format = `%x1e%H%x1f%h%x1f%P%x1f%an%x1f%ae%x1f%cn%x1f%ce%x1f%cI%x1f%B%x1d`;
   const args = ["--topo-order", "--numstat", ...count, `--format=${format}`, "HEAD"];
   const out =
     tryGit(["log", "--diff-merges=first-parent", ...args], { cwd }) ||
@@ -66,12 +66,22 @@ export function recentCommitMetas(limit, cwd = process.cwd()) {
 
 /** Structured metadata for a single commit. */
 export function commitMeta(sha, cwd = process.cwd()) {
-  const fmt = ["%H", "%h", "%P", "%an", "%ae", "%cn", "%ce", "%cI"].join(FIELD) + RECORD;
+  const fmt =
+    ["%H", "%h", "%P", "%an", "%ae", "%cn", "%ce", "%cI", "%B"].join(FIELD) +
+    RECORD;
   const raw = git(["show", "--no-patch", `--format=${fmt}`, sha], { cwd });
   const end = raw.indexOf(RECORD);
-  const [hash, short, parents, author, authorEmail, committer, committerEmail, date] = raw
-    .slice(0, end >= 0 ? end : undefined)
-    .split(FIELD);
+  const [
+    hash,
+    short,
+    parents,
+    author,
+    authorEmail,
+    committer,
+    committerEmail,
+    date,
+    message,
+  ] = raw.slice(0, end >= 0 ? end : undefined).split(FIELD);
   return {
     sha: hash,
     shortSha: short,
@@ -81,16 +91,24 @@ export function commitMeta(sha, cwd = process.cwd()) {
     committer,
     committerEmail,
     date,
+    message: message.trim(),
   };
 }
 
 function parseCompactCommit(chunk) {
   const end = chunk.indexOf(END);
   if (end < 0) return null;
-  const [sha, shortSha, parents, author, authorEmail, committer, committerEmail, date] = chunk
-    .slice(0, end)
-    .trimStart()
-    .split(FIELD);
+  const [
+    sha,
+    shortSha,
+    parents,
+    author,
+    authorEmail,
+    committer,
+    committerEmail,
+    date,
+    message,
+  ] = chunk.slice(0, end).trimStart().split(FIELD);
   if (!sha) return null;
   const stats = parseNumstat(chunk.slice(end + END.length));
   return {
@@ -102,6 +120,7 @@ function parseCompactCommit(chunk) {
     committer,
     committerEmail,
     date,
+    message: message.trim(),
     ...stats,
   };
 }
