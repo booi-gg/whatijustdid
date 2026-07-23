@@ -1,5 +1,5 @@
 const STORAGE_KEY = "whatijustdid.viewer-preferences.v1";
-const DEFAULT_COMMITS_PER_PAGE = 10;
+const DEFAULT_COMMITS_PER_PAGE = 100;
 
 export interface ViewerPreferences {
   commitsPerPage: number;
