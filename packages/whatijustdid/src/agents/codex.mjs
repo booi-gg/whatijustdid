@@ -62,7 +62,13 @@ export async function nameProject(input, { model, timeoutMs }) {
 
 export async function describe(
   input,
-  { model, timeoutMs, verbosity = "normal", onOutputTextDelta },
+  {
+    model,
+    timeoutMs,
+    verbosity = "normal",
+    purpose = "changelog",
+    onOutputTextDelta,
+  },
 ) {
   const key = resolveApiKey("OPENAI_API_KEY");
   if (!key) throw new Error("OPENAI_API_KEY not set");
@@ -76,13 +82,14 @@ export async function describe(
     model: selectedModel,
     max_output_tokens: maxTokens,
     input: [
-      { role: "system", content: verbosityPrompt(verbosity) },
+      { role: "system", content: verbosityPrompt(verbosity, purpose) },
       { role: "user", content: formatAgentInput(input) },
     ],
     text: {
       format: {
         type: "json_schema",
-        name: "changelog_entry",
+        name:
+          purpose === "commit" ? "commit_message_parts" : "changelog_entry",
         strict: true,
         schema: WHATIJUSTDID_SCHEMA,
       },

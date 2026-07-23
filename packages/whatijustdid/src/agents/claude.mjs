@@ -50,7 +50,13 @@ export async function nameProject(input, { model, timeoutMs }) {
 
 export async function describe(
   input,
-  { model, timeoutMs, verbosity = "normal", onOutputTextDelta },
+  {
+    model,
+    timeoutMs,
+    verbosity = "normal",
+    purpose = "changelog",
+    onOutputTextDelta,
+  },
 ) {
   const key = resolveApiKey("ANTHROPIC_API_KEY");
   if (!key) throw new Error("ANTHROPIC_API_KEY not set");
@@ -63,7 +69,7 @@ export async function describe(
   const request = {
     model: selectedModel,
     max_tokens: maxTokens,
-    system: verbosityPrompt(verbosity),
+    system: verbosityPrompt(verbosity, purpose),
     messages: [{ role: "user", content: formatAgentInput(input) }],
     output_config: {
       format: { type: "json_schema", schema: WHATIJUSTDID_SCHEMA },

@@ -9,6 +9,7 @@ export async function describeChange(input, config, options = {}) {
       model: config.model,
       timeoutMs: config.timeoutMs,
       verbosity: config.verbosity,
+      purpose: options.purpose,
       onOutputTextDelta: options.onOutputTextDelta,
     });
     return { ...result, agent: config.agent };

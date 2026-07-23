@@ -44,7 +44,13 @@ export async function nameProject(input, { model, timeoutMs }) {
 
 export async function describe(
   input,
-  { model, timeoutMs, verbosity = "normal", onOutputTextDelta },
+  {
+    model,
+    timeoutMs,
+    verbosity = "normal",
+    purpose = "changelog",
+    onOutputTextDelta,
+  },
 ) {
   const selectedModel = model ?? DEFAULT_MODEL;
   const { maxSummaryChars } = verbosityConfig(verbosity);
@@ -57,7 +63,7 @@ export async function describe(
     format: WHATIJUSTDID_SCHEMA,
     options: { temperature: 0 },
     messages: [
-      { role: "system", content: verbosityPrompt(verbosity) },
+      { role: "system", content: verbosityPrompt(verbosity, purpose) },
       { role: "user", content: formatAgentInput(input) },
     ],
   };

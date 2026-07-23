@@ -117,7 +117,7 @@ Existing hook logic is preserved. Git hooks are clone-local and normally shared 
 
 ## AI commit messages
 
-`whatijustdid commit` wraps `git commit`: it sends the staged diff to the configured agent, proposes a conventional-commit message, and asks before committing.
+`whatijustdid commit` wraps `git commit`: it sends the staged diff to the configured agent, proposes a Conventional Commit message, and asks before committing.
 
 ```bash
 git add -p
@@ -127,7 +127,7 @@ npx whatijustdid commit
 ```
 wijd: summarizing 2 staged files with codex…
 
-  feat: added a commit command that drafts the message from the staged diff
+  feat: add a commit command
 
 wijd: commit with this message?
   ❯ commit
@@ -163,6 +163,10 @@ npx whatijustdid commit -- --no-verify
 ```
 
 Because `commit` is a wrapper, it prints every git command it runs (`$ git add -A`, `$ git commit -m '…'`) so nothing happens invisibly. The staged diff is bounded by `maxDiffBytes`, and the message style follows the configured `verbosity`.
+
+Generated subjects use `<type>: <imperative summary>`, aim for 5–10 words and
+50 characters, never exceed 72 characters, omit the trailing period, and use a
+72-character-wrapped body only when the subject needs supporting context.
 
 ## Existing history and token control
 
