@@ -32,8 +32,23 @@ export function verbosityConfig(verbosity) {
   return VERBOSITY[verbosity] ?? VERBOSITY.normal;
 }
 
-export function verbosityPrompt(verbosity) {
+export function verbosityPrompt(verbosity, purpose = "changelog") {
   const level = VERBOSITY_LEVELS.includes(verbosity) ? verbosity : "normal";
+  if (purpose === "commit") {
+    return `Turn the supplied code diff into structured data for a Conventional Commit message.
+Return one item per distinct job performed. Describe observable behavior, not filenames or implementation trivia.
+Write every summary in imperative mood ("add", "fix", "remove"), never past tense or a gerund.
+The first summary becomes the subject after "<type>: ". Keep it to 5–10 words and make the whole subject
+50 characters or fewer when practical; it must never need more than 72. Do not include the type prefix or
+a trailing period in a summary. Add further items only for distinct work or essential context that belongs
+in the commit body. Always include essential context for breaking changes, security fixes, data migrations,
+and reverts.
+Base every claim on the code diff; never substitute a commit message. Do not invent changes.
+A hunk that only adds, removes, or rewrites comments, docstrings, or whitespace changes no behavior:
+describe it as a comment/documentation change (type "docs" or "style"), and never claim the behavior the
+comment text talks about was added or removed.
+Return only data matching the supplied JSON schema.`;
+  }
   return `Turn the supplied code diff into a ${level} user-facing changelog entry.
 Return one item per distinct job performed. Describe observable behavior, not filenames or implementation trivia.
 Use past tense. Base every claim on the code diff; never substitute a commit message. Do not invent changes.
