@@ -3,9 +3,19 @@ import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, watch } from "node:fs";
 import { createServer } from "node:http";
 import { basename, dirname } from "node:path";
-import { CLI_NAME, VIEWER_FILENAME, VIEWER_CSS_FILENAME, VIEWER_JS_FILENAME, VIEWER_FILE_PATH, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, SSE_PATH } from "./brand.mjs";
-import { build } from "./build.mjs";
+import {
+  CLI_NAME,
+  VIEWER_FILENAME,
+  VIEWER_CSS_FILENAME,
+  VIEWER_JS_FILENAME,
+  VIEWER_FILE_PATH,
+  VIEWER_CSS_FILE_PATH,
+  VIEWER_JS_FILE_PATH,
+  SSE_PATH,
+} from "./brand.mjs";
+import { build, readViewerSnapshot } from "./build.mjs";
 import { clearHistory } from "./clear.mjs";
+import { createDraftProjector } from "./draft.mjs";
 import { commitShas } from "./git.mjs";
 import { generate, planGeneration } from "./generate.mjs";
 import { recordCommittedChange } from "./record.mjs";
@@ -15,22 +25,30 @@ const ACTION_TOKEN_PLACEHOLDER = "__WHATIJUSTDID_ACTION_TOKEN__";
 const BACKFILL_PATH = "/api/actions/backfill";
 const CLEAR_HISTORY_PATH = "/api/actions/clear-history";
 const GENERATE_SUMMARY_PREFIX = "/api/actions/generate-summary/";
+const VIEWER_MODEL_PATH = "/api/viewer-model";
 const LIVE_RELOAD_CLIENT = `<script>
   (() => {
     const source = new EventSource("${SSE_PATH}");
     source.addEventListener("reload", () => window.location.reload());
+    source.addEventListener("data", () =>
+      window.dispatchEvent(new Event("whatijustdid:data-changed"))
+    );
   })();
 </script>`;
 
-/** Serve the package-owned viewer and reload connected browsers when it changes. */
+/** Serve the package-owned viewer and push live asset/data updates to browsers. */
 export async function startPreview(config, options = {}, dependencies = {}) {
   const viewerFile = VIEWER_FILE_PATH;
   const dataFile = config.dataFile;
   if (!existsSync(viewerFile)) {
-    throw new Error(`Bundled viewer not found at ${viewerFile}; reinstall ${CLI_NAME}`);
+    throw new Error(
+      `Bundled viewer not found at ${viewerFile}; reinstall ${CLI_NAME}`,
+    );
   }
   if (!existsSync(VIEWER_JS_FILE_PATH)) {
-    throw new Error(`Bundled viewer script not found at ${VIEWER_JS_FILE_PATH}; reinstall ${CLI_NAME}`);
+    throw new Error(
+      `Bundled viewer script not found at ${VIEWER_JS_FILE_PATH}; reinstall ${CLI_NAME}`,
+    );
   }
   if (!dataFile) throw new Error("Private viewer data path is not configured");
 
@@ -44,6 +62,8 @@ export async function startPreview(config, options = {}, dependencies = {}) {
   const runGenerate = dependencies.generate ?? generate;
   const runPlanGeneration = dependencies.planGeneration ?? planGeneration;
   const runBuild = dependencies.build ?? build;
+  const runReadViewerSnapshot =
+    dependencies.readViewerSnapshot ?? readViewerSnapshot;
   const listCommitShas = dependencies.commitShas ?? commitShas;
   const runRecordCommittedChange =
     dependencies.recordCommittedChange ?? recordCommittedChange;
@@ -61,6 +81,7 @@ export async function startPreview(config, options = {}, dependencies = {}) {
         runGenerate,
         runPlanGeneration,
         runBuild,
+        runReadViewerSnapshot,
         listCommitShas,
         runRecordCommittedChange,
       },
@@ -92,12 +113,19 @@ export async function startPreview(config, options = {}, dependencies = {}) {
   const address = server.address();
   const url = `http://${host}:${address.port}`;
   let reloadTimer;
-  const watchers = [viewerFile, VIEWER_CSS_FILE_PATH, VIEWER_JS_FILE_PATH, dataFile].map((file) =>
-    watch(dirname(file), (_event, filename) => {
+  const watchedFiles = [
+    { event: "reload", file: viewerFile },
+    { event: "reload", file: VIEWER_CSS_FILE_PATH },
+    { event: "reload", file: VIEWER_JS_FILE_PATH },
+    { event: "data", file: dataFile },
+  ];
+  const watchers = watchedFiles.map(({ event, file }) =>
+    watch(dirname(file), (_watchEvent, filename) => {
       if (filename && String(filename) !== basename(file)) return;
       clearTimeout(reloadTimer);
-      reloadTimer = setTimeout(() => notifyReload(clients), 50);
-    }));
+      reloadTimer = setTimeout(() => notifyClients(clients, event), 50);
+    }),
+  );
 
   const close = async () => {
     clearTimeout(reloadTimer);
@@ -126,6 +154,10 @@ async function serveRequest(request, response, files, url) {
     await serveGenerateSummary(request, response, files, method, pathname);
     return;
   }
+  if (pathname === VIEWER_MODEL_PATH) {
+    serveViewerModel(response, files, method);
+    return;
+  }
   if (method !== "GET" && method !== "HEAD") {
     response.writeHead(405, { Allow: "GET, HEAD" });
     response.end();
@@ -148,7 +180,10 @@ async function serveRequest(request, response, files, url) {
     request.on("close", () => files.clients.delete(response));
     return;
   }
-  if (pathname === `/${VIEWER_CSS_FILENAME}` && existsSync(VIEWER_CSS_FILE_PATH)) {
+  if (
+    pathname === `/${VIEWER_CSS_FILENAME}` &&
+    existsSync(VIEWER_CSS_FILE_PATH)
+  ) {
     send(
       response,
       method,
@@ -158,7 +193,10 @@ async function serveRequest(request, response, files, url) {
     );
     return;
   }
-  if (pathname === `/${VIEWER_JS_FILENAME}` && existsSync(VIEWER_JS_FILE_PATH)) {
+  if (
+    pathname === `/${VIEWER_JS_FILENAME}` &&
+    existsSync(VIEWER_JS_FILE_PATH)
+  ) {
     send(
       response,
       method,
@@ -267,6 +305,27 @@ async function serveBackfill(request, response, files, method) {
   }
 }
 
+function serveViewerModel(response, files, method) {
+  if (method !== "GET" && method !== "HEAD") {
+    response.writeHead(405, { Allow: "GET, HEAD" });
+    response.end();
+    return;
+  }
+  try {
+    const snapshot = files.runReadViewerSnapshot(files.config);
+    sendJson(response, 200, snapshot, method);
+  } catch (error) {
+    sendJson(
+      response,
+      500,
+      {
+        error: error?.message ?? "Unable to read viewer data",
+      },
+      method,
+    );
+  }
+}
+
 async function serveGenerateSummary(
   request,
   response,
@@ -303,42 +362,92 @@ async function serveGenerateSummary(
     return;
   }
 
+  startGenerationStream(response);
+  writeGenerationEvent(response, { type: "started", sha });
+  const projectDraft = createDraftProjector((changes) => {
+    writeGenerationEvent(response, { type: "draft", sha, changes });
+  });
+
   let result;
   try {
-    result = await files.runRecordCommittedChange(files.config, {}, { sha });
+    result = await files.runRecordCommittedChange(
+      files.config,
+      {},
+      { sha, onOutputTextDelta: projectDraft },
+    );
   } catch (error) {
-    try {
-      files.runBuild(files.config);
-    } catch {
-      // The generation error is more useful than a secondary cache failure.
-    }
-    sendJson(response, 500, {
+    const group = rebuildAndReadGroup(files, sha);
+    writeGenerationEvent(response, {
+      type: "failed",
+      sha,
       error: error?.message ?? "Unable to generate this summary",
+      ...(group ? { group } : {}),
     });
+    endGenerationStream(response);
     return;
   }
 
   if (result.reason === "no-code-changes") {
-    sendJson(response, 422, {
+    writeGenerationEvent(response, {
+      type: "failed",
+      sha,
       error: "This commit has no code diff to summarize",
     });
+    endGenerationStream(response);
     return;
   }
 
+  let viewerEntries = null;
+  let snapshotWarning = null;
   try {
-    const viewerEntries = files.runBuild(files.config);
-    sendJson(response, 200, {
+    viewerEntries = files.runBuild(files.config);
+  } catch (error) {
+    snapshotWarning =
+      error?.message ??
+      "The summary was saved but the static viewer cache could not refresh";
+  }
+
+  try {
+    const group = readGroup(files, sha);
+    if (!group)
+      throw new Error("Generated commit is no longer in viewer history");
+    writeGenerationEvent(response, {
+      type: "complete",
+      sha,
       created: result.created,
       reason: result.reason,
       viewerEntries,
+      group,
+      ...(snapshotWarning ? { warning: snapshotWarning } : {}),
     });
   } catch (error) {
-    sendJson(response, 500, {
+    writeGenerationEvent(response, {
+      type: "failed",
+      sha,
       error:
         error?.message ??
-        "The summary was saved but the viewer could not refresh",
+        "The summary was saved but the viewer could not update",
     });
   }
+  endGenerationStream(response);
+}
+
+function rebuildAndReadGroup(files, sha) {
+  try {
+    files.runBuild(files.config);
+  } catch {
+    // Preserve the primary generation error when cache rebuilding also fails.
+  }
+  try {
+    return readGroup(files, sha);
+  } catch {
+    return null;
+  }
+}
+
+function readGroup(files, sha) {
+  const snapshot = files.runReadViewerSnapshot(files.config);
+  return snapshot.groups.find((group) => group.sha === sha) ?? null;
 }
 
 function serveClearHistory(request, response, files, method) {
@@ -371,12 +480,31 @@ function serveClearHistory(request, response, files, method) {
   }
 }
 
-function sendJson(response, status, body) {
+function startGenerationStream(response) {
+  response.writeHead(200, {
+    "Cache-Control": "no-store",
+    Connection: "keep-alive",
+    "Content-Type": "application/x-ndjson; charset=utf-8",
+    "X-Content-Type-Options": "nosniff",
+  });
+  response.flushHeaders();
+}
+
+function writeGenerationEvent(response, event) {
+  if (response.destroyed || response.writableEnded) return false;
+  return response.write(`${JSON.stringify(event)}\n`);
+}
+
+function endGenerationStream(response) {
+  if (!response.destroyed && !response.writableEnded) response.end();
+}
+
+function sendJson(response, status, body, method = "GET") {
   response.writeHead(status, {
     "Cache-Control": "no-store",
     "Content-Type": "application/json; charset=utf-8",
   });
-  response.end(`${JSON.stringify(body)}\n`);
+  response.end(method === "HEAD" ? undefined : `${JSON.stringify(body)}\n`);
 }
 
 async function readJsonBody(request) {
@@ -412,16 +540,19 @@ function send(response, method, status, contentType, body) {
   response.end(method === "HEAD" ? undefined : body);
 }
 
-function notifyReload(clients) {
-  const message = `event: reload\ndata: ${Date.now()}\n\n`;
+function notifyClients(clients, event) {
+  const message = `event: ${event}\ndata: ${Date.now()}\n\n`;
   for (const client of clients) client.write(message);
 }
 
 function previewPort(value) {
-  if (value === undefined || value === null || value === "") return DEFAULT_PORT;
+  if (value === undefined || value === null || value === "")
+    return DEFAULT_PORT;
   const port = Number(value);
   if (!Number.isInteger(port) || port < 0 || port > 65_535) {
-    throw new Error(`Preview port must be an integer from 0 to 65535: ${value}`);
+    throw new Error(
+      `Preview port must be an integer from 0 to 65535: ${value}`,
+    );
   }
   return port;
 }
@@ -444,18 +575,22 @@ function listen(server, port, host) {
 
 function closeServer(server) {
   return new Promise((resolve, reject) => {
-    server.close((error) => error ? reject(error) : resolve());
+    server.close((error) => (error ? reject(error) : resolve()));
   });
 }
 
 function openBrowser(url) {
-  const command = process.platform === "darwin"
-    ? ["open", [url]]
-    : process.platform === "win32"
-      ? ["cmd.exe", ["/c", "start", "", url]]
-      : ["xdg-open", [url]];
+  const command =
+    process.platform === "darwin"
+      ? ["open", [url]]
+      : process.platform === "win32"
+        ? ["cmd.exe", ["/c", "start", "", url]]
+        : ["xdg-open", [url]];
   try {
-    const child = spawn(command[0], command[1], { detached: true, stdio: "ignore" });
+    const child = spawn(command[0], command[1], {
+      detached: true,
+      stdio: "ignore",
+    });
     child.on("error", () => {});
     child.unref();
   } catch {

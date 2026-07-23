@@ -4,7 +4,11 @@ import { describeChange } from "./describe.mjs";
 import { openSummaryStore, PROMPT_VERSION } from "./store.mjs";
 
 /** Generate and persist the AI summary for an already-created Git commit. */
-export async function recordCommittedChange(config, dependencies = {}, options = {}) {
+export async function recordCommittedChange(
+  config,
+  dependencies = {},
+  options = {},
+) {
   const sha = options.sha ?? currentHead(config.root);
   if (!sha) return { created: false, reason: "no-commit", entry: null };
   if (options.mergeOnly === true) {
@@ -20,7 +24,11 @@ export async function recordCommittedChange(config, dependencies = {}, options =
   let leaseToken;
   try {
     const files = (dependencies.commitFiles ?? commitFiles)(sha, config.root);
-    const diff = (dependencies.commitDiff ?? commitDiff)(sha, config.maxDiffBytes, config.root);
+    const diff = (dependencies.commitDiff ?? commitDiff)(
+      sha,
+      config.maxDiffBytes,
+      config.root,
+    );
     if (!files.length && !diff.trim()) {
       return { created: false, reason: "no-code-changes", entry: null };
     }
@@ -33,10 +41,16 @@ export async function recordCommittedChange(config, dependencies = {}, options =
       force: options.force === true,
     });
     if (!leaseToken) {
-      return { created: false, reason: "already-ready-or-generating", entry: store.getBySha(sha) };
+      return {
+        created: false,
+        reason: "already-ready-or-generating",
+        entry: store.getBySha(sha),
+      };
     }
 
-    const result = await summarize({ files, diff }, config);
+    const result = await summarize({ files, diff }, config, {
+      onOutputTextDelta: options.onOutputTextDelta,
+    });
     const entry = store.complete(sha, leaseToken, {
       ...result,
       promptVersion: PROMPT_VERSION,

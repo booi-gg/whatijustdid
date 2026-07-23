@@ -6,14 +6,24 @@ import { CommitCard } from "./CommitCard";
 interface CommitTimelineProps {
   days: ViewerDay[];
   generatedHighlights: Set<string>;
+  onGenerationFailed: (sha: string) => void;
+  onGenerationStarted: (sha: string) => void;
+  onGeneratedScrollCompleted: (sha: string) => void;
   onGeneratedHighlightDismissed: (sha: string) => void;
+  onGroupGenerated: (group: ViewerGroup) => void;
+  onGroupUpdated: (group: ViewerGroup) => void;
   scrollTargetSha: string | null;
 }
 
 export function CommitTimeline({
   days,
   generatedHighlights,
+  onGenerationFailed,
+  onGenerationStarted,
+  onGeneratedScrollCompleted,
   onGeneratedHighlightDismissed,
+  onGroupGenerated,
+  onGroupUpdated,
   scrollTargetSha,
 }: CommitTimelineProps) {
   return days.map(([date, groups]) => (
@@ -22,7 +32,12 @@ export function CommitTimeline({
       generatedHighlights={generatedHighlights}
       groups={groups}
       key={date}
+      onGenerationFailed={onGenerationFailed}
+      onGenerationStarted={onGenerationStarted}
+      onGeneratedScrollCompleted={onGeneratedScrollCompleted}
       onGeneratedHighlightDismissed={onGeneratedHighlightDismissed}
+      onGroupGenerated={onGroupGenerated}
+      onGroupUpdated={onGroupUpdated}
       scrollTargetSha={scrollTargetSha}
     />
   ));
@@ -32,7 +47,12 @@ interface DaySectionProps {
   date: string;
   generatedHighlights: Set<string>;
   groups: ViewerGroup[];
+  onGenerationFailed: (sha: string) => void;
+  onGenerationStarted: (sha: string) => void;
+  onGeneratedScrollCompleted: (sha: string) => void;
   onGeneratedHighlightDismissed: (sha: string) => void;
+  onGroupGenerated: (group: ViewerGroup) => void;
+  onGroupUpdated: (group: ViewerGroup) => void;
   scrollTargetSha: string | null;
 }
 
@@ -40,7 +60,12 @@ function DaySection({
   date,
   generatedHighlights,
   groups,
+  onGenerationFailed,
+  onGenerationStarted,
+  onGeneratedScrollCompleted,
   onGeneratedHighlightDismissed,
+  onGroupGenerated,
+  onGroupUpdated,
   scrollTargetSha,
 }: DaySectionProps) {
   return (
@@ -56,8 +81,16 @@ function DaySection({
               typeof group.sha === "string" &&
               generatedHighlights.has(group.sha.toLowerCase())
             }
-            key={`${group.date ?? date}-${group.ref ?? "change"}-${index}`}
+            key={
+              group.sha ??
+              `${group.date ?? date}-${group.ref ?? "change"}-${index}`
+            }
+            onGenerationFailed={onGenerationFailed}
+            onGenerationStarted={onGenerationStarted}
+            onGeneratedScrollCompleted={onGeneratedScrollCompleted}
             onGeneratedHighlightDismissed={onGeneratedHighlightDismissed}
+            onGroupGenerated={onGroupGenerated}
+            onGroupUpdated={onGroupUpdated}
             shouldScrollIntoView={
               typeof group.sha === "string" &&
               group.sha.toLowerCase() === scrollTargetSha

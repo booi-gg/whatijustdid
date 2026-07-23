@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import { type ChangeType, type ViewerEntry, type ViewerGroup } from "../model";
 import {
   formatLineChanges,
@@ -7,7 +7,6 @@ import {
   presentCommit,
   toChangeType,
 } from "../presentation";
-import { completeGeneratedCommit } from "../preview/generatedCommitSession";
 import { GenerationPanel } from "./GenerationPanel";
 
 const generatedHighlightDismissDelay = 5_000;
@@ -29,14 +28,24 @@ const tagStyles: Record<ChangeType, string> = {
 interface CommitCardProps {
   group: ViewerGroup;
   isGeneratedHighlight: boolean;
+  onGenerationFailed: (sha: string) => void;
+  onGenerationStarted: (sha: string) => void;
+  onGeneratedScrollCompleted: (sha: string) => void;
   onGeneratedHighlightDismissed: (sha: string) => void;
+  onGroupGenerated: (group: ViewerGroup) => void;
+  onGroupUpdated: (group: ViewerGroup) => void;
   shouldScrollIntoView: boolean;
 }
 
-export function CommitCard({
+export const CommitCard = memo(function CommitCard({
   group,
   isGeneratedHighlight,
+  onGenerationFailed,
+  onGenerationStarted,
+  onGeneratedScrollCompleted,
   onGeneratedHighlightDismissed,
+  onGroupGenerated,
+  onGroupUpdated,
   shouldScrollIntoView,
 }: CommitCardProps) {
   const dismissTimer = useRef<number | null>(null);
@@ -52,15 +61,18 @@ export function CommitCard({
     [],
   );
 
-  // Mount-only by design. The marker survives the intermediate generating
-  // reload and is cleared only when this target card mounts in its ready form.
   useEffect(() => {
-    if (!shouldScrollIntoView) return;
+    if (!shouldScrollIntoView || !commit.isReady) return;
     articleRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-    if (commit.isReady && typeof group.sha === "string") {
-      completeGeneratedCommit(group.sha);
+    if (typeof group.sha === "string") {
+      onGeneratedScrollCompleted(group.sha);
     }
-  }, []);
+  }, [
+    commit.isReady,
+    group.sha,
+    onGeneratedScrollCompleted,
+    shouldScrollIntoView,
+  ]);
 
   function handleMouseEnter() {
     if (
@@ -156,11 +168,18 @@ export function CommitCard({
           ))}
         </ol>
       ) : (
-        <GenerationPanel group={group} status={commit.status} />
+        <GenerationPanel
+          group={group}
+          onGenerationFailed={onGenerationFailed}
+          onGenerationStarted={onGenerationStarted}
+          onGroupGenerated={onGroupGenerated}
+          onGroupUpdated={onGroupUpdated}
+          status={commit.status}
+        />
       )}
     </article>
   );
-}
+});
 
 function EntryRow({ entry }: { entry: ViewerEntry }) {
   const tags =
